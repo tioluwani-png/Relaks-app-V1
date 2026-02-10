@@ -124,7 +124,7 @@ export function JournalContent() {
                 </motion.div>
                 <span className="font-semibold">Journal Streak</span>
               </div>
-              <Link href="/journal/calendar">
+              <Link href="/journal/history">
                 <Button variant="ghost" size="sm" className="text-white/90 hover:text-white hover:bg-white/20 rounded-xl">
                   <Calendar className="h-4 w-4 mr-1" />
                   History
