@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Bell, Search } from 'lucide-react'
+import { ArrowLeft, Bell, Search, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/use-auth'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -69,6 +69,12 @@ export function Header({
         </div>
 
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="rounded-xl" asChild>
+            <Link href="/discover/leaderboard">
+              <Trophy className="h-5 w-5 text-yellow-500" />
+              <span className="sr-only">Leaderboard</span>
+            </Link>
+          </Button>
           {showSearch && (
             <Button variant="ghost" size="icon" className="rounded-xl" asChild>
               <Link href="/search">

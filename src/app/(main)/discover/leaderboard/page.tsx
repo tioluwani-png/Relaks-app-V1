@@ -34,13 +34,24 @@ interface RankedUser {
   rank: number
 }
 
+interface RankedStreak {
+  id: string
+  username: string
+  display_name: string | null
+  avatar_url: string | null
+  journal_streak: number
+  rank: number
+}
+
 export default function LeaderboardPage() {
   const router = useRouter()
   const [period, setPeriod] = useState<'week' | 'month' | 'all'>('week')
   const [posts, setPosts] = useState<RankedPost[]>([])
   const [users, setUsers] = useState<RankedUser[]>([])
+  const [streaks, setStreaks] = useState<RankedStreak[]>([])
   const [isLoadingPosts, setIsLoadingPosts] = useState(true)
   const [isLoadingUsers, setIsLoadingUsers] = useState(true)
+  const [isLoadingStreaks, setIsLoadingStreaks] = useState(true)
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -80,6 +91,25 @@ export default function LeaderboardPage() {
     fetchUsers()
   }, [])
 
+  useEffect(() => {
+    const fetchStreaks = async () => {
+      setIsLoadingStreaks(true)
+      try {
+        const response = await fetch('/api/leaderboard/streaks')
+        const data = await response.json()
+        if (response.ok) {
+          setStreaks(data.users)
+        }
+      } catch {
+        console.error('Failed to fetch streaks')
+      } finally {
+        setIsLoadingStreaks(false)
+      }
+    }
+
+    fetchStreaks()
+  }, [])
+
   const getRankBadge = (rank: number) => {
     switch (rank) {
       case 1:
@@ -113,6 +143,7 @@ export default function LeaderboardPage() {
           <TabsList className="w-full">
             <TabsTrigger value="posts" className="flex-1">Top Posts</TabsTrigger>
             <TabsTrigger value="users" className="flex-1">Top Colorists</TabsTrigger>
+            <TabsTrigger value="streaks" className="flex-1">Streaks</TabsTrigger>
           </TabsList>
 
           <TabsContent value="posts" className="mt-4 space-y-4">
@@ -226,6 +257,55 @@ export default function LeaderboardPage() {
                           <span>{user.journal_streak}</span>
                         </div>
                       )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="streaks" className="mt-4 space-y-3">
+            {isLoadingStreaks ? (
+              <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : streaks.length === 0 ? (
+              <div className="text-center py-12">
+                <Flame className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">No streak champions yet</p>
+                <p className="text-sm text-muted-foreground mt-1">Start journaling daily to appear here!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {streaks.map((user) => (
+                  <Link
+                    key={user.id}
+                    href={`/user/${user.username}`}
+                    className="flex items-center gap-4 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-8 text-center text-lg">
+                      {getRankBadge(user.rank)}
+                    </div>
+                    <Avatar>
+                      <AvatarImage src={user.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {user.username.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">
+                        {user.display_name || user.username}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        @{user.username}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 text-orange-500">
+                      <Flame className="h-4 w-4" />
+                      <span className="font-semibold">{user.journal_streak}</span>
+                      <span className="text-sm text-muted-foreground">days</span>
                     </div>
                   </Link>
                 ))}

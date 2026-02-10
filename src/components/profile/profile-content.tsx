@@ -3,14 +3,30 @@
 import { useAuth } from '@/hooks/use-auth'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Settings, Grid3X3, Bookmark, Download, Sparkles, AlertCircle } from 'lucide-react'
+import { Settings, Grid3X3, Bookmark, Download, Sparkles, AlertCircle, Heart } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { FadeIn } from '@/components/shared/motion'
+
+interface UserPost {
+  id: string
+  image_url: string
+  thumbnail_url: string | null
+  like_count: number
+  comment_count: number
+}
+
+interface SavedPost {
+  id: string
+  image_url: string
+  thumbnail_url: string | null
+  like_count: number
+}
 
 const profileTabs = [
   { value: 'posts', icon: Grid3X3, label: 'Posts' },
@@ -22,6 +38,52 @@ const profileTabs = [
 export function ProfileContent() {
   const { user, profile, isLoading, refreshProfile } = useAuth()
   const [activeTab, setActiveTab] = useState('posts')
+  const [posts, setPosts] = useState<UserPost[]>([])
+  const [savedPosts, setSavedPosts] = useState<SavedPost[]>([])
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true)
+  const [isLoadingSaved, setIsLoadingSaved] = useState(false)
+
+  useEffect(() => {
+    if (!profile) return
+
+    const fetchPosts = async () => {
+      setIsLoadingPosts(true)
+      try {
+        const response = await fetch(`/api/users/${profile.id}`)
+        const data = await response.json()
+        if (response.ok && data.user?.posts) {
+          setPosts(data.user.posts)
+        }
+      } catch {
+        console.error('Failed to fetch posts')
+      } finally {
+        setIsLoadingPosts(false)
+      }
+    }
+
+    fetchPosts()
+  }, [profile])
+
+  useEffect(() => {
+    if (!profile || activeTab !== 'saved') return
+
+    const fetchSaved = async () => {
+      setIsLoadingSaved(true)
+      try {
+        const response = await fetch(`/api/users/${profile.id}/saved`)
+        const data = await response.json()
+        if (response.ok) {
+          setSavedPosts(data.posts || [])
+        }
+      } catch {
+        console.error('Failed to fetch saved posts')
+      } finally {
+        setIsLoadingSaved(false)
+      }
+    }
+
+    fetchSaved()
+  }, [profile, activeTab])
 
   if (isLoading) {
     return (
@@ -122,7 +184,7 @@ export function ProfileContent() {
         {/* Stats */}
         <div className="flex justify-around text-center py-4 bg-muted/50 rounded-2xl">
           <div>
-            <div className="text-lg font-bold">0</div>
+            <div className="text-lg font-bold">{posts.length}</div>
             <div className="text-xs text-muted-foreground">Posts</div>
           </div>
           <Link href={`/user/${profile.username}/followers`} className="hover:opacity-80">
@@ -169,20 +231,76 @@ export function ProfileContent() {
         {/* Tab Content */}
         <div>
           {activeTab === 'posts' && (
-            <EmptyState
-              icon={Grid3X3}
-              title="No posts yet"
-              description="Share your first colored artwork"
-              actionLabel="Upload"
-              actionHref="/create/upload"
-            />
+            isLoadingPosts ? (
+              <div className="grid grid-cols-3 gap-0.5">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="aspect-square rounded-none" />
+                ))}
+              </div>
+            ) : posts.length === 0 ? (
+              <EmptyState
+                icon={Grid3X3}
+                title="No posts yet"
+                description="Share your first colored artwork"
+                actionLabel="Upload"
+                actionHref="/create/upload"
+              />
+            ) : (
+              <div className="grid grid-cols-3 gap-0.5">
+                {posts.map((post) => (
+                  <Link
+                    key={post.id}
+                    href={`/post/${post.id}`}
+                    className="relative aspect-square bg-muted group"
+                  >
+                    <Image
+                      src={post.thumbnail_url || post.image_url}
+                      alt="Post"
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <div className="flex items-center gap-1 text-white text-sm font-semibold">
+                        <Heart className="h-4 w-4 fill-current" />
+                        {post.like_count}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )
           )}
           {activeTab === 'saved' && (
-            <EmptyState
-              icon={Bookmark}
-              title="No saved posts"
-              description="Save posts to view them here"
-            />
+            isLoadingSaved ? (
+              <div className="grid grid-cols-3 gap-0.5">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="aspect-square rounded-none" />
+                ))}
+              </div>
+            ) : savedPosts.length === 0 ? (
+              <EmptyState
+                icon={Bookmark}
+                title="No saved posts"
+                description="Save posts to view them here"
+              />
+            ) : (
+              <div className="grid grid-cols-3 gap-0.5">
+                {savedPosts.map((post) => (
+                  <Link
+                    key={post.id}
+                    href={`/post/${post.id}`}
+                    className="relative aspect-square bg-muted"
+                  >
+                    <Image
+                      src={post.thumbnail_url || post.image_url}
+                      alt="Saved post"
+                      fill
+                      className="object-cover"
+                    />
+                  </Link>
+                ))}
+              </div>
+            )
           )}
           {activeTab === 'downloads' && (
             <EmptyState
