@@ -11,6 +11,7 @@ export type Mood = 'great' | 'good' | 'okay' | 'bad' | 'terrible'
 export type PurchaseType = 'single' | 'bundle' | 'unlimited' | 'ai_pack'
 export type AIStyle = 'mandala' | 'floral' | 'animals' | 'abstract' | 'portrait' | 'landscape'
 export type AIComplexity = 'simple' | 'medium' | 'detailed'
+export type UserRole = 'user' | 'moderator' | 'admin' | 'super_admin'
 
 export interface Database {
   public: {
@@ -33,6 +34,10 @@ export interface Database {
           following_count: number
           total_likes_received: number
           is_verified: boolean
+          role: UserRole
+          is_banned: boolean
+          banned_at: string | null
+          banned_reason: string | null
           created_at: string
           updated_at: string
         }
@@ -53,6 +58,10 @@ export interface Database {
           following_count?: number
           total_likes_received?: number
           is_verified?: boolean
+          role?: UserRole
+          is_banned?: boolean
+          banned_at?: string | null
+          banned_reason?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -73,6 +82,10 @@ export interface Database {
           following_count?: number
           total_likes_received?: number
           is_verified?: boolean
+          role?: UserRole
+          is_banned?: boolean
+          banned_at?: string | null
+          banned_reason?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -89,6 +102,9 @@ export interface Database {
           is_public: boolean
           like_count: number
           comment_count: number
+          is_flagged: boolean
+          flag_reason: string | null
+          flagged_at: string | null
           created_at: string
         }
         Insert: {
@@ -102,6 +118,9 @@ export interface Database {
           is_public?: boolean
           like_count?: number
           comment_count?: number
+          is_flagged?: boolean
+          flag_reason?: string | null
+          flagged_at?: string | null
           created_at?: string
         }
         Update: {
@@ -115,6 +134,9 @@ export interface Database {
           is_public?: boolean
           like_count?: number
           comment_count?: number
+          is_flagged?: boolean
+          flag_reason?: string | null
+          flagged_at?: string | null
           created_at?: string
         }
       }
@@ -390,6 +412,44 @@ export interface Database {
           created_at?: string
         }
       }
+      reports: {
+        Row: {
+          id: string
+          reporter_id: string | null
+          reported_user_id: string | null
+          reported_post_id: string | null
+          reason: string
+          details: string | null
+          status: string
+          reviewed_by: string | null
+          reviewed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          reporter_id?: string | null
+          reported_user_id?: string | null
+          reported_post_id?: string | null
+          reason: string
+          details?: string | null
+          status?: string
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          reporter_id?: string | null
+          reported_user_id?: string | null
+          reported_post_id?: string | null
+          reason?: string
+          details?: string | null
+          status?: string
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -403,6 +463,7 @@ export interface Database {
       purchase_type: PurchaseType
       ai_style: AIStyle
       ai_complexity: AIComplexity
+      user_role: UserRole
     }
   }
 }
@@ -420,6 +481,7 @@ export type AIGeneration = Database['public']['Tables']['ai_generations']['Row']
 export type ReferenceImage = Database['public']['Tables']['reference_images']['Row']
 export type SavedPost = Database['public']['Tables']['saved_posts']['Row']
 export type Notification = Database['public']['Tables']['notifications']['Row']
+export type Report = Database['public']['Tables']['reports']['Row']
 
 // Extended types with relations
 export type PostWithUser = Post & {

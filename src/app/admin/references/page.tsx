@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { Upload, Loader2, Plus, Trash2 } from 'lucide-react'
-import { Header } from '@/components/layout/header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,8 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-
-type Edition = 'lavender' | 'pink'
+import type { Edition } from '@/types/database'
 
 export default function AdminReferencesPage() {
   const supabase = createClient()
@@ -38,10 +36,9 @@ export default function AdminReferencesPage() {
 
     setIsUploading(true)
     try {
-      // Upload image to Supabase Storage
       const fileName = `${edition}-page-${pageNumber}-${Date.now()}.${selectedFile.name.split('.').pop()}`
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('references')
         .upload(fileName, selectedFile)
 
@@ -49,12 +46,10 @@ export default function AdminReferencesPage() {
         throw new Error(uploadError.message)
       }
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('references')
         .getPublicUrl(fileName)
 
-      // Insert into database
       const { error: dbError } = await supabase
         .from('reference_images')
         .insert({
@@ -70,11 +65,9 @@ export default function AdminReferencesPage() {
 
       toast.success('Reference uploaded successfully!')
 
-      // Reset form
       setSelectedFile(null)
       setPreviewUrl(null)
       setPageNumber('')
-
     } catch (error) {
       console.error('Upload error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to upload')
@@ -84,15 +77,15 @@ export default function AdminReferencesPage() {
   }
 
   return (
-    <>
-      <Header title="Upload References" showBack showSearch={false} showNotifications={false} />
-      <main className="max-w-lg mx-auto p-4 space-y-6">
+    <div>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Upload References</h1>
+
+      <div className="max-w-lg space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Add New Reference Image</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Edition Select */}
             <div className="space-y-2">
               <Label>Edition</Label>
               <Select value={edition} onValueChange={(v) => setEdition(v as Edition)}>
@@ -106,7 +99,6 @@ export default function AdminReferencesPage() {
               </Select>
             </div>
 
-            {/* Page Number */}
             <div className="space-y-2">
               <Label>Page Number</Label>
               <Input
@@ -118,7 +110,6 @@ export default function AdminReferencesPage() {
               />
             </div>
 
-            {/* File Upload */}
             <div className="space-y-2">
               <Label>Reference Image</Label>
               <div className="border-2 border-dashed rounded-lg p-4">
@@ -158,7 +149,6 @@ export default function AdminReferencesPage() {
               </div>
             </div>
 
-            {/* Upload Button */}
             <Button
               onClick={handleUpload}
               disabled={!selectedFile || !pageNumber || isUploading}
@@ -179,19 +169,18 @@ export default function AdminReferencesPage() {
           </CardContent>
         </Card>
 
-        {/* Instructions */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Tips</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>• Upload high-quality photos of your colored pages</p>
-            <p>• Make sure the page number matches your Relaks book</p>
-            <p>• You can upload multiple references for the same page</p>
-            <p>• Users will see these as inspiration for their coloring</p>
+            <p>Upload high-quality photos of your colored pages</p>
+            <p>Make sure the page number matches your Relaks book</p>
+            <p>You can upload multiple references for the same page</p>
+            <p>Users will see these as inspiration for their coloring</p>
           </CardContent>
         </Card>
-      </main>
-    </>
+      </div>
+    </div>
   )
 }
