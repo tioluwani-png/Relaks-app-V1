@@ -58,15 +58,7 @@ export async function POST(request: NextRequest) {
         }
         break
 
-      case 'ai_single':
-        if (userDataTyped) {
-          await supabase.from('users').update({
-            ai_credits: userDataTyped.ai_credits + 1,
-          } as never).eq('id', user_id)
-        }
-        break
-
-      case 'ai_pack':
+      case 'ai_starter':
         if (userDataTyped) {
           await supabase.from('users').update({
             ai_credits: userDataTyped.ai_credits + 5,
@@ -74,10 +66,18 @@ export async function POST(request: NextRequest) {
         }
         break
 
-      case 'ai_monthly':
+      case 'ai_popular':
         if (userDataTyped) {
           await supabase.from('users').update({
-            ai_credits: userDataTyped.ai_credits + 30,
+            ai_credits: userDataTyped.ai_credits + 25,
+          } as never).eq('id', user_id)
+        }
+        break
+
+      case 'ai_pro':
+        if (userDataTyped) {
+          await supabase.from('users').update({
+            ai_credits: userDataTyped.ai_credits + 50,
           } as never).eq('id', user_id)
         }
         break

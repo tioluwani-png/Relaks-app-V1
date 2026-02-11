@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { ChevronLeft, ChevronRight, ZoomIn, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ZoomIn, X, Paintbrush } from 'lucide-react'
+import Link from 'next/link'
 
 interface ReferenceImage {
   id: string
@@ -201,9 +202,17 @@ function ReferenceGrid({
             fill
             className="object-cover group-hover:scale-105 transition-transform"
           />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-3">
             <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
+          <Link
+            href={`/color/${ref.id}`}
+            className="absolute bottom-2 right-2 p-2 bg-purple-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-600 z-10"
+            onClick={(e) => e.stopPropagation()}
+            title="Color this image"
+          >
+            <Paintbrush className="h-4 w-4" />
+          </Link>
           {ref.is_official && (
             <Badge className="absolute top-2 left-2" variant="secondary">
               Official

@@ -72,9 +72,9 @@ export const PRICING = {
   singlePage: 500,
   bundle10: 4000, // 20% off
   unlimited: 15000,
-  aiGeneration: 300,
-  aiPack5: 1200, // 20% off
-  aiMonthly: 3000,
+  aiStarter: 500,     // 5 credits (1 generation)
+  aiPopular: 2000,    // 25 credits (5 generations) - 20% off
+  aiPro: 3500,        // 50 credits (10 generations) - 30% off
 }
 
 // Convert to kobo for Paystack

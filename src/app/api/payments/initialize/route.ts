@@ -50,16 +50,16 @@ export async function POST(request: NextRequest) {
         amount = PRICING.unlimited
         break
 
-      case 'ai_single':
-        amount = PRICING.aiGeneration
+      case 'ai_starter':
+        amount = PRICING.aiStarter
         break
 
-      case 'ai_pack':
-        amount = PRICING.aiPack5
+      case 'ai_popular':
+        amount = PRICING.aiPopular
         break
 
-      case 'ai_monthly':
-        amount = PRICING.aiMonthly
+      case 'ai_pro':
+        amount = PRICING.aiPro
         break
 
       default:

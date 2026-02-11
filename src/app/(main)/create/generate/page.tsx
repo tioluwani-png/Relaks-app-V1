@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { ArrowLeft, Sparkles, Loader2, Download, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Sparkles, Loader2, Download, RefreshCw, Paintbrush, Upload, ImagePlus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Select,
   SelectContent,
@@ -38,12 +39,21 @@ const complexityLabels: Record<number, AIComplexity> = {
 export default function GeneratePage() {
   const router = useRouter()
   const { profile, refreshProfile } = useAuth()
-  const [prompt, setPrompt] = useState('')
-  const [style, setStyle] = useState<AIStyle>('mandala')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Shared state
   const [complexity, setComplexity] = useState(1)
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedImage, setGeneratedImage] = useState<string | null>(null)
   const [generationId, setGenerationId] = useState<string | null>(null)
+
+  // Prompt tab state
+  const [prompt, setPrompt] = useState('')
+  const [style, setStyle] = useState<AIStyle>('mandala')
+
+  // Photo tab state
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const aiCredits = profile?.ai_credits || 0
 
@@ -53,8 +63,8 @@ export default function GeneratePage() {
       return
     }
 
-    if (aiCredits <= 0) {
-      toast.error('No AI credits remaining. Please purchase more.')
+    if (aiCredits < 5) {
+      toast.error('Not enough credits. You need 5 credits per generation.')
       return
     }
 
@@ -89,6 +99,72 @@ export default function GeneratePage() {
     }
   }
 
+  const handlePhotoConvert = async () => {
+    if (!uploadedFile) {
+      toast.error('Please upload a photo first')
+      return
+    }
+
+    if (aiCredits < 5) {
+      toast.error('Not enough credits. You need 5 credits per generation.')
+      return
+    }
+
+    setIsGenerating(true)
+    setGeneratedImage(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('image', uploadedFile)
+      formData.append('complexity', complexityLabels[complexity])
+
+      const response = await fetch('/api/ai/photo-to-coloring', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to convert photo')
+      }
+
+      setGeneratedImage(data.generation.result_url)
+      setGenerationId(data.generation.id)
+      refreshProfile()
+      toast.success('Photo converted to coloring page!')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to convert photo')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file')
+      return
+    }
+
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error('Image must be under 4MB')
+      return
+    }
+
+    setUploadedFile(file)
+    setPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const clearPhoto = () => {
+    setUploadedFile(null)
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setPreviewUrl(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   const handleDownload = async () => {
     if (!generatedImage) return
 
@@ -107,6 +183,11 @@ export default function GeneratePage() {
     } catch {
       toast.error('Failed to download')
     }
+  }
+
+  const handleReset = () => {
+    setGeneratedImage(null)
+    setGenerationId(null)
   }
 
   return (
@@ -152,13 +233,16 @@ export default function GeneratePage() {
                   <Download className="h-4 w-4 mr-2" />
                   Download
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setGeneratedImage(null)
-                    setGenerationId(null)
-                  }}
-                >
+                {generationId && (
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push(`/color/${generationId}`)}
+                  >
+                    <Paintbrush className="h-4 w-4 mr-2" />
+                    Color
+                  </Button>
+                )}
+                <Button variant="outline" onClick={handleReset}>
                   <RefreshCw className="h-4 w-4 mr-2" />
                   New
                 </Button>
@@ -167,83 +251,186 @@ export default function GeneratePage() {
           </Card>
         )}
 
-        {/* Generation Form */}
+        {/* Generation Forms */}
         {!generatedImage && (
-          <div className="space-y-6">
-            {/* Prompt */}
-            <div className="space-y-2">
-              <Label htmlFor="prompt">Describe your coloring page</Label>
-              <Input
-                id="prompt"
-                placeholder="e.g., A peaceful garden with butterflies"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                maxLength={200}
-              />
-              <p className="text-xs text-muted-foreground text-right">
-                {prompt.length}/200
-              </p>
-            </div>
+          <Tabs defaultValue="prompt" className="space-y-6">
+            <TabsList className="w-full">
+              <TabsTrigger value="prompt" className="flex-1 gap-1.5">
+                <Sparkles className="h-4 w-4" />
+                From Prompt
+              </TabsTrigger>
+              <TabsTrigger value="photo" className="flex-1 gap-1.5">
+                <ImagePlus className="h-4 w-4" />
+                Ghibli Style
+              </TabsTrigger>
+            </TabsList>
 
-            {/* Style */}
-            <div className="space-y-2">
-              <Label>Style</Label>
-              <Select value={style} onValueChange={(v) => setStyle(v as AIStyle)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {styles.map((s) => (
-                    <SelectItem key={s.value} value={s.value}>
-                      {s.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Complexity */}
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <Label>Complexity</Label>
-                <span className="text-sm text-muted-foreground capitalize">
-                  {complexityLabels[complexity]}
-                </span>
+            {/* From Prompt Tab */}
+            <TabsContent value="prompt" className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="prompt">Describe your coloring page</Label>
+                <Input
+                  id="prompt"
+                  placeholder="e.g., A peaceful garden with butterflies"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  maxLength={200}
+                />
+                <p className="text-xs text-muted-foreground text-right">
+                  {prompt.length}/200
+                </p>
               </div>
-              <Slider
-                value={[complexity]}
-                onValueChange={([v]) => setComplexity(v)}
-                max={2}
-                step={1}
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Simple</span>
-                <span>Medium</span>
-                <span>Detailed</span>
+
+              <div className="space-y-2">
+                <Label>Style</Label>
+                <Select value={style} onValueChange={(v) => setStyle(v as AIStyle)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {styles.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
 
-            {/* Generate Button */}
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={handleGenerate}
-              disabled={isGenerating || !prompt.trim() || aiCredits <= 0}
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate (1 credit)
-                </>
-              )}
-            </Button>
+              {/* Complexity */}
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <Label>Complexity</Label>
+                  <span className="text-sm text-muted-foreground capitalize">
+                    {complexityLabels[complexity]}
+                  </span>
+                </div>
+                <Slider
+                  value={[complexity]}
+                  onValueChange={([v]) => setComplexity(v)}
+                  max={2}
+                  step={1}
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Simple</span>
+                  <span>Medium</span>
+                  <span>Detailed</span>
+                </div>
+              </div>
 
-            {aiCredits === 0 && (
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={handleGenerate}
+                disabled={isGenerating || !prompt.trim() || aiCredits < 5}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Generate (5 credits)
+                  </>
+                )}
+              </Button>
+            </TabsContent>
+
+            {/* From Photo Tab */}
+            <TabsContent value="photo" className="space-y-6">
+              <div className="space-y-2">
+                <Label>Upload your photo</Label>
+                <p className="text-xs text-muted-foreground">
+                  Upload any photo and AI will transform it into a Studio Ghibli-style coloring page
+                </p>
+
+                {previewUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border-2 border-dashed border-purple-300 dark:border-purple-700">
+                    <div className="relative aspect-square">
+                      <Image
+                        src={previewUrl}
+                        alt="Upload preview"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <button
+                      onClick={clearPhoto}
+                      className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                      <p className="text-white text-sm truncate">{uploadedFile?.name}</p>
+                      <p className="text-white/70 text-xs">
+                        {uploadedFile && (uploadedFile.size / 1024 / 1024).toFixed(1)}MB
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center h-48 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 cursor-pointer hover:border-purple-400 dark:hover:border-purple-600 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 transition">
+                    <Upload className="h-10 w-10 text-muted-foreground mb-3" />
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Tap to upload a photo
+                    </span>
+                    <span className="text-xs text-muted-foreground mt-1">
+                      JPG, PNG up to 4MB
+                    </span>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Complexity */}
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <Label>Detail Level</Label>
+                  <span className="text-sm text-muted-foreground capitalize">
+                    {complexityLabels[complexity]}
+                  </span>
+                </div>
+                <Slider
+                  value={[complexity]}
+                  onValueChange={([v]) => setComplexity(v)}
+                  max={2}
+                  step={1}
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Simple</span>
+                  <span>Medium</span>
+                  <span>Detailed</span>
+                </div>
+              </div>
+
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={handlePhotoConvert}
+                disabled={isGenerating || !uploadedFile || aiCredits < 5}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Converting...
+                  </>
+                ) : (
+                  <>
+                    <ImagePlus className="h-4 w-4 mr-2" />
+                    Convert to Ghibli Style (5 credits)
+                  </>
+                )}
+              </Button>
+            </TabsContent>
+
+            {aiCredits < 5 && (
               <p className="text-sm text-center text-muted-foreground">
                 You need credits to generate images.{' '}
                 <button
@@ -254,7 +441,7 @@ export default function GeneratePage() {
                 </button>
               </p>
             )}
-          </div>
+          </Tabs>
         )}
       </main>
     </div>
