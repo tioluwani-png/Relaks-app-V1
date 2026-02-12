@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { generateColoringPage, moderatePrompt, type AIStyle, type AIComplexity } from '@/lib/ai'
+import { uploadAIImage } from '@/lib/upload-ai-image'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -46,7 +47,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate the image
-    const imageUrl = await generateColoringPage(prompt, style, complexity)
+    const tempUrl = await generateColoringPage(prompt, style, complexity)
+
+    // Upload to Supabase Storage for permanent access
+    const permanentUrl = await uploadAIImage(supabase, tempUrl, user.id)
 
     // Save generation to database
     const { data: generation, error: dbError } = await supabase
@@ -56,7 +60,7 @@ export async function POST(request: NextRequest) {
         prompt,
         style,
         complexity,
-        result_url: imageUrl,
+        result_url: permanentUrl,
         is_purchased: false,
       } as never)
       .select()

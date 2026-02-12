@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { generateGhibliColoringPage, describeImage } from '@/lib/ai'
+import { uploadAIImage } from '@/lib/upload-ai-image'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -57,7 +58,10 @@ export async function POST(request: NextRequest) {
       ? complexity as 'simple' | 'medium' | 'detailed'
       : 'medium'
 
-    const imageUrl = await generateGhibliColoringPage(description, validComplexity)
+    const tempUrl = await generateGhibliColoringPage(description, validComplexity)
+
+    // Upload to Supabase Storage for permanent access
+    const permanentUrl = await uploadAIImage(supabase, tempUrl, user.id)
 
     // Save generation to database
     const { data: generation, error: dbError } = await supabase
@@ -67,7 +71,7 @@ export async function POST(request: NextRequest) {
         prompt: `Ghibli photo conversion: ${description.slice(0, 200)}`,
         style: 'abstract',
         complexity: validComplexity,
-        result_url: imageUrl,
+        result_url: permanentUrl,
         is_purchased: false,
       } as never)
       .select()
