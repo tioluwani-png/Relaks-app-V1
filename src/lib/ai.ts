@@ -67,12 +67,20 @@ export async function generateGhibliColoringPage(
     throw new Error('OpenAI API key not configured')
   }
 
-  const fullPrompt = `Recreate the following scene in Studio Ghibli anime art style as a coloring page: ${description}.
-Style: Soft, whimsical Studio Ghibli illustration with rounded forms, expressive characters, lush natural details, and a dreamy atmosphere inspired by films like Spirited Away, My Neighbor Totoro, and Howl's Moving Castle.
-Complexity: ${complexityModifiers[complexity]}.
-The image should be clean line art with no shading or colors, only black outlines on white background,
-suitable for printing and coloring with colored pencils or markers.
-High contrast, clear lines, no gray areas.`
+  const fullPrompt = `Convert this photo description into a clean black-and-white line art coloring page in Studio Ghibli anime style.
+
+Photo description: ${description}
+
+CRITICAL RULES:
+- Preserve the exact composition, pose, and framing from the description
+- Preserve facial proportions and distinguishing features accurately
+- Apply Studio Ghibli anime aesthetic: soft rounded forms, large expressive eyes, simplified but recognizable features, whimsical charm inspired by Spirited Away and Howl's Moving Castle
+- Complexity: ${complexityModifiers[complexity]}
+- ONLY thin, clean black outlines on pure white background
+- Uniform line weight throughout
+- NO shading, NO grayscale, NO fill, NO hatching
+- NO background clutter — keep it minimal
+- The result must look like a printable coloring page suitable for colored pencils or markers`
 
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
@@ -85,7 +93,7 @@ High contrast, clear lines, no gray areas.`
       prompt: fullPrompt,
       n: 1,
       size: '1024x1024',
-      quality: 'standard',
+      quality: 'hd',
       style: 'natural',
     }),
   })
@@ -111,26 +119,33 @@ export async function describeImage(imageBase64: string): Promise<string> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: [
         {
           role: 'user',
           content: [
             {
               type: 'text',
-              text: 'Describe this image in a concise way (under 150 words) focusing on the main subjects, their poses, composition, and key visual elements. This description will be used to generate a coloring page version, so focus on outlines, shapes, and structure rather than colors or lighting.',
+              text: `Describe this image in precise detail (under 300 words) for recreating it as line art. Include:
+
+1. PEOPLE: Exact number of people, their gender, age range, ethnicity, facial features (face shape, eye shape, nose shape, lip shape, eyebrow shape), hairstyle and length, facial expression, head tilt/angle.
+2. POSE & BODY: Body position, hand placement, posture, clothing details (neckline, sleeves, patterns, accessories).
+3. COMPOSITION: Framing (close-up, half-body, full-body), camera angle, background elements.
+4. PROPORTIONS: Relative sizes, spacing between features, any distinctive physical characteristics.
+
+Be extremely specific about facial proportions and distinguishing features. Describe the exact geometry of features rather than using vague terms. This will be used to generate a line art drawing that should resemble the original as closely as possible.`,
             },
             {
               type: 'image_url',
               image_url: {
                 url: `data:image/jpeg;base64,${imageBase64}`,
-                detail: 'low',
+                detail: 'high',
               },
             },
           ],
         },
       ],
-      max_tokens: 200,
+      max_tokens: 500,
     }),
   })
 
