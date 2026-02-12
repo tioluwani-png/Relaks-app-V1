@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { generateGhibliColoringPage, describeImage } from '@/lib/ai'
+import { transformPhotoToColoring } from '@/lib/ai'
 import { uploadAIImage } from '@/lib/upload-ai-image'
 
 export async function POST(request: NextRequest) {
@@ -46,29 +46,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Convert file to base64
+    // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer()
-    const base64 = Buffer.from(arrayBuffer).toString('base64')
+    const imageBuffer = Buffer.from(arrayBuffer)
 
-    // Step 1: Describe the image using GPT-4o-mini vision
-    const description = await describeImage(base64)
-
-    // Step 2: Generate Ghibli-style coloring page from the description
+    // Validate complexity
     const validComplexity = ['simple', 'medium', 'detailed'].includes(complexity)
       ? complexity as 'simple' | 'medium' | 'detailed'
       : 'medium'
 
-    const tempUrl = await generateGhibliColoringPage(description, validComplexity)
+    // Transform the photo directly using gpt-image-1
+    const resultUrl = await transformPhotoToColoring(imageBuffer, validComplexity)
 
     // Upload to Supabase Storage for permanent access
-    const permanentUrl = await uploadAIImage(supabase, tempUrl, user.id)
+    const permanentUrl = await uploadAIImage(supabase, resultUrl, user.id)
 
     // Save generation to database
     const { data: generation, error: dbError } = await supabase
       .from('ai_generations')
       .insert({
         user_id: user.id,
-        prompt: `Ghibli photo conversion: ${description.slice(0, 200)}`,
+        prompt: 'Ghibli photo conversion',
         style: 'abstract',
         complexity: validComplexity,
         result_url: permanentUrl,

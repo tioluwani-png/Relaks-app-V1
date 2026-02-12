@@ -1,27 +1,40 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * Downloads an image from a temporary URL (e.g. DALL-E)
+ * Takes an image (from a URL or base64 data URL)
  * and uploads it to Supabase Storage for permanent access.
  */
 export async function uploadAIImage(
   supabase: SupabaseClient,
-  tempUrl: string,
+  imageSource: string,
   userId: string
 ): Promise<string> {
-  // Download the image from OpenAI
-  const response = await fetch(tempUrl)
-  if (!response.ok) {
-    throw new Error('Failed to download generated image')
+  let imageBlob: Blob
+
+  if (imageSource.startsWith('data:')) {
+    // Handle base64 data URL (from gpt-image-1)
+    const base64Data = imageSource.split(',')[1]
+    const binaryString = atob(base64Data)
+    const bytes = new Uint8Array(binaryString.length)
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i)
+    }
+    imageBlob = new Blob([bytes], { type: 'image/png' })
+  } else {
+    // Handle URL (from DALL-E 3)
+    const response = await fetch(imageSource)
+    if (!response.ok) {
+      throw new Error('Failed to download generated image')
+    }
+    imageBlob = await response.blob()
   }
 
-  const blob = await response.blob()
   const fileName = `ai-generations/${userId}/${Date.now()}.png`
 
   // Upload to Supabase Storage
   const { error: uploadError } = await supabase.storage
     .from('posts')
-    .upload(fileName, blob, {
+    .upload(fileName, imageBlob, {
       contentType: 'image/png',
       upsert: false,
     })

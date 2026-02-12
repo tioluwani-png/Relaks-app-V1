@@ -59,103 +59,61 @@ High contrast, clear lines, no gray areas.`
   return data.data[0].url
 }
 
-export async function generateGhibliColoringPage(
-  description: string,
+export async function transformPhotoToColoring(
+  imageBuffer: Buffer,
   complexity: AIComplexity
 ): Promise<string> {
   if (!OPENAI_API_KEY) {
     throw new Error('OpenAI API key not configured')
   }
 
-  const fullPrompt = `Convert this photo description into a clean black-and-white line art coloring page in Studio Ghibli anime style.
-
-Photo description: ${description}
+  const prompt = `Transform this exact photo into a clean black-and-white coloring page in Studio Ghibli anime art style.
 
 CRITICAL RULES:
-- Preserve the exact composition, pose, and framing from the description
-- Preserve facial proportions and distinguishing features accurately
-- Apply Studio Ghibli anime aesthetic: soft rounded forms, large expressive eyes, simplified but recognizable features, whimsical charm inspired by Spirited Away and Howl's Moving Castle
+- Preserve the EXACT composition, pose, and framing of the original photo
+- Preserve the person's facial proportions and likeness accurately
+- Apply Studio Ghibli aesthetic: soft rounded forms, expressive eyes, whimsical charm
 - Complexity: ${complexityModifiers[complexity]}
 - ONLY thin, clean black outlines on pure white background
 - Uniform line weight throughout
-- NO shading, NO grayscale, NO fill, NO hatching
-- NO background clutter — keep it minimal
-- The result must look like a printable coloring page suitable for colored pencils or markers`
+- NO shading, NO grayscale, NO fill, NO hatching, NO colors
+- Keep the background minimal
+- The result must look like a printable coloring page`
 
-  const response = await fetch('https://api.openai.com/v1/images/generations', {
+  // Use FormData to send the image file to the edits endpoint
+  const formData = new FormData()
+  const uint8Array = new Uint8Array(imageBuffer)
+  const imageBlob = new Blob([uint8Array], { type: 'image/png' })
+  formData.append('image[]', imageBlob, 'photo.png')
+  formData.append('model', 'gpt-image-1')
+  formData.append('prompt', prompt)
+  formData.append('size', '1024x1024')
+  formData.append('quality', 'high')
+
+  const response = await fetch('https://api.openai.com/v1/images/edits', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model: 'dall-e-3',
-      prompt: fullPrompt,
-      n: 1,
-      size: '1024x1024',
-      quality: 'hd',
-      style: 'natural',
-    }),
+    body: formData,
   })
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.error?.message || 'Failed to generate image')
+    throw new Error(error.error?.message || 'Failed to transform image')
   }
 
   const data = await response.json()
+
+  // gpt-image-1 returns base64 by default
+  const base64Image = data.data[0].b64_json
+  if (base64Image) {
+    // Convert base64 to a data URL that can be fetched later for upload
+    return `data:image/png;base64,${base64Image}`
+  }
+
+  // Fallback to URL if returned
   return data.data[0].url
-}
-
-export async function describeImage(imageBase64: string): Promise<string> {
-  if (!OPENAI_API_KEY) {
-    throw new Error('OpenAI API key not configured')
-  }
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `Describe this image in precise detail (under 300 words) for recreating it as line art. Include:
-
-1. PEOPLE: Exact number of people, their gender, age range, ethnicity, facial features (face shape, eye shape, nose shape, lip shape, eyebrow shape), hairstyle and length, facial expression, head tilt/angle.
-2. POSE & BODY: Body position, hand placement, posture, clothing details (neckline, sleeves, patterns, accessories).
-3. COMPOSITION: Framing (close-up, half-body, full-body), camera angle, background elements.
-4. PROPORTIONS: Relative sizes, spacing between features, any distinctive physical characteristics.
-
-Be extremely specific about facial proportions and distinguishing features. Describe the exact geometry of features rather than using vague terms. This will be used to generate a line art drawing that should resemble the original as closely as possible.`,
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:image/jpeg;base64,${imageBase64}`,
-                detail: 'high',
-              },
-            },
-          ],
-        },
-      ],
-      max_tokens: 500,
-    }),
-  })
-
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.error?.message || 'Failed to analyze image')
-  }
-
-  const data = await response.json()
-  return data.choices[0].message.content
 }
 
 export function moderatePrompt(prompt: string): { safe: boolean; reason?: string } {
