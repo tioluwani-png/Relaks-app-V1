@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { createCommentSchema, validate } from '@/lib/validations'
 
 export async function GET(
   request: NextRequest,
@@ -65,22 +66,20 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { content, parent_id } = body
+    const validation = validate(createCommentSchema, body)
 
-    if (!content || content.trim().length === 0) {
-      return NextResponse.json({ error: 'Comment content is required' }, { status: 400 })
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
 
-    if (content.length > 500) {
-      return NextResponse.json({ error: 'Comment is too long (max 500 characters)' }, { status: 400 })
-    }
+    const { content, parent_id } = validation.data
 
     const { data: comment, error } = await supabase
       .from('comments')
       .insert({
         post_id: id,
         user_id: user.id,
-        content: content.trim(),
+        content,
         parent_id: parent_id || null,
       } as never)
       .select(`

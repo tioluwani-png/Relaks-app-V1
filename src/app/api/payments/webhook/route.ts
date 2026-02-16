@@ -1,25 +1,38 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
+import { PRICING, toKobo } from '@/lib/paystack'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
+
+// Expected amounts in kobo for each purchase type
+const EXPECTED_AMOUNTS: Record<string, number> = {
+  single: toKobo(PRICING.singlePage),
+  bundle: toKobo(PRICING.bundle10),
+  unlimited: toKobo(PRICING.unlimited),
+  ai_starter: toKobo(PRICING.aiStarter),
+  ai_popular: toKobo(PRICING.aiPopular),
+  ai_pro: toKobo(PRICING.aiPro),
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text()
     const signature = request.headers.get('x-paystack-signature')
 
-    // Verify webhook signature
+    // 1. Verify webhook signature (HMAC-SHA512)
     const hash = createHmac('sha512', PAYSTACK_SECRET_KEY)
       .update(body)
       .digest('hex')
 
     if (hash !== signature) {
+      console.error('Webhook signature mismatch')
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
     }
 
     const event = JSON.parse(body)
 
+    // 2. Only process successful charges
     if (event.event !== 'charge.success') {
       return NextResponse.json({ received: true })
     }
@@ -28,10 +41,41 @@ export async function POST(request: NextRequest) {
     const { reference, metadata, amount } = data
     const { user_id, type, page_id } = metadata
 
+    // 3. Validate metadata exists
+    if (!user_id || !type) {
+      console.error('Webhook missing metadata:', { reference, metadata })
+      return NextResponse.json({ error: 'Invalid metadata' }, { status: 400 })
+    }
+
+    // 4. Verify amount matches expected price
+    const expectedAmount = EXPECTED_AMOUNTS[type]
+    if (expectedAmount && amount !== expectedAmount) {
+      console.error('Amount mismatch!', {
+        expected: expectedAmount,
+        actual: amount,
+        reference,
+        userId: user_id,
+        type,
+      })
+      return NextResponse.json({ error: 'Amount verification failed' }, { status: 400 })
+    }
+
     const supabase = await createAdminClient()
 
-    // Record the purchase
-    await supabase.from('purchases').insert({
+    // 5. Check if this payment was already processed (prevent double-spend)
+    const { data: existingPurchase } = await supabase
+      .from('purchases')
+      .select('id')
+      .eq('paystack_reference', reference)
+      .single()
+
+    if (existingPurchase) {
+      console.log('Duplicate webhook for reference:', reference)
+      return NextResponse.json({ received: true })
+    }
+
+    // 6. Record the purchase
+    const { error: purchaseError } = await supabase.from('purchases').insert({
       user_id,
       page_id: page_id || null,
       type,
@@ -39,8 +83,12 @@ export async function POST(request: NextRequest) {
       paystack_reference: reference,
     } as never)
 
-    // Handle different purchase types - update user credits
-    // Note: In production, use database functions for atomic increments
+    if (purchaseError) {
+      console.error('Failed to record purchase:', purchaseError)
+      return NextResponse.json({ error: 'Failed to record purchase' }, { status: 500 })
+    }
+
+    // 7. Update user credits/pages based on purchase type
     const { data: userData } = await supabase
       .from('users')
       .select('free_pages_remaining, ai_credits')
@@ -49,39 +97,38 @@ export async function POST(request: NextRequest) {
 
     const userDataTyped = userData as { free_pages_remaining: number; ai_credits: number } | null
 
+    if (!userDataTyped) {
+      console.error('User not found for credit update:', user_id)
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
     switch (type) {
       case 'bundle':
-        if (userDataTyped) {
-          await supabase.from('users').update({
-            free_pages_remaining: userDataTyped.free_pages_remaining + 10,
-          } as never).eq('id', user_id)
-        }
+        await supabase.from('users').update({
+          free_pages_remaining: userDataTyped.free_pages_remaining + 10,
+        } as never).eq('id', user_id)
         break
 
       case 'ai_starter':
-        if (userDataTyped) {
-          await supabase.from('users').update({
-            ai_credits: userDataTyped.ai_credits + 5,
-          } as never).eq('id', user_id)
-        }
+        await supabase.from('users').update({
+          ai_credits: userDataTyped.ai_credits + 5,
+        } as never).eq('id', user_id)
         break
 
       case 'ai_popular':
-        if (userDataTyped) {
-          await supabase.from('users').update({
-            ai_credits: userDataTyped.ai_credits + 25,
-          } as never).eq('id', user_id)
-        }
+        await supabase.from('users').update({
+          ai_credits: userDataTyped.ai_credits + 25,
+        } as never).eq('id', user_id)
         break
 
       case 'ai_pro':
-        if (userDataTyped) {
-          await supabase.from('users').update({
-            ai_credits: userDataTyped.ai_credits + 50,
-          } as never).eq('id', user_id)
-        }
+        await supabase.from('users').update({
+          ai_credits: userDataTyped.ai_credits + 50,
+        } as never).eq('id', user_id)
         break
     }
+
+    console.log('Payment processed:', { reference, userId: user_id, type, amount })
 
     return NextResponse.json({ received: true })
   } catch (error) {

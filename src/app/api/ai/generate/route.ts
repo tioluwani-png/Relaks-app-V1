@@ -1,63 +1,90 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { generateColoringPage, moderatePrompt, type AIStyle, type AIComplexity } from '@/lib/ai'
+import { generateColoringPage, moderatePrompt } from '@/lib/ai'
 import { uploadAIImage } from '@/lib/upload-ai-image'
+import { aiGenerateSchema, validate } from '@/lib/validations'
+import { checkRateLimit } from '@/lib/rate-limit'
+
+const CREDIT_COST = 5
+const MAX_GENERATIONS_PER_HOUR = 10
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
 
   try {
+    // 1. Authenticate
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // 2. Rate limit
+    const rateCheck = checkRateLimit(`ai:${user.id}`, MAX_GENERATIONS_PER_HOUR, 60 * 60 * 1000)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: `Rate limit exceeded. Try again in ${Math.ceil(rateCheck.resetMs / 60000)} minutes.` },
+        { status: 429 }
+      )
+    }
+
+    // 3. Validate input with Zod
     const body = await request.json()
-    const { prompt, style, complexity } = body as {
-      prompt: string
-      style: AIStyle
-      complexity: AIComplexity
+    const validation = validate(aiGenerateSchema, body)
+
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
 
-    // Validate inputs
-    if (!prompt || !style || !complexity) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
+    const { prompt, style, complexity } = validation.data
 
-    // Moderate prompt
+    // 4. Moderate prompt
     const moderation = moderatePrompt(prompt)
     if (!moderation.safe) {
       return NextResponse.json({ error: moderation.reason }, { status: 400 })
     }
 
-    // Check user's AI credits
-    const { data: userData } = await supabase
+    // 5. Use admin client for credit operations (bypasses RLS)
+    const supabaseAdmin = await createAdminClient()
+
+    // 6. Check credits and ban status
+    const { data: userData } = await supabaseAdmin
       .from('users')
-      .select('ai_credits')
+      .select('ai_credits, is_banned')
       .eq('id', user.id)
       .single()
 
-    const userCredits = userData as { ai_credits: number } | null
-    if (!userCredits || userCredits.ai_credits < 5) {
+    const userInfo = userData as { ai_credits: number; is_banned: boolean } | null
+    if (!userInfo) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    if (userInfo.is_banned) {
+      return NextResponse.json({ error: 'Account suspended' }, { status: 403 })
+    }
+
+    if (userInfo.ai_credits < CREDIT_COST) {
       return NextResponse.json(
-        { error: 'Not enough credits. You need 5 credits per generation.' },
+        { error: `Not enough credits. You need ${CREDIT_COST} credits per generation.` },
         { status: 402 }
       )
     }
 
-    // Generate the image
-    const tempUrl = await generateColoringPage(prompt, style, complexity)
+    // 7. Sanitize prompt
+    const sanitizedPrompt = prompt.replace(/[<>]/g, '').trim()
 
-    // Upload to Supabase Storage for permanent access
-    const permanentUrl = await uploadAIImage(supabase, tempUrl, user.id)
+    // 8. Generate the image
+    const tempUrl = await generateColoringPage(sanitizedPrompt, style, complexity)
 
-    // Save generation to database
-    const { data: generation, error: dbError } = await supabase
+    // 9. Upload to Supabase Storage for permanent access
+    const permanentUrl = await uploadAIImage(supabaseAdmin, tempUrl, user.id)
+
+    // 10. Save generation to database (via admin client)
+    const { data: generation, error: dbError } = await supabaseAdmin
       .from('ai_generations')
       .insert({
         user_id: user.id,
-        prompt,
+        prompt: sanitizedPrompt,
         style,
         complexity,
         result_url: permanentUrl,
@@ -70,15 +97,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: dbError.message }, { status: 500 })
     }
 
-    // Deduct 5 AI credits
-    await supabase
+    // 11. Deduct credits atomically (via admin client)
+    await supabaseAdmin
       .from('users')
-      .update({ ai_credits: userCredits.ai_credits - 5 } as never)
+      .update({ ai_credits: userInfo.ai_credits - CREDIT_COST } as never)
       .eq('id', user.id)
 
     return NextResponse.json({
       generation,
-      credits_remaining: userCredits.ai_credits - 5,
+      credits_remaining: userInfo.ai_credits - CREDIT_COST,
     })
   } catch (error) {
     console.error('Error generating image:', error)

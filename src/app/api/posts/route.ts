@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { createPostSchema, validate } from '@/lib/validations'
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
@@ -102,11 +103,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { image_url, thumbnail_url, caption, edition, page_number, is_public } = body
+    const validation = validate(createPostSchema, body)
 
-    if (!image_url) {
-      return NextResponse.json({ error: 'Image URL is required' }, { status: 400 })
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
+
+    const { image_url, thumbnail_url, caption, edition, page_number, is_public } = validation.data
 
     const { data: post, error } = await supabase
       .from('posts')
@@ -117,7 +120,7 @@ export async function POST(request: NextRequest) {
         caption,
         edition,
         page_number,
-        is_public: is_public ?? true,
+        is_public,
       } as never)
       .select(`
         *,

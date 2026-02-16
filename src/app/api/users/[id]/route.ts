@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { updateProfileSchema, validate } from '@/lib/validations'
 
 export async function GET(
   request: NextRequest,
@@ -81,17 +82,24 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { display_name, bio, avatar_url, editions_owned } = body
+    const validation = validate(updateProfileSchema, body)
+
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
+    }
+
+    // Only allow safe fields to be updated (no role, credits, ban status, etc.)
+    const { display_name, bio, avatar_url, editions_owned } = validation.data
+
+    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() }
+    if (display_name !== undefined) updateData.display_name = display_name
+    if (bio !== undefined) updateData.bio = bio
+    if (avatar_url !== undefined) updateData.avatar_url = avatar_url
+    if (editions_owned !== undefined) updateData.editions_owned = editions_owned
 
     const { data: updatedUser, error } = await supabase
       .from('users')
-      .update({
-        display_name,
-        bio,
-        avatar_url,
-        editions_owned,
-        updated_at: new Date().toISOString(),
-      } as never)
+      .update(updateData as never)
       .eq('id', id)
       .select()
       .single()

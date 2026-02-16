@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { createReportSchema, validate } from '@/lib/validations'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -12,31 +13,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { type, target_id, reason, details } = body
+    const validation = validate(createReportSchema, body)
 
-    // Validate report type
-    const validTypes = ['post', 'comment', 'user']
-    if (!validTypes.includes(type)) {
-      return NextResponse.json({ error: 'Invalid report type' }, { status: 400 })
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
 
-    // Validate reason
-    const validReasons = [
-      'spam',
-      'harassment',
-      'inappropriate_content',
-      'hate_speech',
-      'violence',
-      'copyright',
-      'other',
-    ]
-    if (!validReasons.includes(reason)) {
-      return NextResponse.json({ error: 'Invalid reason' }, { status: 400 })
-    }
-
-    if (!target_id) {
-      return NextResponse.json({ error: 'Target ID required' }, { status: 400 })
-    }
+    const { type, target_id, reason, details } = validation.data
 
     // Check if user already reported this
     const { data: existingReport } = await supabase

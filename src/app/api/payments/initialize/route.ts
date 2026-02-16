@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { initializePayment, generateReference, toKobo, PRICING } from '@/lib/paystack'
+import { initializePaymentSchema, validate } from '@/lib/validations'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -13,7 +14,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { type, pageId } = body
+    const validation = validate(initializePaymentSchema, body)
+
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
+    }
+
+    const { type, pageId } = validation.data
 
     // Get user data
     const { data: userData } = await supabase

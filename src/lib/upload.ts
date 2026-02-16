@@ -1,9 +1,64 @@
 import imageCompression from 'browser-image-compression'
 import { createClient } from '@/lib/supabase/client'
 
+const ALLOWED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+]
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB absolute max
+
 export interface UploadOptions {
   maxSizeMB?: number
   maxWidthOrHeight?: number
+}
+
+/**
+ * Validate a file is a genuine image by checking magic bytes.
+ */
+export async function validateImageFile(file: File): Promise<{ valid: boolean; error?: string }> {
+  // Check MIME type
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return { valid: false, error: 'Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.' }
+  }
+
+  // Check file size
+  if (file.size > MAX_FILE_SIZE) {
+    return { valid: false, error: 'File too large. Maximum size is 10MB.' }
+  }
+
+  // Validate magic bytes (first 12 bytes)
+  const buffer = await file.slice(0, 12).arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+
+  const isValid =
+    // JPEG: FF D8 FF
+    (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) ||
+    // PNG: 89 50 4E 47
+    (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) ||
+    // GIF: 47 49 46 38
+    (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) ||
+    // WebP: 52 49 46 46 ... 57 45 42 50
+    (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46
+      && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50)
+
+  if (!isValid) {
+    return { valid: false, error: 'File does not appear to be a valid image.' }
+  }
+
+  return { valid: true }
+}
+
+function getSafeExtension(mimeType: string): string {
+  const map: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+  }
+  return map[mimeType] || 'jpg'
 }
 
 export async function compressImage(
@@ -55,11 +110,18 @@ export async function uploadPostImage(file: File, userId: string): Promise<{
   imageUrl: string
   thumbnailUrl: string
 }> {
-  // Generate unique filename
+  // Validate file before uploading
+  const validation = await validateImageFile(file)
+  if (!validation.valid) {
+    throw new Error(validation.error)
+  }
+
+  // Generate safe filename from MIME type (never use user's filename)
   const timestamp = Date.now()
-  const extension = file.name.split('.').pop() || 'jpg'
-  const filename = `${userId}/${timestamp}.${extension}`
-  const thumbnailFilename = `${userId}/${timestamp}_thumb.${extension}`
+  const extension = getSafeExtension(file.type)
+  const randomId = Math.random().toString(36).substring(2, 9)
+  const filename = `${userId}/${timestamp}-${randomId}.${extension}`
+  const thumbnailFilename = `${userId}/${timestamp}-${randomId}_thumb.${extension}`
 
   // Compress main image
   const compressedImage = await compressImage(file, {
@@ -83,7 +145,13 @@ export async function uploadPostImage(file: File, userId: string): Promise<{
 }
 
 export async function uploadAvatar(file: File, userId: string): Promise<string> {
-  const extension = file.name.split('.').pop() || 'jpg'
+  // Validate file before uploading
+  const validation = await validateImageFile(file)
+  if (!validation.valid) {
+    throw new Error(validation.error)
+  }
+
+  const extension = getSafeExtension(file.type)
   const filename = `${userId}/avatar.${extension}`
 
   const compressed = await compressImage(file, {
