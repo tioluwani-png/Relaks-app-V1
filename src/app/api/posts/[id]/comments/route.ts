@@ -14,7 +14,7 @@ export async function GET(
       .from('comments')
       .select(`
         *,
-        user:users!comments_user_id_fkey(id, username, display_name, avatar_url)
+        user:users!comments_user_id_fkey(id, username, display_name, avatar_url, is_verified, verification_type)
       `)
       .eq('post_id', id)
       .is('parent_id', null)
@@ -32,7 +32,7 @@ export async function GET(
           .from('comments')
           .select(`
             *,
-            user:users!comments_user_id_fkey(id, username, display_name, avatar_url)
+            user:users!comments_user_id_fkey(id, username, display_name, avatar_url, is_verified, verification_type)
           `)
           .eq('parent_id', comment.id)
           .order('created_at', { ascending: true })
@@ -84,7 +84,7 @@ export async function POST(
       } as never)
       .select(`
         *,
-        user:users!comments_user_id_fkey(id, username, display_name, avatar_url)
+        user:users!comments_user_id_fkey(id, username, display_name, avatar_url, is_verified, verification_type)
       `)
       .single()
 

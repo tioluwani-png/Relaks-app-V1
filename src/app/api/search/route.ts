@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     if (type === 'all' || type === 'users') {
       const { data: users } = await supabase
         .from('users')
-        .select('id, username, display_name, avatar_url, bio, follower_count')
+        .select('id, username, display_name, avatar_url, bio, follower_count, is_verified, verification_type')
         .or(`username.ilike.${searchTerm},display_name.ilike.${searchTerm}`)
         .limit(10)
 
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
           like_count,
           comment_count,
           created_at,
-          user:users!posts_user_id_fkey(id, username, display_name, avatar_url)
+          user:users!posts_user_id_fkey(id, username, display_name, avatar_url, is_verified, verification_type)
         `)
         .eq('is_public', true)
         .ilike('caption', searchTerm)

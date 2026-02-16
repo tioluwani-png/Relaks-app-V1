@@ -9,6 +9,7 @@ import {
   Flag,
   Users,
   Shield,
+  BadgeCheck,
   LogOut,
   Menu,
   X,
@@ -94,6 +95,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/reports', label: 'Reports', icon: Flag, roles: ['moderator', 'admin', 'super_admin'] },
     { href: '/admin/references', label: 'References', icon: ImageIcon, roles: ['admin', 'super_admin'] },
     { href: '/admin/users', label: 'Users', icon: Users, roles: ['admin', 'super_admin'] },
+    { href: '/admin/verification', label: 'Verification', icon: BadgeCheck, roles: ['super_admin'] },
     { href: '/admin/team', label: 'Team & Roles', icon: Shield, roles: ['super_admin'] },
   ]
 

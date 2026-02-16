@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { usePost } from '@/hooks/use-posts'
 import { useAuth } from '@/hooks/use-auth'
+import { VerificationBadge } from '@/components/shared/verification-badge'
 import { toast } from 'sonner'
 import type { CommentWithUser } from '@/types/database'
 
@@ -188,12 +189,19 @@ export function PostDetail({ postId }: PostDetailProps) {
             </Avatar>
           </Link>
           <div>
-            <Link
-              href={`/user/${post.user.username}`}
-              className="font-semibold hover:underline"
-            >
-              {post.user.display_name || post.user.username}
-            </Link>
+            <div className="flex items-center gap-1">
+              <Link
+                href={`/user/${post.user.username}`}
+                className="font-semibold hover:underline"
+              >
+                {post.user.display_name || post.user.username}
+              </Link>
+              <VerificationBadge
+                isVerified={post.user.is_verified || false}
+                verificationType={post.user.verification_type}
+                size="sm"
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
             </p>
@@ -335,10 +343,16 @@ function CommentItem({ comment }: { comment: CommentWithUser }) {
         <p className="text-sm">
           <Link
             href={`/user/${comment.user.username}`}
-            className="font-semibold hover:underline mr-2"
+            className="font-semibold hover:underline mr-1"
           >
             {comment.user.username}
           </Link>
+          <VerificationBadge
+            isVerified={comment.user.is_verified || false}
+            verificationType={comment.user.verification_type}
+            size="sm"
+            className="inline-flex align-middle mr-1"
+          />
           {comment.content}
         </p>
         <p className="text-xs text-muted-foreground mt-1">

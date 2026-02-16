@@ -3,6 +3,7 @@
 import { useAuth } from '@/hooks/use-auth'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { VerificationBadge } from '@/components/shared/verification-badge'
 import { Settings, Grid3X3, Bookmark, Download, Sparkles, AlertCircle, Heart } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -163,9 +164,11 @@ export function ProfileContent() {
               <h2 className="text-xl font-bold">
                 {profile.display_name || profile.username}
               </h2>
-              {profile.is_verified && (
-                <span className="text-purple-500">✓</span>
-              )}
+              <VerificationBadge
+                isVerified={profile.is_verified}
+                verificationType={profile.verification_type}
+                size="lg"
+              />
             </div>
             <p className="text-muted-foreground text-sm">@{profile.username}</p>
           </div>

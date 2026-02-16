@@ -12,6 +12,7 @@ export type PurchaseType = 'single' | 'bundle' | 'unlimited' | 'ai_pack'
 export type AIStyle = 'mandala' | 'floral' | 'animals' | 'abstract' | 'portrait' | 'landscape'
 export type AIComplexity = 'simple' | 'medium' | 'detailed'
 export type UserRole = 'user' | 'moderator' | 'admin' | 'super_admin'
+export type VerificationType = 'staff' | 'creator' | 'brand' | 'notable'
 
 export interface Database {
   public: {
@@ -34,6 +35,9 @@ export interface Database {
           following_count: number
           total_likes_received: number
           is_verified: boolean
+          verification_type: VerificationType | null
+          verified_at: string | null
+          verified_by: string | null
           role: UserRole
           is_banned: boolean
           banned_at: string | null
@@ -58,6 +62,9 @@ export interface Database {
           following_count?: number
           total_likes_received?: number
           is_verified?: boolean
+          verification_type?: VerificationType | null
+          verified_at?: string | null
+          verified_by?: string | null
           role?: UserRole
           is_banned?: boolean
           banned_at?: string | null
@@ -82,6 +89,9 @@ export interface Database {
           following_count?: number
           total_likes_received?: number
           is_verified?: boolean
+          verification_type?: VerificationType | null
+          verified_at?: string | null
+          verified_by?: string | null
           role?: UserRole
           is_banned?: boolean
           banned_at?: string | null
@@ -485,13 +495,13 @@ export type Report = Database['public']['Tables']['reports']['Row']
 
 // Extended types with relations
 export type PostWithUser = Post & {
-  user: Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url'>
+  user: Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url' | 'is_verified' | 'verification_type'>
   is_liked?: boolean
   is_saved?: boolean
 }
 
 export type CommentWithUser = Comment & {
-  user: Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url'>
+  user: Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url' | 'is_verified' | 'verification_type'>
   replies?: CommentWithUser[]
 }
 

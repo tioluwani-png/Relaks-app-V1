@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { useDebounce } from '@/hooks/use-debounce'
+import { VerificationBadge } from '@/components/shared/verification-badge'
+import type { VerificationType } from '@/types/database'
 
 interface SearchUser {
   id: string
@@ -19,6 +21,8 @@ interface SearchUser {
   avatar_url: string | null
   bio: string | null
   follower_count: number
+  is_verified?: boolean
+  verification_type?: VerificationType | null
 }
 
 interface SearchPost {
@@ -263,9 +267,12 @@ function UserResult({ user }: { user: SearchUser }) {
         <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
-        <p className="font-medium truncate">
-          {user.display_name || user.username}
-        </p>
+        <div className="flex items-center gap-1">
+          <p className="font-medium truncate">
+            {user.display_name || user.username}
+          </p>
+          <VerificationBadge isVerified={user.is_verified || false} verificationType={user.verification_type} size="sm" />
+        </div>
         <p className="text-sm text-muted-foreground truncate">@{user.username}</p>
       </div>
       <span className="text-xs text-muted-foreground">

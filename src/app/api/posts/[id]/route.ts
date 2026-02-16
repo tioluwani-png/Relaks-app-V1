@@ -15,7 +15,7 @@ export async function GET(
       .from('posts')
       .select(`
         *,
-        user:users!posts_user_id_fkey(id, username, display_name, avatar_url)
+        user:users!posts_user_id_fkey(id, username, display_name, avatar_url, is_verified, verification_type)
       `)
       .eq('id', id)
       .single()

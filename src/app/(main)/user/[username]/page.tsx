@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft, Grid3X3 } from 'lucide-react'
+import { VerificationBadge } from '@/components/shared/verification-badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -134,9 +135,11 @@ export default function UserProfilePage() {
               <h2 className="text-xl font-bold">
                 {user.display_name || user.username}
               </h2>
-              {user.is_verified && (
-                <span className="text-primary">✓</span>
-              )}
+              <VerificationBadge
+                isVerified={user.is_verified}
+                verificationType={user.verification_type}
+                size="lg"
+              />
             </div>
             <p className="text-muted-foreground">@{user.username}</p>
             {user.bio && (

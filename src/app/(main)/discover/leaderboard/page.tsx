@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowLeft, Trophy, Heart, Flame } from 'lucide-react'
+import { VerificationBadge } from '@/components/shared/verification-badge'
+import type { VerificationType } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -21,6 +23,8 @@ interface RankedPost {
     username: string
     display_name: string | null
     avatar_url: string | null
+    is_verified?: boolean
+    verification_type?: VerificationType | null
   }
 }
 
@@ -29,6 +33,8 @@ interface RankedUser {
   username: string
   display_name: string | null
   avatar_url: string | null
+  is_verified?: boolean
+  verification_type?: VerificationType | null
   total_likes_received: number
   journal_streak: number
   rank: number
@@ -39,6 +45,8 @@ interface RankedStreak {
   username: string
   display_name: string | null
   avatar_url: string | null
+  is_verified?: boolean
+  verification_type?: VerificationType | null
   journal_streak: number
   rank: number
 }
@@ -192,9 +200,12 @@ export default function LeaderboardPage() {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">
-                        {post.user.display_name || post.user.username}
-                      </p>
+                      <div className="flex items-center gap-1">
+                        <p className="font-medium truncate">
+                          {post.user.display_name || post.user.username}
+                        </p>
+                        <VerificationBadge isVerified={post.user.is_verified || false} verificationType={post.user.verification_type} size="sm" />
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         @{post.user.username}
                       </p>
@@ -239,9 +250,12 @@ export default function LeaderboardPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">
-                        {user.display_name || user.username}
-                      </p>
+                      <div className="flex items-center gap-1">
+                        <p className="font-medium truncate">
+                          {user.display_name || user.username}
+                        </p>
+                        <VerificationBadge isVerified={user.is_verified || false} verificationType={user.verification_type} size="sm" />
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         @{user.username}
                       </p>
@@ -295,9 +309,12 @@ export default function LeaderboardPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">
-                        {user.display_name || user.username}
-                      </p>
+                      <div className="flex items-center gap-1">
+                        <p className="font-medium truncate">
+                          {user.display_name || user.username}
+                        </p>
+                        <VerificationBadge isVerified={user.is_verified || false} verificationType={user.verification_type} size="sm" />
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         @{user.username}
                       </p>

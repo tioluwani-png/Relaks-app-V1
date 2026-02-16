@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       .from('posts')
       .select(`
         *,
-        user:users!posts_user_id_fkey(id, username, display_name, avatar_url)
+        user:users!posts_user_id_fkey(id, username, display_name, avatar_url, is_verified, verification_type)
       `)
       .eq('is_public', true)
       .order('like_count', { ascending: false })

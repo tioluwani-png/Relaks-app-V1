@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const { data: users, error } = await supabase
       .from('users')
-      .select('id, username, display_name, avatar_url, total_likes_received, journal_streak')
+      .select('id, username, display_name, avatar_url, is_verified, verification_type, total_likes_received, journal_streak')
       .order('total_likes_received', { ascending: false })
       .limit(10)
 

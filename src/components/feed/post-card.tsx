@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { AnimatedHeart } from '@/components/shared/motion'
+import { VerificationBadge } from '@/components/shared/verification-badge'
 import { motion } from 'framer-motion'
+import type { VerificationType } from '@/types/database'
 
 interface PostCardProps {
   post: {
@@ -25,6 +27,8 @@ interface PostCardProps {
       username: string
       display_name: string | null
       avatar_url: string | null
+      is_verified?: boolean
+      verification_type?: VerificationType | null
     }
   }
 }
@@ -119,12 +123,19 @@ export function PostCard({ post }: PostCardProps) {
           </div>
         </Link>
         <div className="flex-1 min-w-0">
-          <Link
-            href={`/user/${post.user.username}`}
-            className="font-semibold hover:underline truncate block text-sm"
-          >
-            {post.user.display_name || post.user.username}
-          </Link>
+          <div className="flex items-center gap-1">
+            <Link
+              href={`/user/${post.user.username}`}
+              className="font-semibold hover:underline truncate text-sm"
+            >
+              {post.user.display_name || post.user.username}
+            </Link>
+            <VerificationBadge
+              isVerified={post.user.is_verified || false}
+              verificationType={post.user.verification_type}
+              size="sm"
+            />
+          </div>
           <p className="text-xs text-muted-foreground">
             {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
           </p>
