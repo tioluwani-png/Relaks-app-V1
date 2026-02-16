@@ -27,7 +27,8 @@ export default function EditionReferencesPage() {
   const [pages, setPages] = useState<PageRef[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  const editionName = edition === 'lavender' ? 'Lavender Edition' : 'Pink Edition'
+  const editionNames: Record<string, string> = { lavender: 'Lavender Edition', pink: 'Pink Edition', christmas: 'Christmas Edition' }
+  const editionName = editionNames[edition] || `${edition.charAt(0).toUpperCase() + edition.slice(1)} Edition`
 
   useEffect(() => {
     const fetchPages = async () => {

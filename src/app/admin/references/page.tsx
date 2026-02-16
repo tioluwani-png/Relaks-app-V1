@@ -160,6 +160,7 @@ export default function AdminReferencesPage() {
                 <SelectContent>
                   <SelectItem value="lavender">Lavender Edition</SelectItem>
                   <SelectItem value="pink">Pink Edition</SelectItem>
+                  <SelectItem value="christmas">Christmas Edition</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -37,6 +37,7 @@ const slides = [
 const editions: { value: Edition; label: string; gradient: string }[] = [
   { value: 'lavender', label: 'Lavender Edition', gradient: 'from-purple-500 to-violet-600' },
   { value: 'pink', label: 'Pink Edition', gradient: 'from-pink-500 to-rose-500' },
+  { value: 'christmas', label: 'Christmas Edition', gradient: 'from-red-500 to-green-600' },
 ]
 
 export function OnboardingCarousel() {

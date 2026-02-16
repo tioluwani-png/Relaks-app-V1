@@ -18,9 +18,16 @@ export async function GET() {
       .eq('edition', 'pink')
       .eq('is_official', true)
 
+    const { data: christmas } = await supabase
+      .from('reference_images')
+      .select('page_number')
+      .eq('edition', 'christmas')
+      .eq('is_official', true)
+
     type RefPage = { page_number: number }
     const lavenderArray = (lavender || []) as RefPage[]
     const pinkArray = (pink || []) as RefPage[]
+    const christmasArray = (christmas || []) as RefPage[]
 
     const editions = [
       {
@@ -34,6 +41,12 @@ export async function GET() {
         name: 'Pink Edition',
         pageCount: new Set(pinkArray.map(r => r.page_number)).size,
         color: '#FFB6C1',
+      },
+      {
+        id: 'christmas',
+        name: 'Christmas Edition',
+        pageCount: new Set(christmasArray.map(r => r.page_number)).size,
+        color: '#C41E3A',
       },
     ]
 

@@ -18,6 +18,7 @@ interface Edition {
 const editionGradients: Record<string, { from: string; to: string; bg: string }> = {
   lavender: { from: 'from-purple-500', to: 'to-violet-600', bg: 'bg-purple-50 dark:bg-purple-950/30' },
   pink: { from: 'from-pink-500', to: 'to-rose-500', bg: 'bg-pink-50 dark:bg-pink-950/30' },
+  christmas: { from: 'from-red-500', to: 'to-green-600', bg: 'bg-red-50 dark:bg-red-950/30' },
 }
 
 export function ReferencesContent() {

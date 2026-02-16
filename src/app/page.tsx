@@ -275,7 +275,7 @@ export default function Home() {
             </h2>
           </FadeInView>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <FadeInView delay={0}>
               <div className="bg-card rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                 <div className="h-3 bg-gradient-to-r from-purple-400 to-violet-500" />
@@ -302,6 +302,22 @@ export default function Home() {
                   <h3 className="text-2xl font-bold mb-2">Pink Edition</h3>
                   <p className="text-muted-foreground mb-6">40 creative patterns for self-expression and joy.</p>
                   <Link href="/references/pink">
+                    <Button variant="outline" className="rounded-xl font-medium">See References</Button>
+                  </Link>
+                </div>
+              </div>
+            </FadeInView>
+
+            <FadeInView delay={0.3}>
+              <div className="bg-card rounded-2xl border overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                <div className="h-3 bg-gradient-to-r from-red-500 to-green-600" />
+                <div className="p-8">
+                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-r from-red-100 to-green-100 flex items-center justify-center mb-6">
+                    <BookOpen className="h-8 w-8 text-red-500" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2">Christmas Edition</h3>
+                  <p className="text-muted-foreground mb-6">Festive holiday designs to color and celebrate the season.</p>
+                  <Link href="/references/christmas">
                     <Button variant="outline" className="rounded-xl font-medium">See References</Button>
                   </Link>
                 </div>

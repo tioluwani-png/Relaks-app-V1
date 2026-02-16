@@ -8,7 +8,7 @@ export async function GET(
   const supabase = await createClient()
   const { edition } = await params
 
-  if (!['lavender', 'pink'].includes(edition)) {
+  if (!['lavender', 'pink', 'christmas'].includes(edition)) {
     return NextResponse.json({ error: 'Invalid edition' }, { status: 400 })
   }
 

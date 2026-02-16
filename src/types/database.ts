@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Edition = 'lavender' | 'pink'
+export type Edition = 'lavender' | 'pink' | 'christmas'
 export type Mood = 'great' | 'good' | 'okay' | 'bad' | 'terrible'
 export type PurchaseType = 'single' | 'bundle' | 'unlimited' | 'ai_pack'
 export type AIStyle = 'mandala' | 'floral' | 'animals' | 'abstract' | 'portrait' | 'landscape'

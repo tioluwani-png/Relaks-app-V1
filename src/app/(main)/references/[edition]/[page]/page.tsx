@@ -30,7 +30,8 @@ export default function PageReferencesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
-  const editionName = edition === 'lavender' ? 'Lavender' : 'Pink'
+  const editionNames: Record<string, string> = { lavender: 'Lavender', pink: 'Pink', christmas: 'Christmas' }
+  const editionName = editionNames[edition] || edition.charAt(0).toUpperCase() + edition.slice(1)
 
   useEffect(() => {
     const fetchReferences = async () => {

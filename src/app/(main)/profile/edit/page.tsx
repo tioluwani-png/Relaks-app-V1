@@ -17,6 +17,7 @@ import type { Edition } from '@/types/database'
 const editions: { value: Edition; label: string }[] = [
   { value: 'lavender', label: 'Lavender Edition' },
   { value: 'pink', label: 'Pink Edition' },
+  { value: 'christmas', label: 'Christmas Edition' },
 ]
 
 export default function EditProfilePage() {
