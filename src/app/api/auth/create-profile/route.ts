@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { handleNewUserEmails } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +24,11 @@ export async function POST(request: NextRequest) {
       console.error('Profile creation error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
+    // Send welcome email + add to Mailchimp (non-blocking)
+    handleNewUserEmails(email, username).catch(err =>
+      console.error('New user email error:', err)
+    )
 
     return NextResponse.json({ success: true })
   } catch (error) {

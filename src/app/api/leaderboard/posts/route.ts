@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { subDays, startOfWeek, startOfMonth } from 'date-fns'
+import { startOfWeek, startOfMonth } from 'date-fns'
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient()

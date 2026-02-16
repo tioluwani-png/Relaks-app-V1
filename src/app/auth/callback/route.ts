@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { handleNewUserEmails } from '@/lib/email'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -31,6 +32,13 @@ export async function GET(request: Request) {
           display_name: data.user.user_metadata?.full_name || null,
           avatar_url: data.user.user_metadata?.avatar_url || null,
         } as never)
+
+        // Send welcome email + add to Mailchimp (non-blocking)
+        if (email) {
+          handleNewUserEmails(email, username).catch(err =>
+            console.error('New user email error:', err)
+          )
+        }
 
         // Redirect to onboarding for new users
         return NextResponse.redirect(`${origin}/onboarding`)

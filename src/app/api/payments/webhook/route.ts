@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
 import { PRICING, toKobo } from '@/lib/paystack'
+import { sendPurchaseEmail, handleFirstPurchase } from '@/lib/email'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
 
@@ -91,11 +92,11 @@ export async function POST(request: NextRequest) {
     // 7. Update user credits/pages based on purchase type
     const { data: userData } = await supabase
       .from('users')
-      .select('free_pages_remaining, ai_credits')
+      .select('free_pages_remaining, ai_credits, email, username')
       .eq('id', user_id)
       .single()
 
-    const userDataTyped = userData as { free_pages_remaining: number; ai_credits: number } | null
+    const userDataTyped = userData as { free_pages_remaining: number; ai_credits: number; email: string; username: string } | null
 
     if (!userDataTyped) {
       console.error('User not found for credit update:', user_id)
@@ -129,6 +130,29 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Payment processed:', { reference, userId: user_id, type, amount })
+
+    // 8. Send purchase confirmation email (non-blocking)
+    if (userDataTyped.email) {
+      sendPurchaseEmail(
+        userDataTyped.email,
+        userDataTyped.username || 'there',
+        type,
+        amount / 100,
+        reference
+      ).catch(err => console.error('Purchase email error:', err))
+
+      // Check if this is their first purchase - tag in Mailchimp
+      const { count } = await supabase
+        .from('purchases')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user_id)
+
+      if (count === 1) {
+        handleFirstPurchase(userDataTyped.email).catch(err =>
+          console.error('First purchase tag error:', err)
+        )
+      }
+    }
 
     return NextResponse.json({ received: true })
   } catch (error) {

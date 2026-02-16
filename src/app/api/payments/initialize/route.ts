@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     let amount: number
-    let metadata: Record<string, unknown> = {
+    const metadata: Record<string, unknown> = {
       user_id: user.id,
       type,
     }

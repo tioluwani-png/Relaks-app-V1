@@ -16,8 +16,6 @@ export default function UploadPage() {
   useEffect(() => {
     if (selectedFile) {
       fileToDataUrl(selectedFile).then(setPreviewUrl)
-    } else {
-      setPreviewUrl(null)
     }
   }, [selectedFile])
 

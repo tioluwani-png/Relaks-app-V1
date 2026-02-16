@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Flag, CheckCircle, XCircle, Eye, Clock } from 'lucide-react'
+import { Flag, CheckCircle, XCircle, Eye } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 

@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Sparkles, Star, Coins, Loader2, Crown } from 'lucide-react'
+import { ArrowLeft, Sparkles, Coins, Loader2, Crown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import { FadeIn } from '@/components/shared/motion'
@@ -44,7 +44,7 @@ const bundles = [
 
 export default function CreditsPage() {
   const router = useRouter()
-  const { profile, refreshProfile } = useAuth()
+  const { profile } = useAuth()
   const [processingType, setProcessingType] = useState<string | null>(null)
 
   const aiCredits = profile?.ai_credits || 0

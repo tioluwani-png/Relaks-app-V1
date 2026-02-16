@@ -58,7 +58,7 @@ export default function CreationsPage() {
     }
   }
 
-  const handlePurchase = async (generation: AIGeneration) => {
+  const handlePurchase = async () => {
     // This would typically initiate a payment flow
     toast.info('Purchase feature coming soon!')
   }
@@ -172,7 +172,7 @@ export default function CreationsPage() {
                       size="sm"
                       variant="outline"
                       className="w-full"
-                      onClick={() => handlePurchase(generation)}
+                      onClick={() => handlePurchase()}
                     >
                       Purchase
                     </Button>

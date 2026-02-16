@@ -26,24 +26,24 @@ export function Header({
   const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchUnreadCount()
-      const interval = setInterval(fetchUnreadCount, 30000)
-      return () => clearInterval(interval)
-    }
-  }, [isAuthenticated])
+    if (!isAuthenticated) return
 
-  const fetchUnreadCount = async () => {
-    try {
-      const response = await fetch('/api/notifications?unread=true')
-      const data = await response.json()
-      if (response.ok) {
-        setUnreadCount(data.unreadCount)
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await fetch('/api/notifications?unread=true')
+        const data = await response.json()
+        if (response.ok) {
+          setUnreadCount(data.unreadCount)
+        }
+      } catch (error) {
+        console.error('Error fetching notification count:', error)
       }
-    } catch (error) {
-      console.error('Error fetching notification count:', error)
     }
-  }
+
+    fetchUnreadCount()
+    const interval = setInterval(fetchUnreadCount, 30000)
+    return () => clearInterval(interval)
+  }, [isAuthenticated])
 
   return (
     <header className="sticky top-0 z-40 glass shadow-[0_1px_10px_rgba(0,0,0,0.04)]">

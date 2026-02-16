@@ -13,32 +13,50 @@ function PaymentCallbackContent() {
 
   const reference = searchParams.get('reference')
   const trxref = searchParams.get('trxref')
+  const paymentRef = reference || trxref
 
   useEffect(() => {
-    if (reference || trxref) {
-      verifyPayment(reference || trxref || '')
-    } else {
-      setStatus('failed')
-      setMessage('No payment reference found')
-    }
-  }, [reference, trxref])
+    if (!paymentRef) return
 
-  const verifyPayment = async (ref: string) => {
-    try {
-      const response = await fetch(`/api/payments/verify?reference=${ref}`)
-      const data = await response.json()
+    const verify = async (ref: string) => {
+      try {
+        const response = await fetch(`/api/payments/verify?reference=${ref}`)
+        const data = await response.json()
 
-      if (response.ok && data.status === 'success') {
-        setStatus('success')
-        setMessage('Your payment was successful!')
-      } else {
+        if (response.ok && data.status === 'success') {
+          setStatus('success')
+          setMessage('Your payment was successful!')
+        } else {
+          setStatus('failed')
+          setMessage(data.message || 'Payment verification failed')
+        }
+      } catch {
         setStatus('failed')
-        setMessage(data.message || 'Payment verification failed')
+        setMessage('Could not verify payment. Please contact support.')
       }
-    } catch {
-      setStatus('failed')
-      setMessage('Could not verify payment. Please contact support.')
     }
+
+    verify(paymentRef)
+  }, [paymentRef])
+
+  // If no reference at all, show failed immediately
+  if (!paymentRef && status === 'loading') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="h-20 w-20 rounded-full bg-red-100 flex items-center justify-center mx-auto">
+            <XCircle className="h-10 w-10 text-red-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-red-600 mb-2">Payment Failed</h1>
+            <p className="text-muted-foreground">No payment reference found</p>
+          </div>
+          <Button onClick={() => router.push('/discover/pages')} className="w-full">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   if (status === 'loading') {

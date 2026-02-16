@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Mark all notifications as read
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function PATCH(request: NextRequest) {
   const supabase = await createClient()
 
