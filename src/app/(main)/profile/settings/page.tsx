@@ -183,7 +183,7 @@ export default function SettingsPage() {
 
           <div className="space-y-2">
             <button
-              onClick={() => window.open('mailto:support@relaks.app', '_blank')}
+              onClick={() => window.open('mailto:relakswellness.co@gmail.com', '_blank')}
               className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
             >
               <div className="flex items-center gap-3">

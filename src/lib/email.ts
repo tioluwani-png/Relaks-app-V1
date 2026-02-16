@@ -2,7 +2,7 @@ import { Resend } from 'resend'
 import mailchimp from '@mailchimp/mailchimp_marketing'
 import { createHash } from 'crypto'
 
-const FROM_EMAIL = 'Relaks <hello@relaks.app>'
+const FROM_EMAIL = 'Relaks <hello@hello.relaks.co>'
 
 // Lazy initialization to avoid build-time errors when env vars are missing
 let resendClient: Resend | null = null
@@ -68,7 +68,7 @@ export async function sendWelcomeEmail(to: string, username: string) {
           </p>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="https://relaks.app/feed" style="background: linear-gradient(135deg, #A855F7, #EC4899); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+            <a href="https://relaks.co/feed" style="background: linear-gradient(135deg, #A855F7, #EC4899); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
               Start Exploring
             </a>
           </div>
@@ -149,7 +149,7 @@ export async function sendPurchaseEmail(
           </p>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="https://relaks.app/discover" style="background: linear-gradient(135deg, #A855F7, #EC4899); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+            <a href="https://relaks.co/discover" style="background: linear-gradient(135deg, #A855F7, #EC4899); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
               Explore Now
             </a>
           </div>
@@ -198,7 +198,7 @@ export async function sendStreakReminderEmail(to: string, username: string, curr
           </p>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="https://relaks.app/journal" style="background: linear-gradient(135deg, #F97316, #EF4444); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+            <a href="https://relaks.co/journal" style="background: linear-gradient(135deg, #F97316, #EF4444); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
               Save My Streak
             </a>
           </div>
@@ -243,7 +243,7 @@ export async function sendLowCreditsEmail(to: string, username: string, creditsR
           </p>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="https://relaks.app/discover?tab=pages" style="background: linear-gradient(135deg, #A855F7, #EC4899); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+            <a href="https://relaks.co/discover?tab=pages" style="background: linear-gradient(135deg, #A855F7, #EC4899); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
               Get More Credits
             </a>
           </div>
