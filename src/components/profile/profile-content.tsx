@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { VerificationBadge } from '@/components/shared/verification-badge'
-import { Settings, Grid3X3, Bookmark, Download, Sparkles, AlertCircle, Heart } from 'lucide-react'
+import { Settings, Grid3X3, Bookmark, Download, Sparkles, AlertCircle, Heart, Pencil } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -172,11 +172,18 @@ export function ProfileContent() {
             </div>
             <p className="text-muted-foreground text-sm">@{profile.username}</p>
           </div>
-          <Link href="/profile/edit">
-            <Button variant="outline" size="icon" className="rounded-xl">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </Link>
+          <div className="flex gap-1.5">
+            <Link href="/profile/edit">
+              <Button variant="outline" size="icon" className="rounded-xl">
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/profile/settings">
+              <Button variant="outline" size="icon" className="rounded-xl">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Bio */}
