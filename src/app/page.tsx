@@ -52,7 +52,7 @@ const features = [
   {
     icon: BookOpen,
     title: 'Create custom designs',
-    description: 'Imagine any coloring page and watch it come to life. From mandalas to florals — if you can describe it, we can create it.',
+    description: 'Imagine any coloring page and watch it come to life. From mandalas to florals, if you can describe it, we can create it.',
     color: 'text-orange-500',
     bg: 'bg-orange-50',
   },
@@ -88,7 +88,7 @@ const testimonials = [
   {
     name: 'Adaeze N.',
     location: 'Abuja',
-    quote: "The references, the journal prompts, the whole vibe — it's so intentional. You can tell someone really cared about every detail.",
+    quote: "The references, the journal prompts, the whole vibe. It's so intentional. You can tell someone really cared about every detail.",
   },
   {
     name: 'Temi O.',
@@ -169,11 +169,11 @@ export default function Home() {
             transition={{ duration: 0.6, delay: 0.15 }}
             className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight text-gray-900 mb-6 leading-[1.1]"
           >
-            A moment of{' '}
+            You&apos;ve done enough today.
+            <br />
             <span className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 bg-clip-text text-transparent">
-              calm
+              Just RELAKS.
             </span>
-            {' '}in your busy day
           </motion.h1>
 
           <motion.p
@@ -183,7 +183,7 @@ export default function Home() {
             className="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed"
           >
             Join thousands finding peace through creative expression.
-            Color, create, and unwind — at your own pace.
+            Relax, create, and unwind at your own pace.
           </motion.p>
 
           <motion.div
@@ -263,11 +263,11 @@ export default function Home() {
                   Relaks gives you a different kind of escape.
                 </h3>
                 <p className="text-gray-600 leading-relaxed mb-4">
-                  No pressure. No judgment. Just you, your colors, and a moment to breathe.
+                  No pressure. No judgment. Just you, your colors and a moment to breathe.
                 </p>
                 <p className="text-gray-600 leading-relaxed">
-                  Whether you have 5 minutes or an hour, Relaks meets you where you are —
-                  helping you relax, create, and feel a little lighter.
+                  Whether you have 5 minutes or an hour, Relaks meets you where you are,
+                  helping you relax, create and feel a little lighter.
                 </p>
               </div>
             </FadeInView>
@@ -318,16 +318,16 @@ export default function Home() {
               </h2>
               <div className="space-y-4 text-gray-600 leading-relaxed text-left md:text-center">
                 <p>
-                  Relaks was born from a deeply personal place — the founder&apos;s journey through
-                  grief and anxiety.
+                  Relaks was born from a deeply personal place. The founder&apos;s own journey through
+                  grief and anxiety shaped everything about this app.
                 </p>
                 <p>
                   We didn&apos;t just build features. We built a space where you feel considered,
-                  supported, and free to express yourself without judgment.
+                  supported and free to express yourself without judgment.
                 </p>
                 <p>
-                  Every detail is intentional. From the prompts to the colors, from the references
-                  to the community — it&apos;s all designed to help you feel a little more at peace.
+                  Every detail is intentional. The prompts, the colors, the references,
+                  the community. It&apos;s all designed to help you feel a little more at peace.
                 </p>
                 <p className="font-semibold text-gray-900 pt-2">
                   This isn&apos;t about being artistic. It&apos;s about giving yourself permission to slow down.
@@ -425,11 +425,10 @@ export default function Home() {
                 <p className="text-sm text-gray-400 mb-6">Everything you need to get started</p>
                 <ul className="space-y-3">
                   {[
-                    '5 free page downloads',
-                    '1 free AI generation',
                     'Upload unlimited artworks',
                     'Daily journaling',
                     'Community access',
+                    'Mood tracking and streaks',
                   ].map((item) => (
                     <li key={item} className="flex items-center gap-2 text-sm text-gray-600">
                       <span className="h-5 w-5 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0">
@@ -457,7 +456,7 @@ export default function Home() {
                   {[
                     'AI-generated coloring pages',
                     'Exclusive premium designs',
-                    'Buy as you go — no subscription',
+                    'Buy as you go, no subscription',
                     'Bundles for better value',
                     'Starting from \u20A6500',
                   ].map((item) => (
@@ -486,7 +485,7 @@ export default function Home() {
         <div className="container mx-auto px-4 max-w-3xl relative">
           <FadeInView className="text-center">
             <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-5">
-              Your calm is waiting
+              Your journey to relaxation starts here
             </h2>
             <p className="text-lg text-gray-500 mb-10 max-w-xl mx-auto leading-relaxed">
               Take a breath. Pick up your colors.
@@ -520,7 +519,7 @@ export default function Home() {
                 />
               </Link>
               <p className="text-sm text-gray-400 leading-relaxed">
-                Your wellness coloring community. Color, share, and relax.
+                Your wellness coloring community. Relax, create, and unwind.
               </p>
             </div>
             <div>
