@@ -41,9 +41,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const checkAdminAccess = async () => {
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
 
-      if (!authUser) {
+      if (!session?.user) {
         router.push('/login')
         return
       }
@@ -51,7 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const { data: profile, error } = await supabase
         .from('users')
         .select('id, email, username, role')
-        .eq('id', authUser.id)
+        .eq('id', session.user.id)
         .single() as { data: AdminUser | null; error: unknown }
 
       if (error || !profile) {
