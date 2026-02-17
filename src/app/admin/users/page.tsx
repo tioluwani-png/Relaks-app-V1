@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import { Search, Ban, CheckCircle, Eye } from 'lucide-react'
+import { Search, Ban, CheckCircle, Eye, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import type { UserRole } from '@/types/database'
@@ -16,6 +16,7 @@ interface AdminUser {
   role: UserRole
   is_banned: boolean
   banned_reason: string | null
+  ai_credits: number
   created_at: string
 }
 
@@ -28,6 +29,8 @@ export default function AdminUsersPage() {
 
   const [banModalUser, setBanModalUser] = useState<AdminUser | null>(null)
   const [banReason, setBanReason] = useState('')
+  const [creditModalUser, setCreditModalUser] = useState<AdminUser | null>(null)
+  const [creditAmount, setCreditAmount] = useState('')
 
   useEffect(() => {
     loadUsers()
@@ -38,7 +41,7 @@ export default function AdminUsersPage() {
     try {
       let query = supabase
         .from('users')
-        .select('id, email, username, display_name, avatar_url, role, is_banned, banned_reason, created_at')
+        .select('id, email, username, display_name, avatar_url, role, is_banned, banned_reason, ai_credits, created_at')
         .order('created_at', { ascending: false })
 
       if (filterBanned) {
@@ -113,6 +116,38 @@ export default function AdminUsersPage() {
     }
   }
 
+  const handleCreditUser = async () => {
+    if (!creditModalUser) return
+
+    const amount = parseInt(creditAmount)
+    if (!amount || amount <= 0) {
+      toast.error('Enter a valid credit amount')
+      return
+    }
+
+    try {
+      const newCredits = (creditModalUser.ai_credits || 0) + amount
+      const { error } = await supabase
+        .from('users')
+        .update({ ai_credits: newCredits } as never)
+        .eq('id', creditModalUser.id)
+
+      if (error) throw error
+
+      setUsers(users.map(u =>
+        u.id === creditModalUser.id
+          ? { ...u, ai_credits: newCredits }
+          : u
+      ))
+      setCreditModalUser(null)
+      setCreditAmount('')
+      toast.success(`Added ${amount} credits to ${creditModalUser.username} (total: ${newCredits})`)
+    } catch (error) {
+      console.error('Failed to credit user:', error)
+      toast.error('Failed to add credits')
+    }
+  }
+
   const filteredUsers = users.filter(user => {
     if (!searchTerm) return true
     const search = searchTerm.toLowerCase()
@@ -163,6 +198,7 @@ export default function AdminUsersPage() {
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-400">User</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Email</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Role</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Credits</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Status</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Joined</th>
                 <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Actions</th>
@@ -209,6 +245,12 @@ export default function AdminUsersPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles size={14} className="text-yellow-500" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.ai_credits || 0}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
                       {user.is_banned ? (
                         <span className="flex items-center gap-1 text-red-600 text-sm">
                           <Ban size={14} />
@@ -235,6 +277,13 @@ export default function AdminUsersPage() {
                         >
                           <Eye size={18} className="text-gray-500" />
                         </a>
+                        <button
+                          onClick={() => setCreditModalUser(user)}
+                          className="p-2 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 rounded-lg transition"
+                          title="Add Credits"
+                        >
+                          <Sparkles size={18} className="text-yellow-500" />
+                        </button>
                         {user.role === 'user' && (
                           user.is_banned ? (
                             <button
@@ -301,6 +350,59 @@ export default function AdminUsersPage() {
                 className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl transition"
               >
                 Ban User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Credit Modal */}
+      {creditModalUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
+              Add Credits
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Adding credits to <span className="font-semibold">{creditModalUser.username}</span>
+            </p>
+            <div className="flex items-center gap-2 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <Sparkles size={16} className="text-yellow-500" />
+              <span className="text-sm text-gray-600 dark:text-gray-400">Current balance:</span>
+              <span className="font-bold text-gray-900 dark:text-gray-100">{creditModalUser.ai_credits || 0} credits</span>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Credits to add
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(e.target.value)}
+                placeholder="e.g., 25"
+                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-transparent focus:border-purple-400 focus:outline-none"
+              />
+              {creditAmount && parseInt(creditAmount) > 0 && (
+                <p className="text-xs text-gray-500 mt-2">
+                  New balance will be: {(creditModalUser.ai_credits || 0) + parseInt(creditAmount)} credits
+                </p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setCreditModalUser(null)
+                  setCreditAmount('')
+                }}
+                className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreditUser}
+                className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-xl transition"
+              >
+                Add Credits
               </button>
             </div>
           </div>
