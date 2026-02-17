@@ -4,6 +4,7 @@ import { generateColoringPage, moderatePrompt } from '@/lib/ai'
 import { uploadAIImage } from '@/lib/upload-ai-image'
 import { aiGenerateSchema, validate } from '@/lib/validations'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { sendLowCreditsEmail } from '@/lib/email'
 
 const CREDIT_COST = 5
 const MAX_GENERATIONS_PER_HOUR = 10
@@ -50,11 +51,11 @@ export async function POST(request: NextRequest) {
     // 6. Check credits and ban status
     const { data: userData } = await supabaseAdmin
       .from('users')
-      .select('ai_credits, is_banned')
+      .select('ai_credits, is_banned, email, username')
       .eq('id', user.id)
       .single()
 
-    const userInfo = userData as { ai_credits: number; is_banned: boolean } | null
+    const userInfo = userData as { ai_credits: number; is_banned: boolean; email: string; username: string } | null
     if (!userInfo) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
@@ -98,14 +99,22 @@ export async function POST(request: NextRequest) {
     }
 
     // 11. Deduct credits atomically (via admin client)
+    const creditsRemaining = userInfo.ai_credits - CREDIT_COST
     await supabaseAdmin
       .from('users')
-      .update({ ai_credits: userInfo.ai_credits - CREDIT_COST } as never)
+      .update({ ai_credits: creditsRemaining } as never)
       .eq('id', user.id)
+
+    // 12. Send low credits email if they can't afford another generation
+    if (creditsRemaining < CREDIT_COST && userInfo.email) {
+      sendLowCreditsEmail(userInfo.email, userInfo.username, creditsRemaining).catch(err =>
+        console.error('Failed to send low credits email:', err)
+      )
+    }
 
     return NextResponse.json({
       generation,
-      credits_remaining: userInfo.ai_credits - CREDIT_COST,
+      credits_remaining: creditsRemaining,
     })
   } catch (error) {
     console.error('Error generating image:', error)

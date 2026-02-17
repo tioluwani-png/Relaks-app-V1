@@ -44,7 +44,7 @@ High contrast, clear lines, no gray areas.`
       model: 'dall-e-3',
       prompt: fullPrompt,
       n: 1,
-      size: '1024x1024',
+      size: '1024x1792',
       quality: 'standard',
       style: 'natural',
     }),
@@ -87,7 +87,7 @@ CRITICAL RULES:
   formData.append('image[]', imageBlob, 'photo.png')
   formData.append('model', 'gpt-image-1')
   formData.append('prompt', prompt)
-  formData.append('size', '1024x1024')
+  formData.append('size', '1024x1536')
   formData.append('quality', 'high')
 
   const response = await fetch('https://api.openai.com/v1/images/edits', {

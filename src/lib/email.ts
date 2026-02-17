@@ -38,33 +38,43 @@ export async function sendWelcomeEmail(to: string, username: string) {
     const { data, error } = await getResend().emails.send({
       from: FROM_EMAIL,
       to,
-      subject: 'Welcome to Relaks!',
+      subject: "I'm so glad you're here",
       html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-          <h1 style="background: linear-gradient(135deg, #A855F7, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; margin-bottom: 20px;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #FFFBF5;">
+          <h1 style="background: linear-gradient(135deg, #A855F7, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; margin-bottom: 30px;">
             Relaks
           </h1>
 
-          <h2 style="color: #1f2937; font-size: 24px;">Welcome, ${username}!</h2>
-
-          <p style="color: #4b5563; font-size: 16px; line-height: 24px;">
-            We're so excited to have you join our community of colorists and creative souls.
+          <p style="color: #1f2937; font-size: 18px; line-height: 28px;">
+            Hey ${username},
           </p>
 
-          <p style="color: #4b5563; font-size: 16px; line-height: 24px;">
-            Here's what you can do with Relaks:
+          <p style="color: #1f2937; font-size: 18px; line-height: 28px; font-weight: 600;">
+            I'm so glad you're here.
           </p>
 
-          <ul style="color: #4b5563; font-size: 16px; line-height: 28px;">
-            <li>Share your colored artwork with the community</li>
-            <li>Get inspired by beautiful reference galleries</li>
-            <li>Journal daily with thoughtful prompts</li>
-            <li>Generate custom coloring pages with AI</li>
-            <li>Climb the leaderboard and earn recognition</li>
-          </ul>
+          <p style="color: #4b5563; font-size: 16px; line-height: 26px;">
+            Relaks started from a deeply personal place. My own journey through grief and anxiety after losing my mum. Coloring became my way of processing emotions I couldn't put into words. It gave me something I didn't know I needed: permission to slow down.
+          </p>
 
-          <p style="color: #4b5563; font-size: 16px; line-height: 24px;">
-            You've received <strong>5 free page downloads</strong> and <strong>1 free AI generation</strong> to get started!
+          <p style="color: #4b5563; font-size: 16px; line-height: 26px;">
+            That's what I wanted to build for you too.
+          </p>
+
+          <p style="color: #4b5563; font-size: 16px; line-height: 26px;">
+            Not just an app. A space where you feel considered. Where every detail is designed to help you feel a little lighter.
+          </p>
+
+          <p style="color: #4b5563; font-size: 16px; line-height: 26px;">
+            You don't need to be artistic. You don't need to have it all figured out. You just need to show up for yourself.
+          </p>
+
+          <p style="color: #4b5563; font-size: 16px; line-height: 26px;">
+            So whenever life feels loud, know that Relaks is here. Waiting. Ready. No pressure.
+          </p>
+
+          <p style="color: #4b5563; font-size: 16px; line-height: 26px;">
+            Start with something that excites you — maybe a color reference, maybe an AI-generated page, maybe just exploring.
           </p>
 
           <div style="text-align: center; margin: 30px 0;">
@@ -73,9 +83,21 @@ export async function sendWelcomeEmail(to: string, username: string) {
             </a>
           </div>
 
-          <p style="color: #9ca3af; font-size: 14px; text-align: center; margin-top: 40px;">
-            Color. Share. Relax.
+          <p style="color: #4b5563; font-size: 16px; line-height: 26px; font-style: italic;">
+            This is your space now.
           </p>
+
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p style="color: #4b5563; font-size: 16px; line-height: 24px; margin: 0;">
+              With love,
+            </p>
+            <p style="color: #1f2937; font-size: 16px; font-weight: 600; margin: 4px 0 0 0;">
+              Clara
+            </p>
+            <p style="color: #9ca3af; font-size: 14px; margin: 2px 0 0 0;">
+              Founder, Relaks
+            </p>
+          </div>
         </div>
       `,
     })
