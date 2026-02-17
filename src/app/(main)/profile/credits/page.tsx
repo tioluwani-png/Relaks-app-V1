@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Sparkles, Coins, Loader2, Crown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -46,6 +46,17 @@ export default function CreditsPage() {
   const router = useRouter()
   const { profile } = useAuth()
   const [processingType, setProcessingType] = useState<string | null>(null)
+
+  // Reset loading state when user returns from Paystack (via back button or cancel)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        setProcessingType(null)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
 
   const aiCredits = profile?.ai_credits || 0
 

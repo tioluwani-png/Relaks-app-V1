@@ -174,14 +174,14 @@ export default function UserProfilePage() {
             <div className="font-bold">{posts.length}</div>
             <div className="text-xs text-muted-foreground">Posts</div>
           </div>
-          <div>
+          <Link href={`/user/${user.username}/followers`} className="hover:opacity-80">
             <div className="font-bold">{user.follower_count}</div>
             <div className="text-xs text-muted-foreground">Followers</div>
-          </div>
-          <div>
+          </Link>
+          <Link href={`/user/${user.username}/following`} className="hover:opacity-80">
             <div className="font-bold">{user.following_count}</div>
             <div className="text-xs text-muted-foreground">Following</div>
-          </div>
+          </Link>
         </div>
 
         {/* Posts Grid */}

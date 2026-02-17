@@ -2,7 +2,7 @@ import { Resend } from 'resend'
 import mailchimp from '@mailchimp/mailchimp_marketing'
 import { createHash } from 'crypto'
 
-const FROM_EMAIL = 'Relaks <hello@hello.relaks.co>'
+const FROM_EMAIL = 'Clara from Relaks <hello@hello.relaks.co>'
 
 // Lazy initialization to avoid build-time errors when env vars are missing
 let resendClient: Resend | null = null
@@ -40,64 +40,30 @@ export async function sendWelcomeEmail(to: string, username: string) {
       to,
       subject: "I'm so glad you're here",
       html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #FFFBF5;">
-          <h1 style="background: linear-gradient(135deg, #A855F7, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; margin-bottom: 30px;">
-            Relaks
-          </h1>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <p>Hey ${username},</p>
 
-          <p style="color: #1f2937; font-size: 18px; line-height: 28px;">
-            Hey ${username},
-          </p>
+          <p><strong>I'm so glad you're here.</strong></p>
 
-          <p style="color: #1f2937; font-size: 18px; line-height: 28px; font-weight: 600;">
-            I'm so glad you're here.
-          </p>
+          <p>Relaks started from a deeply personal place. My own journey through grief and anxiety after losing my mum. Coloring became my way of processing emotions I couldn't put into words. It gave me something I didn't know I needed: permission to slow down.</p>
 
-          <p style="color: #4b5563; font-size: 16px; line-height: 26px;">
-            Relaks started from a deeply personal place. My own journey through grief and anxiety after losing my mum. Coloring became my way of processing emotions I couldn't put into words. It gave me something I didn't know I needed: permission to slow down.
-          </p>
+          <p>That's what I wanted to build for you too.</p>
 
-          <p style="color: #4b5563; font-size: 16px; line-height: 26px;">
-            That's what I wanted to build for you too.
-          </p>
+          <p>Not just an app. A space where you feel considered. Where every detail is designed to help you feel a little lighter.</p>
 
-          <p style="color: #4b5563; font-size: 16px; line-height: 26px;">
-            Not just an app. A space where you feel considered. Where every detail is designed to help you feel a little lighter.
-          </p>
+          <p>You don't need to be artistic. You don't need to have it all figured out. You just need to show up for yourself.</p>
 
-          <p style="color: #4b5563; font-size: 16px; line-height: 26px;">
-            You don't need to be artistic. You don't need to have it all figured out. You just need to show up for yourself.
-          </p>
+          <p>So whenever life feels loud, know that Relaks is here. Waiting. Ready. No pressure.</p>
 
-          <p style="color: #4b5563; font-size: 16px; line-height: 26px;">
-            So whenever life feels loud, know that Relaks is here. Waiting. Ready. No pressure.
-          </p>
+          <p>Start with something that excites you — maybe a color reference, maybe an AI-generated page, maybe just exploring.</p>
 
-          <p style="color: #4b5563; font-size: 16px; line-height: 26px;">
-            Start with something that excites you — maybe a color reference, maybe an AI-generated page, maybe just exploring.
-          </p>
+          <p><a href="https://relaks.co/feed">Start Exploring</a></p>
 
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="https://relaks.co/feed" style="background: linear-gradient(135deg, #A855F7, #EC4899); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
-              Start Exploring
-            </a>
-          </div>
+          <p><em>This is your space now.</em></p>
 
-          <p style="color: #4b5563; font-size: 16px; line-height: 26px; font-style: italic;">
-            This is your space now.
-          </p>
-
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            <p style="color: #4b5563; font-size: 16px; line-height: 24px; margin: 0;">
-              With love,
-            </p>
-            <p style="color: #1f2937; font-size: 16px; font-weight: 600; margin: 4px 0 0 0;">
-              Clara
-            </p>
-            <p style="color: #9ca3af; font-size: 14px; margin: 2px 0 0 0;">
-              Founder, Relaks
-            </p>
-          </div>
+          <p>With love,<br>
+          <strong>Clara</strong><br>
+          <span style="color: #999;">Founder, Relaks</span></p>
         </div>
       `,
     })

@@ -16,7 +16,24 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('notifications')
-      .select('*')
+      .select(`
+        id,
+        type,
+        title,
+        body,
+        data,
+        read,
+        is_read,
+        post_id,
+        actor_id,
+        created_at,
+        actor:users!notifications_actor_id_fkey(
+          id,
+          username,
+          display_name,
+          avatar_url
+        )
+      `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50)
@@ -28,9 +45,26 @@ export async function GET(request: NextRequest) {
     const { data: notifications, error } = await query
 
     if (error) {
-      // If table doesn't exist, return empty array
+      // If table doesn't exist or join fails, fallback to simple query
       console.error('Notifications error:', error.message)
-      return NextResponse.json({ notifications: [], unreadCount: 0 })
+
+      const { data: simpleNotifications } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('read', false)
+
+      return NextResponse.json({
+        notifications: simpleNotifications || [],
+        unreadCount: count || 0,
+      })
     }
 
     // Get unread count
@@ -40,8 +74,17 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .eq('read', false)
 
+    // Normalize is_read field
+    const normalizedNotifications = (notifications || []).map(n => {
+      const obj = n as Record<string, unknown>
+      return {
+        ...obj,
+        is_read: obj.is_read ?? obj.read ?? false,
+      }
+    })
+
     return NextResponse.json({
-      notifications: notifications || [],
+      notifications: normalizedNotifications,
       unreadCount: count || 0,
     })
   } catch (error) {

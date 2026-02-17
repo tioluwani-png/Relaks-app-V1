@@ -68,7 +68,7 @@ export default function JournalEntryPage({ params }: { params: Promise<{ date: s
       const response = await fetch(`/api/journal/${entryDate}`, { method: 'DELETE' })
       if (response.ok) {
         toast.success('Entry deleted')
-        router.push('/journal/history')
+        router.replace('/journal/history')
       } else {
         toast.error('Failed to delete entry')
       }
