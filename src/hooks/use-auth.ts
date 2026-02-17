@@ -28,16 +28,19 @@ export function useAuth() {
 
     const getUser = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
+        // Use getSession() first - it reads from storage and auto-refreshes expired tokens
+        const { data: { session } } = await supabase.auth.getSession()
 
         if (!isMounted) return
-        setUser(user)
 
-        if (user) {
+        const currentUser = session?.user ?? null
+        setUser(currentUser)
+
+        if (currentUser) {
           const { data: profile } = await supabase
             .from('users')
             .select('*')
-            .eq('id', user.id)
+            .eq('id', currentUser.id)
             .single()
 
           if (isMounted) setProfile(profile)
