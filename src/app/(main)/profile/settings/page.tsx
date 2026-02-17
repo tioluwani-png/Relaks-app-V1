@@ -46,7 +46,7 @@ export default function SettingsPage() {
     setIsLoggingOut(true)
     try {
       await signOut()
-      router.push('/login')
+      window.location.href = '/login'
     } catch {
       toast.error('Failed to log out')
     } finally {
