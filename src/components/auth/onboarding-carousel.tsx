@@ -96,7 +96,7 @@ export function OnboardingCarousel() {
       }
 
       toast.success('Welcome to Relaks!')
-      router.push('/feed')
+      window.location.href = '/feed'
     } catch {
       toast.error('Something went wrong')
     } finally {

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -22,7 +21,6 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>
 
 export function LoginForm() {
-  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const supabase = createClient()
@@ -49,8 +47,8 @@ export function LoginForm() {
       }
 
       toast.success('Welcome back!')
-      router.push('/feed')
-      router.refresh()
+      // Use full page navigation to ensure session cookies are sent
+      window.location.href = '/feed'
     } catch {
       toast.error('Something went wrong')
     } finally {
