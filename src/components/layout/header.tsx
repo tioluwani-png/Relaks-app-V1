@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Bell, Search, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -59,11 +60,15 @@ export function Header({
               {title}
             </h1>
           ) : (
-            <Link href="/feed" className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-xl gradient-purple-pink flex items-center justify-center">
-                <span className="text-white text-sm font-bold">R</span>
-              </div>
-              <span className="text-lg font-bold">Relaks</span>
+            <Link href="/feed">
+              <Image
+                src="/logo.png"
+                alt="Relaks"
+                width={120}
+                height={40}
+                className="h-8 w-auto"
+                priority
+              />
             </Link>
           )}
         </div>
