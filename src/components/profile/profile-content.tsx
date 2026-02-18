@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { VerificationBadge } from '@/components/shared/verification-badge'
-import { Settings, Grid3X3, Bookmark, Download, Sparkles, AlertCircle, Heart, Pencil } from 'lucide-react'
+import { Settings, Grid3X3, Bookmark, Download, Sparkles, AlertCircle, Heart, Pencil, X } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { FadeIn } from '@/components/shared/motion'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 
 interface UserPost {
   id: string
@@ -29,6 +31,15 @@ interface SavedPost {
   like_count: number
 }
 
+interface AICreation {
+  id: string
+  prompt: string
+  style: string
+  complexity: string
+  result_url: string
+  created_at: string
+}
+
 const profileTabs = [
   { value: 'posts', icon: Grid3X3, label: 'Posts' },
   { value: 'saved', icon: Bookmark, label: 'Saved' },
@@ -43,6 +54,9 @@ export function ProfileContent() {
   const [savedPosts, setSavedPosts] = useState<SavedPost[]>([])
   const [isLoadingPosts, setIsLoadingPosts] = useState(true)
   const [isLoadingSaved, setIsLoadingSaved] = useState(false)
+  const [creations, setCreations] = useState<AICreation[]>([])
+  const [isLoadingCreations, setIsLoadingCreations] = useState(false)
+  const [selectedCreation, setSelectedCreation] = useState<AICreation | null>(null)
 
   useEffect(() => {
     if (!profile) return
@@ -85,6 +99,50 @@ export function ProfileContent() {
 
     fetchSaved()
   }, [profile, activeTab])
+
+  useEffect(() => {
+    if (!profile || activeTab !== 'creations') return
+
+    const fetchCreations = async () => {
+      setIsLoadingCreations(true)
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('ai_generations')
+          .select('id, prompt, style, complexity, result_url, created_at')
+          .eq('user_id', profile.id)
+          .order('created_at', { ascending: false }) as { data: AICreation[] | null; error: unknown }
+
+        if (!error && data) {
+          setCreations(data)
+        }
+      } catch {
+        console.error('Failed to fetch creations')
+      } finally {
+        setIsLoadingCreations(false)
+      }
+    }
+
+    fetchCreations()
+  }, [profile, activeTab])
+
+  const handleDownloadCreation = async (creation: AICreation) => {
+    try {
+      const response = await fetch(creation.result_url)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `relaks-creation-${creation.id.slice(0, 8)}.png`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      toast.success('Download started')
+    } catch {
+      toast.error('Failed to download image')
+    }
+  }
 
   if (isLoading) {
     return (
@@ -322,13 +380,88 @@ export function ProfileContent() {
             />
           )}
           {activeTab === 'creations' && (
-            <EmptyState
-              icon={Sparkles}
-              title="No AI creations"
-              description="Generate custom coloring pages with AI"
-              actionLabel="Generate"
-              actionHref="/create/generate"
-            />
+            isLoadingCreations ? (
+              <div className="grid grid-cols-3 gap-0.5">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="aspect-square rounded-none" />
+                ))}
+              </div>
+            ) : creations.length === 0 ? (
+              <EmptyState
+                icon={Sparkles}
+                title="No AI creations"
+                description="Generate custom coloring pages with AI"
+                actionLabel="Generate"
+                actionHref="/create/generate"
+              />
+            ) : (
+              <div className="grid grid-cols-3 gap-0.5">
+                {creations.map((creation) => (
+                  <button
+                    key={creation.id}
+                    onClick={() => setSelectedCreation(creation)}
+                    className="relative aspect-square bg-muted group"
+                  >
+                    <Image
+                      src={creation.result_url}
+                      alt={creation.prompt}
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <Sparkles className="h-5 w-5 text-white" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )
+          )}
+
+          {/* Creation Detail Modal */}
+          {selectedCreation && (
+            <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setSelectedCreation(null)}>
+              <div className="bg-card rounded-2xl overflow-hidden max-w-md w-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-purple-500" />
+                    <span className="font-semibold text-sm">AI Creation</span>
+                  </div>
+                  <button onClick={() => setSelectedCreation(null)} className="p-1 hover:bg-muted rounded-full">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Image */}
+                <div className="relative w-full aspect-[3/4] bg-muted">
+                  <Image
+                    src={selectedCreation.result_url}
+                    alt={selectedCreation.prompt}
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+
+                {/* Info & Actions */}
+                <div className="p-4 space-y-3">
+                  <p className="text-sm text-muted-foreground italic">&quot;{selectedCreation.prompt}&quot;</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="capitalize">{selectedCreation.style}</span>
+                    <span>&middot;</span>
+                    <span className="capitalize">{selectedCreation.complexity}</span>
+                    <span>&middot;</span>
+                    <span>{new Date(selectedCreation.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <Button
+                    onClick={() => handleDownloadCreation(selectedCreation)}
+                    className="w-full rounded-xl gradient-purple-pink text-white border-0"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </FadeIn>
