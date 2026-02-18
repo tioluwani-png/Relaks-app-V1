@@ -45,18 +45,30 @@ export async function GET(
       is_following = !!follow
     }
 
-    // Get user's posts
-    const { data: posts } = await supabase
-      .from('posts')
-      .select('*')
-      .eq('user_id', userData.id)
-      .eq('is_public', true)
-      .order('created_at', { ascending: false })
-      .limit(20)
+    // Get accurate follower/following counts from the follows table
+    const [{ count: followerCount }, { count: followingCount }, { data: posts }] = await Promise.all([
+      supabase
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', userData.id),
+      supabase
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('follower_id', userData.id),
+      supabase
+        .from('posts')
+        .select('*')
+        .eq('user_id', userData.id)
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+        .limit(20),
+    ])
 
     return NextResponse.json({
       user: {
         ...userData,
+        follower_count: followerCount ?? 0,
+        following_count: followingCount ?? 0,
         is_following,
         posts: posts || [],
       },

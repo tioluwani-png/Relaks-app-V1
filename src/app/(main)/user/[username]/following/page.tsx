@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -23,46 +23,66 @@ export default function FollowingPage() {
   const router = useRouter()
   const username = params.username as string
   const { profile: currentUser } = useAuth()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const [following, setFollowing] = useState<FollowingUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set())
   const [loadingFollowId, setLoadingFollowId] = useState<string | null>(null)
 
+  // Load following list
   useEffect(() => {
-    loadData()
-  }, [username]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const loadData = async () => {
-    try {
-      // Get the user ID from username
-      const { data: profileUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('username', username)
-        .single() as { data: { id: string } | null }
-
-      if (!profileUser) return
-
-      // Get who this user follows
-      const { data: followData } = await supabase
-        .from('follows')
-        .select('following_id')
-        .eq('follower_id', profileUser.id) as { data: { following_id: string }[] | null }
-
-      if (followData && followData.length > 0) {
-        const followedIds = followData.map(f => f.following_id)
-        const { data: users } = await supabase
+    const loadFollowing = async () => {
+      setIsLoading(true)
+      try {
+        const { data: profileUser, error: profileError } = await supabase
           .from('users')
-          .select('id, username, display_name, avatar_url')
-          .in('id', followedIds) as { data: FollowingUser[] | null }
+          .select('id')
+          .eq('username', username)
+          .single() as { data: { id: string } | null; error: unknown }
 
-        setFollowing(users || [])
+        if (profileError || !profileUser) {
+          console.error('Failed to find user:', profileError)
+          return
+        }
+
+        const { data: followData, error: followError } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', profileUser.id) as { data: { following_id: string }[] | null; error: unknown }
+
+        if (followError) {
+          console.error('Failed to load follows:', followError)
+          return
+        }
+
+        if (followData && followData.length > 0) {
+          const followedIds = followData.map(f => f.following_id)
+          const { data: users } = await supabase
+            .from('users')
+            .select('id, username, display_name, avatar_url')
+            .in('id', followedIds) as { data: FollowingUser[] | null }
+
+          setFollowing(users || [])
+        } else {
+          setFollowing([])
+        }
+      } catch (error) {
+        console.error('Failed to load following:', error)
+      } finally {
+        setIsLoading(false)
       }
+    }
 
-      // Get who current user follows (for follow/unfollow buttons)
-      if (currentUser) {
+    loadFollowing()
+  }, [username, supabase])
+
+  // Load current user's follow state
+  useEffect(() => {
+    if (!currentUser) return
+
+    const loadFollowState = async () => {
+      try {
         const { data: myFollowing } = await supabase
           .from('follows')
           .select('following_id')
@@ -71,44 +91,65 @@ export default function FollowingPage() {
         if (myFollowing) {
           setFollowingIds(new Set(myFollowing.map(f => f.following_id)))
         }
+      } catch (error) {
+        console.error('Failed to load follow state:', error)
       }
-    } catch (error) {
-      console.error('Failed to load following:', error)
-    } finally {
-      setIsLoading(false)
     }
-  }
 
-  const handleFollow = async (targetUserId: string) => {
+    loadFollowState()
+  }, [currentUser?.id, supabase])
+
+  const handleFollow = useCallback(async (targetUserId: string) => {
     if (!currentUser) return
     setLoadingFollowId(targetUserId)
 
-    const isFollowing = followingIds.has(targetUserId)
+    const isCurrentlyFollowing = followingIds.has(targetUserId)
+
+    // Optimistic update
+    setFollowingIds(prev => {
+      const next = new Set(prev)
+      if (isCurrentlyFollowing) {
+        next.delete(targetUserId)
+      } else {
+        next.add(targetUserId)
+      }
+      return next
+    })
 
     try {
       const response = await fetch(`/api/users/${targetUserId}/follow`, {
-        method: isFollowing ? 'DELETE' : 'POST',
+        method: isCurrentlyFollowing ? 'DELETE' : 'POST',
       })
 
-      if (response.ok) {
+      if (!response.ok) {
+        // Revert optimistic update on failure
         setFollowingIds(prev => {
           const next = new Set(prev)
-          if (isFollowing) {
-            next.delete(targetUserId)
-          } else {
+          if (isCurrentlyFollowing) {
             next.add(targetUserId)
+          } else {
+            next.delete(targetUserId)
           }
           return next
         })
-      } else {
         toast.error('Failed to update follow status')
       }
     } catch {
+      // Revert optimistic update on error
+      setFollowingIds(prev => {
+        const next = new Set(prev)
+        if (isCurrentlyFollowing) {
+          next.add(targetUserId)
+        } else {
+          next.delete(targetUserId)
+        }
+        return next
+      })
       toast.error('Failed to update follow status')
     } finally {
       setLoadingFollowId(null)
     }
-  }
+  }, [currentUser, followingIds])
 
   return (
     <div className="min-h-screen bg-background pb-20">

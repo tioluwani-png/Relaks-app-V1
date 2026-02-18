@@ -57,6 +57,16 @@ export function ProfileContent() {
   const [creations, setCreations] = useState<AICreation[]>([])
   const [isLoadingCreations, setIsLoadingCreations] = useState(false)
   const [selectedCreation, setSelectedCreation] = useState<AICreation | null>(null)
+  const [followerCount, setFollowerCount] = useState(0)
+  const [followingCount, setFollowingCount] = useState(0)
+
+  // Sync counts when profile first loads
+  useEffect(() => {
+    if (profile) {
+      setFollowerCount(profile.follower_count)
+      setFollowingCount(profile.following_count)
+    }
+  }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!profile) return
@@ -66,8 +76,15 @@ export function ProfileContent() {
       try {
         const response = await fetch(`/api/users/${profile.id}`)
         const data = await response.json()
-        if (response.ok && data.user?.posts) {
-          setPosts(data.user.posts)
+        if (response.ok && data.user) {
+          setPosts(data.user.posts || [])
+          // Update counts from fresh API data
+          if (typeof data.user.follower_count === 'number') {
+            setFollowerCount(data.user.follower_count)
+          }
+          if (typeof data.user.following_count === 'number') {
+            setFollowingCount(data.user.following_count)
+          }
         }
       } catch {
         console.error('Failed to fetch posts')
@@ -77,7 +94,7 @@ export function ProfileContent() {
     }
 
     fetchPosts()
-  }, [profile])
+  }, [profile?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!profile || activeTab !== 'saved') return
@@ -256,11 +273,11 @@ export function ProfileContent() {
             <div className="text-xs text-muted-foreground">Posts</div>
           </div>
           <Link href={`/user/${profile.username}/followers`} className="hover:opacity-80">
-            <div className="text-lg font-bold">{profile.follower_count}</div>
+            <div className="text-lg font-bold">{followerCount}</div>
             <div className="text-xs text-muted-foreground">Followers</div>
           </Link>
           <Link href={`/user/${profile.username}/following`} className="hover:opacity-80">
-            <div className="text-lg font-bold">{profile.following_count}</div>
+            <div className="text-lg font-bold">{followingCount}</div>
             <div className="text-xs text-muted-foreground">Following</div>
           </Link>
           <div>
