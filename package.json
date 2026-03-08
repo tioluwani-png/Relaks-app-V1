@@ -13,6 +13,7 @@
     "@mailchimp/mailchimp_marketing": "^3.0.80",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.93.3",
+    "@vercel/analytics": "^1.6.1",
     "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
