@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { format } from 'date-fns'
-import { ArrowLeft, Clock, Calendar, Eye } from 'lucide-react'
+import { Clock, Calendar, Eye } from 'lucide-react'
+import { BlogHeader } from '@/components/blog/blog-header'
 import type { Metadata } from 'next'
 import { BlogViewTracker } from './view-tracker'
 
@@ -124,27 +125,7 @@ export default async function BlogPostPage({
       {/* Track view on client */}
       <BlogViewTracker postId={typedPost.id} />
 
-      {/* Navigation */}
-      <nav className="sticky top-0 bg-white/80 backdrop-blur-lg border-b border-gray-100 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link
-            href="/blog"
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-purple-600 transition-colors"
-          >
-            <ArrowLeft size={20} />
-            <span>Back to Blog</span>
-          </Link>
-          <Link href="/">
-            <Image
-              src="/logo.png"
-              alt="Relaks"
-              width={100}
-              height={32}
-              className="h-7 w-auto"
-            />
-          </Link>
-        </div>
-      </nav>
+      <BlogHeader showBackToBlog />
 
       <article className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
