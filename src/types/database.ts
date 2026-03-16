@@ -14,9 +14,90 @@ export type AIComplexity = 'simple' | 'medium' | 'detailed'
 export type UserRole = 'user' | 'moderator' | 'admin' | 'super_admin'
 export type VerificationType = 'staff' | 'creator' | 'brand' | 'notable'
 
+export type BlogPostStatus = 'draft' | 'published' | 'archived'
+
 export interface Database {
   public: {
     Tables: {
+      blog_posts: {
+        Row: {
+          id: string
+          title: string
+          slug: string
+          excerpt: string | null
+          content: string
+          cover_image_url: string | null
+          category: string
+          tags: string[]
+          author_id: string | null
+          status: BlogPostStatus
+          published_at: string | null
+          read_time_minutes: number
+          view_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          slug: string
+          excerpt?: string | null
+          content: string
+          cover_image_url?: string | null
+          category?: string
+          tags?: string[]
+          author_id?: string | null
+          status?: BlogPostStatus
+          published_at?: string | null
+          read_time_minutes?: number
+          view_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          slug?: string
+          excerpt?: string | null
+          content?: string
+          cover_image_url?: string | null
+          category?: string
+          tags?: string[]
+          author_id?: string | null
+          status?: BlogPostStatus
+          published_at?: string | null
+          read_time_minutes?: number
+          view_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      blog_categories: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          description: string | null
+          color: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          description?: string | null
+          color?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string
+          description?: string | null
+          color?: string
+          created_at?: string
+        }
+      }
       users: {
         Row: {
           id: string
@@ -465,7 +546,10 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_blog_view: {
+        Args: { post_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       edition: Edition
@@ -492,6 +576,8 @@ export type ReferenceImage = Database['public']['Tables']['reference_images']['R
 export type SavedPost = Database['public']['Tables']['saved_posts']['Row']
 export type Notification = Database['public']['Tables']['notifications']['Row']
 export type Report = Database['public']['Tables']['reports']['Row']
+export type BlogPost = Database['public']['Tables']['blog_posts']['Row']
+export type BlogCategory = Database['public']['Tables']['blog_categories']['Row']
 
 // Extended types with relations
 export type PostWithUser = Post & {

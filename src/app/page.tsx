@@ -129,6 +129,7 @@ export default function Home() {
             <a href="#features" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Features</a>
             <a href="#experience" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Our Story</a>
             <a href="#pricing" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Pricing</a>
+            <Link href="/blog" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Blog</Link>
           </nav>
 
           <div className="flex items-center gap-3">
