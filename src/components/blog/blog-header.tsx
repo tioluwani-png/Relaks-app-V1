@@ -51,6 +51,7 @@ export function BlogHeader({ showBackToBlog = false }: BlogHeaderProps) {
             <Link href="/" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Home</Link>
           )}
           <Link href="/blog" className="text-sm font-medium text-purple-600 transition-colors">Blog</Link>
+          <Link href="/blog/submit" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Submit Story</Link>
         </nav>
 
         <div className="flex items-center gap-3">

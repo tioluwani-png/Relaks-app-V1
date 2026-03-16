@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { format } from 'date-fns'
 import { Clock, Calendar, Eye, ArrowRight, Sparkles } from 'lucide-react'
 import { motion, useScroll, useSpring } from 'framer-motion'
+import { BlogComments } from './blog-comments'
 
 interface BlogPost {
   id: string
@@ -219,6 +220,9 @@ export function BlogPostContent({
             </Link>
           </div>
         </motion.div>
+
+        {/* Comments */}
+        <BlogComments blogPostId={post.id} slug={post.slug} />
 
         {/* Related Posts */}
         {relatedPosts.length > 0 && (

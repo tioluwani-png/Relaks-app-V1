@@ -65,10 +65,10 @@ export function BlogListing({
               Wellness & Creativity
             </div>
             <h1 className="text-4xl md:text-6xl font-extrabold mb-4 tracking-tight">
-              The Relaks Blog
+              The Relaks Rage Room
             </h1>
             <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto leading-relaxed">
-              Stories, tips, and inspiration for your creative wellness journey
+              A place to rant, share stories, and inspire — for your creative wellness journey!
             </p>
           </motion.div>
         </div>

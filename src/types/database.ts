@@ -15,6 +15,7 @@ export type UserRole = 'user' | 'moderator' | 'admin' | 'super_admin'
 export type VerificationType = 'staff' | 'creator' | 'brand' | 'notable'
 
 export type BlogPostStatus = 'draft' | 'published' | 'archived'
+export type BlogSubmissionStatus = 'pending' | 'approved' | 'rejected'
 
 export interface Database {
   public: {
@@ -503,6 +504,90 @@ export interface Database {
           created_at?: string
         }
       }
+      blog_comments: {
+        Row: {
+          id: string
+          blog_post_id: string
+          user_id: string
+          parent_id: string | null
+          content: string
+          like_count: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          blog_post_id: string
+          user_id: string
+          parent_id?: string | null
+          content: string
+          like_count?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          blog_post_id?: string
+          user_id?: string
+          parent_id?: string | null
+          content?: string
+          like_count?: number
+          created_at?: string
+        }
+      }
+      blog_comment_likes: {
+        Row: {
+          user_id: string
+          comment_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          comment_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          comment_id?: string
+          created_at?: string
+        }
+      }
+      blog_submissions: {
+        Row: {
+          id: string
+          user_id: string
+          display_name: string
+          is_anonymous: boolean
+          title: string
+          category: string
+          content: string
+          status: BlogSubmissionStatus
+          admin_notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          display_name: string
+          is_anonymous?: boolean
+          title: string
+          category?: string
+          content: string
+          status?: BlogSubmissionStatus
+          admin_notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          display_name?: string
+          is_anonymous?: boolean
+          title?: string
+          category?: string
+          content?: string
+          status?: BlogSubmissionStatus
+          admin_notes?: string | null
+          created_at?: string
+        }
+      }
       reports: {
         Row: {
           id: string
@@ -590,6 +675,17 @@ export type CommentWithUser = Comment & {
   user: Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url' | 'is_verified' | 'verification_type'>
   replies?: CommentWithUser[]
 }
+
+export type BlogComment = Database['public']['Tables']['blog_comments']['Row']
+export type BlogCommentLike = Database['public']['Tables']['blog_comment_likes']['Row']
+
+export type BlogCommentWithUser = BlogComment & {
+  user: Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url' | 'is_verified' | 'verification_type'>
+  replies?: BlogCommentWithUser[]
+  is_liked?: boolean
+}
+
+export type BlogSubmission = Database['public']['Tables']['blog_submissions']['Row']
 
 export type UserProfile = User & {
   is_following?: boolean

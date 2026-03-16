@@ -31,6 +31,25 @@ export const createCommentSchema = z.object({
 })
 
 // ==========================================
+// Blog Comments
+// ==========================================
+export const createBlogCommentSchema = z.object({
+  content: z.string().min(1, 'Comment cannot be empty').max(500, 'Comment is too long (max 500 characters)').trim(),
+  parent_id: z.string().uuid().optional().nullable(),
+})
+
+// ==========================================
+// Blog Submissions
+// ==========================================
+export const createBlogSubmissionSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(200, 'Title is too long (max 200 characters)').trim(),
+  category: z.enum(['rant', 'story', 'inspiration', 'tips', 'personal-journey']),
+  content: z.string().min(1, 'Content is required').max(5000, 'Content is too long (max 5000 characters)').trim(),
+  display_name: z.string().min(1, 'Display name is required').max(100, 'Display name is too long').trim(),
+  is_anonymous: z.boolean().default(false),
+})
+
+// ==========================================
 // Journal
 // ==========================================
 export const journalEntrySchema = z.object({

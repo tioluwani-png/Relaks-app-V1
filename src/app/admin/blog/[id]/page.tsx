@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Save, Upload, X } from 'lucide-react'
+import { ArrowLeft, Save, Upload, X, Eye, PenLine } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import type { BlogPost, BlogCategory } from '@/types/database'
@@ -11,6 +11,7 @@ import type { BlogPost, BlogCategory } from '@/types/database'
 export default function BlogEditorPage() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   const postId = params?.id as string
   const isEditing = postId !== 'new'
@@ -28,11 +29,29 @@ export default function BlogEditorPage() {
   const [category, setCategory] = useState('wellness')
   const [tags, setTags] = useState('')
   const [status, setStatus] = useState<'draft' | 'published'>('draft')
+  const [contentTab, setContentTab] = useState<'write' | 'preview'>('write')
 
   useEffect(() => {
     loadCategories()
     if (isEditing) {
       loadPost()
+    } else {
+      // Pre-fill from submission query params if present
+      const fromSubmission = searchParams.get('from_submission')
+      if (fromSubmission) {
+        const subTitle = searchParams.get('title') || ''
+        const subCategory = searchParams.get('category') || 'wellness'
+        const subContent = searchParams.get('content') || ''
+        const authorName = searchParams.get('author_name') || ''
+
+        setTitle(subTitle)
+        setSlug(generateSlug(subTitle))
+        setContent(subContent)
+        setCategory(subCategory)
+        if (authorName) {
+          setExcerpt(`Submitted by ${authorName}`)
+        }
+      }
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -92,6 +111,25 @@ export default function BlogEditorPage() {
     return Math.max(1, Math.ceil(wordCount / wordsPerMinute))
   }
 
+  const contentToHtml = (text: string): string => {
+    const trimmed = text.trim()
+    // If content already has HTML block tags, return as-is
+    if (/^<(p|h[1-6]|div|ul|ol|blockquote|section|article|table|figure|hr)[>\s/]/i.test(trimmed)) {
+      return trimmed
+    }
+    // Convert plain text: split by double newlines into paragraphs
+    return trimmed
+      .split(/\n\s*\n/)
+      .map(para => para.trim())
+      .filter(Boolean)
+      .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
+      .join('\n')
+  }
+
+  const getPreviewHtml = (): string => {
+    return contentToHtml(content)
+  }
+
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -129,11 +167,12 @@ export default function BlogEditorPage() {
       const { data: { user } } = await supabase.auth.getUser()
 
       const finalStatus = publishNow ? 'published' as const : status
+      const htmlContent = contentToHtml(content)
       const postData: Record<string, unknown> = {
         title: title.trim(),
         slug: slug.trim() || generateSlug(title),
-        excerpt: excerpt.trim() || content.substring(0, 160),
-        content: content.trim(),
+        excerpt: excerpt.trim() || content.replace(/<[^>]*>/g, '').substring(0, 160),
+        content: htmlContent,
         cover_image_url: coverImage || null,
         category,
         tags: tags.split(',').map(t => t.trim()).filter(Boolean),
@@ -285,20 +324,72 @@ export default function BlogEditorPage() {
         </div>
 
         {/* Content */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Content * (HTML supported)
-          </label>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder={'Write your post content here...\n\nHTML tags like <p>, <h2>, <ul>, <strong> are supported.'}
-            rows={20}
-            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent focus:border-purple-400 focus:ring-0 focus:outline-none resize-y font-mono text-sm"
-          />
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            ~{calculateReadTime(content)} min read
-          </p>
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm overflow-hidden">
+          {/* Write / Preview tabs */}
+          <div className="flex border-b border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setContentTab('write')}
+              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition border-b-2 -mb-px ${
+                contentTab === 'write'
+                  ? 'border-purple-500 text-purple-600 dark:text-purple-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              }`}
+            >
+              <PenLine size={16} />
+              Write
+            </button>
+            <button
+              onClick={() => setContentTab('preview')}
+              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition border-b-2 -mb-px ${
+                contentTab === 'preview'
+                  ? 'border-purple-500 text-purple-600 dark:text-purple-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
+              }`}
+            >
+              <Eye size={16} />
+              Preview
+            </button>
+          </div>
+
+          <div className="p-6">
+            {contentTab === 'write' ? (
+              <>
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder={'Write your post content here...\n\nJust type naturally with blank lines between paragraphs.\nHTML tags like <h2>, <ul>, <strong> are also supported.'}
+                  rows={20}
+                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent focus:border-purple-400 focus:ring-0 focus:outline-none resize-y font-mono text-sm"
+                />
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  ~{calculateReadTime(content)} min read &middot; Blank lines create new paragraphs automatically
+                </p>
+              </>
+            ) : (
+              <div className="min-h-[300px]">
+                {content.trim() ? (
+                  <div
+                    className="prose prose-lg prose-purple max-w-none
+                      prose-headings:text-gray-900 prose-headings:font-bold prose-headings:tracking-tight
+                      prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4
+                      prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3
+                      prose-p:text-gray-600 prose-p:leading-[1.8]
+                      prose-a:text-purple-600 prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+                      prose-strong:text-gray-800
+                      prose-blockquote:border-l-4 prose-blockquote:border-purple-400 prose-blockquote:bg-gradient-to-r prose-blockquote:from-purple-50 prose-blockquote:to-transparent prose-blockquote:py-3 prose-blockquote:px-5 prose-blockquote:rounded-r-xl prose-blockquote:not-italic
+                      prose-img:rounded-2xl prose-img:shadow-lg
+                      prose-li:text-gray-600 prose-li:leading-[1.8]
+                      prose-code:text-purple-600 prose-code:bg-purple-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-sm prose-code:font-normal prose-code:before:content-none prose-code:after:content-none"
+                    dangerouslySetInnerHTML={{ __html: getPreviewHtml() }}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-gray-400 text-sm">
+                    Nothing to preview yet. Switch to Write and add some content.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Category & Tags */}

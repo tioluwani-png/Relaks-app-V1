@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { Plus, Edit, Trash2, Eye, EyeOff, Search } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, EyeOff, Search, Inbox } from 'lucide-react'
 
 interface BlogPost {
   id: string
@@ -23,10 +23,26 @@ export default function AdminBlogPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [pendingSubmissionCount, setPendingSubmissionCount] = useState(0)
 
   useEffect(() => {
     loadPosts()
+    loadPendingCount()
   }, [filterStatus]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadPendingCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('blog_submissions')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
+      if (!error && count !== null) {
+        setPendingSubmissionCount(count)
+      }
+    } catch {
+      // Ignore - badge just won't show
+    }
+  }
 
   const loadPosts = async () => {
     setIsLoading(true)
@@ -105,13 +121,27 @@ export default function AdminBlogPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Blog Posts</h1>
-        <Link
-          href="/admin/blog/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition"
-        >
-          <Plus size={20} />
-          New Post
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/blog/submissions"
+            className="relative inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+          >
+            <Inbox size={20} />
+            Submissions
+            {pendingSubmissionCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 flex items-center justify-center px-1 text-xs font-bold text-white bg-red-500 rounded-full">
+                {pendingSubmissionCount}
+              </span>
+            )}
+          </Link>
+          <Link
+            href="/admin/blog/new"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition"
+          >
+            <Plus size={20} />
+            New Post
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
