@@ -133,6 +133,9 @@ export default function Home() {
           </nav>
 
           <div className="flex items-center gap-3">
+            <Link href="/blog" className="md:hidden text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
+              Blog
+            </Link>
             <Link href="/login">
               <button className="text-sm font-medium text-gray-600 hover:text-gray-900 px-4 py-2 rounded-full transition-colors">
                 Log in
