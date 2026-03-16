@@ -529,6 +529,7 @@ export default function Home() {
                 <li><a href="#features" className="hover:text-gray-700 transition-colors">Features</a></li>
                 <li><a href="#pricing" className="hover:text-gray-700 transition-colors">Pricing</a></li>
                 <li><a href="#experience" className="hover:text-gray-700 transition-colors">Our Story</a></li>
+                <li><Link href="/blog" className="hover:text-gray-700 transition-colors">Blog</Link></li>
                 <li><Link href="/signup" className="hover:text-gray-700 transition-colors">Get Started</Link></li>
               </ul>
             </div>
