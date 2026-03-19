@@ -55,7 +55,7 @@ export default async function BlogPostPage({
     .select(`
       id, title, slug, excerpt, content, cover_image_url,
       category, tags, published_at, read_time_minutes, view_count,
-      author:users!blog_posts_author_id_fkey(id, display_name, avatar_url, bio, is_verified)
+      author:users!blog_posts_author_id_fkey(id, display_name, avatar_url, bio, is_verified, verification_type)
     `)
     .eq('slug', slug)
     .eq('status', 'published')
