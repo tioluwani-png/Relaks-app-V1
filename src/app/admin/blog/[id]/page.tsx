@@ -117,12 +117,12 @@ export default function BlogEditorPage() {
     if (/^<(p|h[1-6]|div|ul|ol|blockquote|section|article|table|figure|hr)[>\s/]/i.test(trimmed)) {
       return trimmed
     }
-    // Convert plain text: split by double newlines into paragraphs
+    // Convert plain text: each line becomes its own paragraph
     return trimmed
-      .split(/\n\s*\n/)
-      .map(para => para.trim())
+      .split(/\n/)
+      .map(line => line.trim())
       .filter(Boolean)
-      .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
+      .map(line => `<p>${line}</p>`)
       .join('\n')
   }
 

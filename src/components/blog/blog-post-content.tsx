@@ -25,6 +25,7 @@ interface BlogPost {
     display_name: string
     avatar_url: string | null
     bio: string | null
+    is_verified: boolean
   } | null
 }
 
@@ -37,17 +38,31 @@ interface RelatedPost {
 }
 
 function normalizeContent(html: string): string {
-  const trimmed = html.trim()
-  // If it already has block-level HTML tags, return as-is
-  if (/<(p|h[1-6]|div|ul|ol|blockquote|section|article|table|figure|hr)[\s>]/i.test(trimmed)) {
-    return trimmed
+  let result = html.trim()
+
+  // If it has block-level HTML tags, fix <br>-stuffed paragraphs
+  if (/<(p|h[1-6]|div|ul|ol|blockquote|section|article|table|figure|hr)[\s>]/i.test(result)) {
+    // Split <p> tags that contain <br> into separate <p> tags
+    result = result.replace(/<p>([\s\S]*?)<\/p>/gi, (_match, inner: string) => {
+      if (/<br\s*\/?>/.test(inner)) {
+        return inner
+          .split(/<br\s*\/?>/)
+          .map((line: string) => line.trim())
+          .filter(Boolean)
+          .map((line: string) => `<p>${line}</p>`)
+          .join('\n')
+      }
+      return `<p>${inner}</p>`
+    })
+    return result
   }
-  // Plain text without HTML structure — wrap paragraphs properly
-  return trimmed
-    .split(/\n\s*\n/)
-    .map(para => para.trim())
+
+  // Plain text without HTML structure — each line becomes a paragraph
+  return result
+    .split(/\n/)
+    .map(line => line.trim())
     .filter(Boolean)
-    .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
+    .map(line => `<p>${line}</p>`)
     .join('\n')
 }
 
@@ -161,7 +176,14 @@ export function BlogPostContent({
                 </div>
               </div>
               <div>
-                <p className="font-semibold text-gray-900 text-sm">{post.author.display_name}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="font-semibold text-gray-900 text-sm">{post.author.display_name}</p>
+                  {post.author.is_verified && (
+                    <svg className="w-4 h-4 text-purple-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
                 {post.author.bio && (
                   <p className="text-xs text-gray-400 line-clamp-1">{post.author.bio}</p>
                 )}
