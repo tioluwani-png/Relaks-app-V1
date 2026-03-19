@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { Plus, Edit, Trash2, Eye, EyeOff, Search, Inbox } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, EyeOff, Search, Inbox, ExternalLink } from 'lucide-react'
 
 interface BlogPost {
   id: string
@@ -228,6 +228,15 @@ export default function AdminBlogPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-1">
+                        <a
+                          href={`/blog/${post.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30 rounded-lg transition"
+                          title="Preview post"
+                        >
+                          <ExternalLink size={18} />
+                        </a>
                         <button
                           onClick={() => handleToggleStatus(post.id, post.status)}
                           className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-lg transition"

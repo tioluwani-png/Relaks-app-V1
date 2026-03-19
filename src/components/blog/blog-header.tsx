@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, PenLine } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface BlogHeaderProps {
@@ -54,7 +54,14 @@ export function BlogHeader({ showBackToBlog = false }: BlogHeaderProps) {
           <Link href="/blog/submit" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Submit Story</Link>
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Link
+            href="/blog/submit"
+            className="md:hidden inline-flex items-center gap-1.5 text-sm font-medium text-purple-600 hover:text-purple-700 px-3 py-2 rounded-full border border-purple-200 hover:bg-purple-50 transition-colors"
+          >
+            <PenLine size={15} />
+            <span className="hidden sm:inline">Submit</span>
+          </Link>
           {isLoggedIn ? (
             <Link href="/feed">
               <button className="text-sm font-semibold text-white px-5 py-2.5 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 shadow-lg shadow-purple-200/40 hover:shadow-xl hover:scale-105 transition-all duration-300">

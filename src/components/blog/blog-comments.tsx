@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Heart, MessageCircle, Send, LogIn, ChevronDown, ChevronUp } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuthStore } from '@/stores/auth-store'
+import { useAuth } from '@/hooks/use-auth'
 import type { BlogCommentWithUser } from '@/types/database'
 
 function timeAgo(dateStr: string): string {
@@ -36,7 +36,7 @@ function BlogCommentItem({
   depth?: number
   onReplyAdded: () => void
 }) {
-  const profile = useAuthStore((s) => s.profile)
+  const { profile } = useAuth()
   const [isReplying, setIsReplying] = useState(false)
   const [replyContent, setReplyContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -242,8 +242,8 @@ function BlogCommentItem({
   )
 }
 
-export function BlogComments({ blogPostId, slug }: { blogPostId: string; slug: string }) {
-  const profile = useAuthStore((s) => s.profile)
+export function BlogComments({ slug }: { blogPostId: string; slug: string }) {
+  const { profile, isLoading: authLoading } = useAuth()
   const [comments, setComments] = useState<BlogCommentWithUser[]>([])
   const [loading, setLoading] = useState(true)
   const [content, setContent] = useState('')
@@ -307,7 +307,11 @@ export function BlogComments({ blogPostId, slug }: { blogPostId: string; slug: s
       </h2>
 
       {/* Comment input */}
-      {profile ? (
+      {authLoading ? (
+        <div className="mb-8 p-5 rounded-2xl bg-gray-50 border border-gray-100 flex justify-center">
+          <div className="w-5 h-5 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin" />
+        </div>
+      ) : profile ? (
         <div className="flex gap-3 mb-8">
           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 p-[1.5px] flex-shrink-0">
             <div className="w-full h-full rounded-full bg-white overflow-hidden flex items-center justify-center">
@@ -352,7 +356,7 @@ export function BlogComments({ blogPostId, slug }: { blogPostId: string; slug: s
         <div className="mb-8 p-5 rounded-2xl bg-gray-50 border border-gray-100 text-center">
           <p className="text-gray-500 text-sm mb-3">Join the conversation</p>
           <Link
-            href="/login"
+            href={`/login?redirect=/blog/${slug}`}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-500 text-white text-sm font-medium rounded-xl hover:bg-purple-600 transition-colors"
           >
             <LogIn size={15} />

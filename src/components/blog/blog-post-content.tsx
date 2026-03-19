@@ -36,6 +36,21 @@ interface RelatedPost {
   published_at: string
 }
 
+function normalizeContent(html: string): string {
+  const trimmed = html.trim()
+  // If it already has block-level HTML tags, return as-is
+  if (/<(p|h[1-6]|div|ul|ol|blockquote|section|article|table|figure|hr)[\s>]/i.test(trimmed)) {
+    return trimmed
+  }
+  // Plain text without HTML structure — wrap paragraphs properly
+  return trimmed
+    .split(/\n\s*\n/)
+    .map(para => para.trim())
+    .filter(Boolean)
+    .map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`)
+    .join('\n')
+}
+
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } },
@@ -171,8 +186,11 @@ export function BlogPostContent({
             prose-img:rounded-2xl prose-img:shadow-lg
             prose-li:text-gray-600 prose-li:leading-[1.8]
             prose-code:text-purple-600 prose-code:bg-purple-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-sm prose-code:font-normal prose-code:before:content-none prose-code:after:content-none"
-          dangerouslySetInnerHTML={{ __html: post.content }}
+          dangerouslySetInnerHTML={{ __html: normalizeContent(post.content) }}
         />
+
+        {/* Comments */}
+        <BlogComments blogPostId={post.id} slug={post.slug} />
 
         {/* Tags */}
         {post.tags && post.tags.length > 0 && (
@@ -220,9 +238,6 @@ export function BlogPostContent({
             </Link>
           </div>
         </motion.div>
-
-        {/* Comments */}
-        <BlogComments blogPostId={post.id} slug={post.slug} />
 
         {/* Related Posts */}
         {relatedPosts.length > 0 && (

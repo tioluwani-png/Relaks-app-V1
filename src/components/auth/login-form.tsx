@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -25,6 +26,8 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const supabase = createClient()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirect') || '/feed'
 
   const {
     register,
@@ -49,7 +52,7 @@ export function LoginForm() {
 
       toast.success('Welcome back!')
       // Use full page navigation to ensure session cookies are sent
-      window.location.href = '/feed'
+      window.location.href = redirectTo
     } catch {
       toast.error('Something went wrong')
     } finally {
@@ -63,7 +66,7 @@ export function LoginForm() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
         },
       })
 

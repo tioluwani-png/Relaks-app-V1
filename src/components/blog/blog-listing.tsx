@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { format } from 'date-fns'
-import { Clock, ArrowRight, Sparkles } from 'lucide-react'
+import { Clock, ArrowRight, Sparkles, PenLine } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 interface BlogPost {
@@ -248,6 +248,33 @@ export function BlogListing({
           )
         )}
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200/60 mt-8">
+        <div className="max-w-6xl mx-auto px-4 py-12">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="text-center sm:text-left">
+              <p className="font-semibold text-gray-900">Got a story to share?</p>
+              <p className="text-sm text-gray-500 mt-1">Submit your rants, stories, and inspiration to the Rage Room.</p>
+            </div>
+            <Link
+              href="/blog/submit"
+              className="inline-flex items-center gap-2 px-6 py-3 text-white font-semibold rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 shadow-lg shadow-purple-200/40 hover:shadow-xl hover:scale-105 transition-all duration-300"
+            >
+              <PenLine size={16} />
+              Submit Your Story
+            </Link>
+          </div>
+          <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-400">
+            <p>&copy; {new Date().getFullYear()} Relaks. All rights reserved.</p>
+            <div className="flex items-center gap-4">
+              <Link href="/blog" className="hover:text-gray-600 transition-colors">Blog</Link>
+              <Link href="/blog/submit" className="hover:text-gray-600 transition-colors">Submit Story</Link>
+              <Link href="/" className="hover:text-gray-600 transition-colors">Home</Link>
+            </div>
+          </div>
+        </div>
+      </footer>
     </>
   )
 }
