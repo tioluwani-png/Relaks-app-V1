@@ -21,6 +21,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
 import UnderlineExtension from '@tiptap/extension-underline'
 import type { BlogPost, BlogCategory } from '@/types/database'
+import { formatBlogContent } from '@/lib/formatBlogContent'
 
 function ToolbarButton({
   onClick,
@@ -682,9 +683,9 @@ export default function BlogEditorPage() {
               </div>
             </header>
 
-            {/* Content — same prose styling as the public blog */}
+            {/* Content — same styling as the public blog */}
             <div
-              className="prose prose-lg prose-purple max-w-none mb-14
+              className="blog-content prose prose-lg prose-purple max-w-none mb-14
                 prose-headings:text-gray-900 prose-headings:font-bold prose-headings:tracking-tight
                 prose-h1:text-3xl prose-h1:mt-8 prose-h1:mb-4
                 prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4
@@ -696,7 +697,7 @@ export default function BlogEditorPage() {
                 prose-img:rounded-2xl prose-img:shadow-lg
                 prose-li:text-gray-600 prose-li:leading-[1.8]
                 prose-code:text-purple-600 prose-code:bg-purple-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-sm prose-code:font-normal prose-code:before:content-none prose-code:after:content-none"
-              dangerouslySetInnerHTML={{ __html: editor?.getHTML() || '' }}
+              dangerouslySetInnerHTML={{ __html: formatBlogContent(editor?.getHTML() || '') }}
             />
 
             {/* Tags preview */}

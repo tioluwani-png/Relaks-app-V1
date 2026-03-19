@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { Clock, Calendar, Eye, ArrowRight, Sparkles } from 'lucide-react'
 import { motion, useScroll, useSpring } from 'framer-motion'
 import { BlogComments } from './blog-comments'
+import { formatBlogContent } from '@/lib/formatBlogContent'
 
 interface BlogPost {
   id: string
@@ -35,35 +36,6 @@ interface RelatedPost {
   slug: string
   cover_image_url: string | null
   published_at: string
-}
-
-function normalizeContent(html: string): string {
-  let result = html.trim()
-
-  // If it has block-level HTML tags, fix <br>-stuffed paragraphs
-  if (/<(p|h[1-6]|div|ul|ol|blockquote|section|article|table|figure|hr)[\s>]/i.test(result)) {
-    // Split <p> tags that contain <br> into separate <p> tags
-    result = result.replace(/<p>([\s\S]*?)<\/p>/gi, (_match, inner: string) => {
-      if (/<br\s*\/?>/.test(inner)) {
-        return inner
-          .split(/<br\s*\/?>/)
-          .map((line: string) => line.trim())
-          .filter(Boolean)
-          .map((line: string) => `<p>${line}</p>`)
-          .join('\n')
-      }
-      return `<p>${inner}</p>`
-    })
-    return result
-  }
-
-  // Plain text without HTML structure — each line becomes a paragraph
-  return result
-    .split(/\n/)
-    .map(line => line.trim())
-    .filter(Boolean)
-    .map(line => `<p>${line}</p>`)
-    .join('\n')
 }
 
 const fadeUp = {
@@ -197,7 +169,7 @@ export function BlogPostContent({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="prose prose-lg prose-purple max-w-none mb-14
+          className="blog-content prose prose-lg prose-purple max-w-none mb-14
             prose-headings:text-gray-900 prose-headings:font-bold prose-headings:tracking-tight
             prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4
             prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3
@@ -208,7 +180,7 @@ export function BlogPostContent({
             prose-img:rounded-2xl prose-img:shadow-lg
             prose-li:text-gray-600 prose-li:leading-[1.8]
             prose-code:text-purple-600 prose-code:bg-purple-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-sm prose-code:font-normal prose-code:before:content-none prose-code:after:content-none"
-          dangerouslySetInnerHTML={{ __html: normalizeContent(post.content) }}
+          dangerouslySetInnerHTML={{ __html: formatBlogContent(post.content) }}
         />
 
         {/* Comments */}

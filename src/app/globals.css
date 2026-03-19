@@ -217,6 +217,65 @@
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+/* Blog Content Display */
+.blog-content {
+  font-size: 1.125rem;
+  line-height: 1.8;
+  color: #374151;
+}
+
+.blog-content p {
+  margin-bottom: 1.5rem;
+}
+
+.blog-content p:last-child {
+  margin-bottom: 0;
+}
+
+.blog-content h1, .blog-content h2, .blog-content h3 {
+  font-weight: 700;
+  color: #111827;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.blog-content h1 { font-size: 1.875rem; }
+.blog-content h2 { font-size: 1.5rem; }
+.blog-content h3 { font-size: 1.25rem; }
+
+.blog-content strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+.blog-content a {
+  color: #9333ea;
+  text-decoration: underline;
+}
+
+.blog-content blockquote {
+  border-left: 4px solid #a855f7;
+  background: #faf5ff;
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  font-style: italic;
+}
+
+.blog-content ul, .blog-content ol {
+  margin: 1.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.blog-content li {
+  margin-bottom: 0.5rem;
+}
+
+.blog-content hr {
+  margin: 2rem 0;
+  border-color: #e5e7eb;
+}
+
 /* TipTap Editor */
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
