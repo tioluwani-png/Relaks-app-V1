@@ -58,8 +58,8 @@ export function PostCard({ post }: PostCardProps) {
         setIsLiked(isLiked)
         setLikeCount(prev => isLiked ? prev + 1 : prev - 1)
       }
-    } catch {
-      // Revert on error
+    } catch (err) {
+      console.error('[PostCard] Like toggle failed:', err)
       setIsLiked(isLiked)
       setLikeCount(prev => isLiked ? prev + 1 : prev - 1)
     } finally {
@@ -83,8 +83,8 @@ export function PostCard({ post }: PostCardProps) {
         // Revert on error
         setIsSaved(isSaved)
       }
-    } catch {
-      // Revert on error
+    } catch (err) {
+      console.error('[PostCard] Save toggle failed:', err)
       setIsSaved(isSaved)
     } finally {
       setIsSaveLoading(false)

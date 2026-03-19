@@ -63,7 +63,8 @@ function BlogCommentItem({
         setLiked(wasLiked)
         setLikeCount((c) => (wasLiked ? c + 1 : c - 1))
       }
-    } catch {
+    } catch (err) {
+      console.error('[BlogCommentLike] Failed to toggle like:', err)
       setLiked(wasLiked)
       setLikeCount((c) => (wasLiked ? c + 1 : c - 1))
     } finally {
@@ -87,8 +88,8 @@ function BlogCommentItem({
         setIsReplying(false)
         onReplyAdded()
       }
-    } catch {
-      // silently fail
+    } catch (err) {
+      console.error('[BlogComment] Failed to post reply:', err)
     } finally {
       setIsSubmitting(false)
     }
@@ -255,9 +256,12 @@ export function BlogComments({ slug }: { blogPostId: string; slug: string }) {
       if (res.ok) {
         const data = await res.json()
         setComments(data.comments || [])
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        console.error('[BlogComments] Failed to fetch comments:', res.status, errData)
       }
-    } catch {
-      // silently fail
+    } catch (err) {
+      console.error('[BlogComments] Network error fetching comments:', err)
     } finally {
       setLoading(false)
     }
@@ -281,9 +285,12 @@ export function BlogComments({ slug }: { blogPostId: string; slug: string }) {
       if (res.ok) {
         setContent('')
         fetchComments()
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        console.error('[BlogComments] Failed to post comment:', res.status, errData)
       }
-    } catch {
-      // silently fail
+    } catch (err) {
+      console.error('[BlogComments] Network error posting comment:', err)
     } finally {
       setIsSubmitting(false)
     }

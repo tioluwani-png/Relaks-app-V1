@@ -304,7 +304,7 @@ export function PostDetail({ postId }: PostDetailProps) {
             </form>
           ) : (
             <p className="text-sm text-muted-foreground">
-              <Link href="/login" className="text-primary hover:underline">
+              <Link href={`/login?redirect=/post/${postId}`} className="text-primary hover:underline">
                 Log in
               </Link>{' '}
               to add a comment

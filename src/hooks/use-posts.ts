@@ -149,8 +149,8 @@ export function usePost(id: string) {
           like_count: post.like_count,
         })
       }
-    } catch {
-      // Revert on error
+    } catch (err) {
+      console.error('[usePost] Like toggle failed:', err)
       setPost({
         ...post,
         is_liked: isLiked,
