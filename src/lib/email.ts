@@ -349,6 +349,137 @@ export async function handleNewUserEmails(email: string, username: string) {
   }
 }
 
+// ============================================
+// BLOG POST NOTIFICATIONS
+// ============================================
+
+export async function sendNewBlogPostEmail(
+  to: string,
+  username: string,
+  postTitle: string,
+  postExcerpt: string,
+  postSlug: string,
+  coverImageUrl: string | null
+) {
+  try {
+    const coverHtml = coverImageUrl
+      ? `<img src="${coverImageUrl}" alt="${postTitle}" style="width: 100%; max-height: 280px; object-fit: cover; border-radius: 12px; margin-bottom: 24px;" />`
+      : ''
+
+    const { data, error } = await getResend().emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject: `New on Relaks: ${postTitle}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+          <h1 style="background: linear-gradient(135deg, #A855F7, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; margin-bottom: 24px;">
+            Relaks
+          </h1>
+
+          <p style="color: #4b5563; font-size: 16px;">Hi ${username},</p>
+
+          <p style="color: #4b5563; font-size: 16px;">
+            We just published something new on the blog:
+          </p>
+
+          ${coverHtml}
+
+          <h2 style="color: #1f2937; font-size: 22px; margin-bottom: 8px;">${postTitle}</h2>
+
+          <p style="color: #6b7280; font-size: 15px; line-height: 1.6;">
+            ${postExcerpt}
+          </p>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="https://relaks.co/blog/${postSlug}" style="background: linear-gradient(135deg, #A855F7, #EC4899); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+              Read Now
+            </a>
+          </div>
+
+          <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 40px;">
+            You're receiving this because you have a Relaks account.
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('Blog notification email error:', error)
+      return { success: false, error }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('Blog notification send error:', error)
+    return { success: false, error }
+  }
+}
+
+export async function notifyUsersOfNewPost(
+  users: { email: string; display_name: string | null; username: string }[],
+  postTitle: string,
+  postExcerpt: string,
+  postSlug: string,
+  coverImageUrl: string | null
+) {
+  const BATCH_SIZE = 100
+
+  for (let i = 0; i < users.length; i += BATCH_SIZE) {
+    const batch = users.slice(i, i + BATCH_SIZE)
+
+    const emails = batch.map((user) => {
+      const name = user.display_name || user.username
+      const coverHtml = coverImageUrl
+        ? `<img src="${coverImageUrl}" alt="${postTitle}" style="width: 100%; max-height: 280px; object-fit: cover; border-radius: 12px; margin-bottom: 24px;" />`
+        : ''
+
+      return {
+        from: FROM_EMAIL,
+        to: user.email,
+        subject: `New on Relaks: ${postTitle}`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+            <h1 style="background: linear-gradient(135deg, #A855F7, #EC4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; margin-bottom: 24px;">
+              Relaks
+            </h1>
+
+            <p style="color: #4b5563; font-size: 16px;">Hi ${name},</p>
+
+            <p style="color: #4b5563; font-size: 16px;">
+              We just published something new on the blog:
+            </p>
+
+            ${coverHtml}
+
+            <h2 style="color: #1f2937; font-size: 22px; margin-bottom: 8px;">${postTitle}</h2>
+
+            <p style="color: #6b7280; font-size: 15px; line-height: 1.6;">
+              ${postExcerpt}
+            </p>
+
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="https://relaks.co/blog/${postSlug}" style="background: linear-gradient(135deg, #A855F7, #EC4899); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+                Read Now
+              </a>
+            </div>
+
+            <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 40px;">
+              You're receiving this because you have a Relaks account.
+            </p>
+          </div>
+        `,
+      }
+    })
+
+    try {
+      await getResend().batch.send(emails)
+      console.log(`Blog notification batch sent: ${emails.length} emails (batch ${Math.floor(i / BATCH_SIZE) + 1})`)
+    } catch (error) {
+      console.error(`Blog notification batch error (batch ${Math.floor(i / BATCH_SIZE) + 1}):`, error)
+    }
+  }
+}
+
 // Add tag when user makes first purchase
 export async function handleFirstPurchase(email: string) {
   await updateMailchimpTags(email, ['paying_customer'])

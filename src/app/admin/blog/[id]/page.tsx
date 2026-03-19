@@ -182,6 +182,8 @@ export default function BlogEditorPage() {
         author_id: user?.id || null,
       }
 
+      let savedPostId = postId
+
       if (isEditing) {
         const { error } = await supabase
           .from('blog_posts')
@@ -190,11 +192,23 @@ export default function BlogEditorPage() {
 
         if (error) throw error
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from('blog_posts')
           .insert(postData as never)
+          .select('id')
+          .single() as { data: { id: string } | null; error: unknown }
 
         if (error) throw error
+        if (inserted) savedPostId = inserted.id
+      }
+
+      // Notify all users when publishing
+      if (publishNow && savedPostId) {
+        fetch('/api/blog/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postId: savedPostId }),
+        }).catch(err => console.error('Notify error:', err))
       }
 
       router.push('/admin/blog')

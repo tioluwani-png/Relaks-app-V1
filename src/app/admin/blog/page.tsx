@@ -97,6 +97,15 @@ export default function AdminBlogPage() {
       setPosts(posts.map(p =>
         p.id === id ? { ...p, status: newStatus as BlogPost['status'], published_at: publishedAt } : p
       ))
+
+      // Notify all users when publishing
+      if (newStatus === 'published') {
+        fetch('/api/blog/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postId: id }),
+        }).catch(err => console.error('Notify error:', err))
+      }
     } catch (error) {
       console.error('Status update error:', error)
       alert('Failed to update status')
