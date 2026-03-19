@@ -4,11 +4,12 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
-  ArrowLeft, Save, Upload, X,
+  ArrowLeft, Save, Upload, X, Eye,
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   Heading1, Heading2, Heading3,
   List, ListOrdered, Quote, Minus,
   Link2, Undo2, Redo2, AlignLeft, AlignCenter, AlignRight,
+  Clock, Calendar as CalendarIcon,
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -76,6 +77,7 @@ export default function BlogEditorPage() {
   const [tags, setTags] = useState('')
   const [status, setStatus] = useState<'draft' | 'published'>('draft')
   const [initialContent, setInitialContent] = useState<string | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
 
   const editor = useEditor({
     extensions: [
@@ -335,6 +337,13 @@ export default function BlogEditorPage() {
           </h1>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowPreview(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+          >
+            <Eye size={18} />
+            Preview
+          </button>
           <button
             onClick={() => handleSave(false)}
             disabled={isSaving}
@@ -617,6 +626,95 @@ export default function BlogEditorPage() {
           </div>
         </div>
       </div>
+
+      {/* Full-page Preview Overlay */}
+      {showPreview && (
+        <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: '#FFFBF5' }}>
+          {/* Preview header bar */}
+          <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-gray-200 px-4 py-3">
+            <div className="max-w-3xl mx-auto flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-500">Preview Mode</span>
+              <button
+                onClick={() => setShowPreview(false)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition"
+              >
+                <X size={16} />
+                Close Preview
+              </button>
+            </div>
+          </div>
+
+          {/* Cover image */}
+          {coverImage && (
+            <div className="relative w-full aspect-[21/9] md:aspect-[3/1] max-h-[480px] overflow-hidden">
+              <Image src={coverImage} alt={title} fill className="object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#FFFBF5] via-transparent to-transparent" />
+            </div>
+          )}
+
+          <article className={`max-w-3xl mx-auto px-4 ${coverImage ? '-mt-20 relative z-10' : 'pt-8'}`}>
+            {/* Header */}
+            <header className="mb-10">
+              <div className="flex items-center gap-2 mb-5">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-500/10 to-pink-500/10 text-purple-600 text-xs font-semibold uppercase tracking-wider capitalize">
+                  {category.replace('-', ' ')}
+                </span>
+              </div>
+
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 mb-6 leading-[1.15] tracking-tight">
+                {title || 'Untitled Post'}
+              </h1>
+
+              {excerpt && (
+                <p className="text-lg text-gray-500 mb-6 leading-relaxed">{excerpt}</p>
+              )}
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-400 mb-6 pb-6 border-b border-gray-100">
+                <span className="flex items-center gap-1.5">
+                  <CalendarIcon size={15} />
+                  {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </span>
+                <span className="w-1 h-1 rounded-full bg-gray-300" />
+                <span className="flex items-center gap-1.5">
+                  <Clock size={15} />
+                  {calculateReadTime(editor?.getHTML() || '')} min read
+                </span>
+              </div>
+            </header>
+
+            {/* Content — same prose styling as the public blog */}
+            <div
+              className="prose prose-lg prose-purple max-w-none mb-14
+                prose-headings:text-gray-900 prose-headings:font-bold prose-headings:tracking-tight
+                prose-h1:text-3xl prose-h1:mt-8 prose-h1:mb-4
+                prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4
+                prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3
+                prose-p:text-gray-600 prose-p:leading-[1.8]
+                prose-a:text-purple-600 prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+                prose-strong:text-gray-800
+                prose-blockquote:border-l-4 prose-blockquote:border-purple-400 prose-blockquote:bg-gradient-to-r prose-blockquote:from-purple-50 prose-blockquote:to-transparent prose-blockquote:py-3 prose-blockquote:px-5 prose-blockquote:rounded-r-xl prose-blockquote:not-italic
+                prose-img:rounded-2xl prose-img:shadow-lg
+                prose-li:text-gray-600 prose-li:leading-[1.8]
+                prose-code:text-purple-600 prose-code:bg-purple-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-sm prose-code:font-normal prose-code:before:content-none prose-code:after:content-none"
+              dangerouslySetInnerHTML={{ __html: editor?.getHTML() || '' }}
+            />
+
+            {/* Tags preview */}
+            {tags && (
+              <div className="flex flex-wrap gap-2 mb-14 pt-8 border-t border-gray-100">
+                {tags.split(',').map(tag => tag.trim()).filter(Boolean).map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-3.5 py-1.5 bg-gray-50 text-gray-500 text-sm rounded-xl border border-gray-100"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </article>
+        </div>
+      )}
     </div>
   )
 }
