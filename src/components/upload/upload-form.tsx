@@ -19,8 +19,8 @@ import { Loader2, X, RotateCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { uploadPostImage } from '@/lib/upload'
 import { useAuth } from '@/hooks/use-auth'
+import { useEditions } from '@/hooks/use-editions'
 import { FadeIn } from '@/components/shared/motion'
-import type { Edition } from '@/types/database'
 
 interface UploadFormProps {
   file: File
@@ -31,9 +31,10 @@ interface UploadFormProps {
 export function UploadForm({ file, previewUrl, onCancel }: UploadFormProps) {
   const router = useRouter()
   const { profile } = useAuth()
+  const { editions } = useEditions()
   const [isUploading, setIsUploading] = useState(false)
   const [caption, setCaption] = useState('')
-  const [edition, setEdition] = useState<Edition | ''>('')
+  const [edition, setEdition] = useState('')
   const [pageNumber, setPageNumber] = useState('')
   const [isPublic, setIsPublic] = useState(true)
   const [rotation, setRotation] = useState(0)
@@ -144,14 +145,16 @@ export function UploadForm({ file, previewUrl, onCancel }: UploadFormProps) {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="edition">Edition (optional)</Label>
-            <Select value={edition} onValueChange={(v) => setEdition(v as Edition | '')}>
+            <Select value={edition} onValueChange={setEdition}>
               <SelectTrigger className="rounded-xl">
                 <SelectValue placeholder="Select edition" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="lavender">Lavender Edition</SelectItem>
-                <SelectItem value="pink">Pink Edition</SelectItem>
-                <SelectItem value="christmas">Christmas Edition</SelectItem>
+                {editions.map((ed) => (
+                  <SelectItem key={ed.slug} value={ed.slug}>
+                    {ed.display_name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

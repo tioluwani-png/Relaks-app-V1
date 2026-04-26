@@ -11,7 +11,7 @@ import { Loader2, ChevronRight, ChevronLeft, Share2, Palette, Heart } from 'luci
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FadeIn } from '@/components/shared/motion'
-import type { Edition } from '@/types/database'
+import { useEditions } from '@/hooks/use-editions'
 
 const slides = [
   {
@@ -34,18 +34,13 @@ const slides = [
   },
 ]
 
-const editions: { value: Edition; label: string; gradient: string }[] = [
-  { value: 'lavender', label: 'Lavender Edition', gradient: 'from-purple-500 to-violet-600' },
-  { value: 'pink', label: 'Pink Edition', gradient: 'from-pink-500 to-rose-500' },
-  { value: 'christmas', label: 'Christmas Edition', gradient: 'from-red-500 to-green-600' },
-]
-
 export function OnboardingCarousel() {
   const router = useRouter()
   const supabase = createClient()
+  const { editions, getEditionGradient } = useEditions()
   const [currentSlide, setCurrentSlide] = useState(0)
   const [displayName, setDisplayName] = useState('')
-  const [selectedEditions, setSelectedEditions] = useState<Edition[]>([])
+  const [selectedEditions, setSelectedEditions] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   const isLastSlide = currentSlide === slides.length
@@ -63,11 +58,11 @@ export function OnboardingCarousel() {
     }
   }
 
-  const toggleEdition = (edition: Edition) => {
+  const toggleEdition = (slug: string) => {
     setSelectedEditions(prev =>
-      prev.includes(edition)
-        ? prev.filter(e => e !== edition)
-        : [...prev, edition]
+      prev.includes(slug)
+        ? prev.filter(e => e !== slug)
+        : [...prev, slug]
     )
   }
 
@@ -181,25 +176,28 @@ export function OnboardingCarousel() {
                   <div className="space-y-3">
                     <Label>Do you own any Relaks books?</Label>
                     <div className="grid gap-3">
-                      {editions.map(edition => (
-                        <label
-                          key={edition.value}
-                          className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                            selectedEditions.includes(edition.value)
-                              ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30'
-                              : 'border-border hover:border-purple-500/50'
-                          }`}
-                        >
-                          <Checkbox
-                            checked={selectedEditions.includes(edition.value)}
-                            onCheckedChange={() => toggleEdition(edition.value)}
-                          />
-                          <div className="flex items-center gap-2">
-                            <div className={`h-6 w-6 rounded-md bg-gradient-to-r ${edition.gradient}`} />
-                            <span className="font-medium">{edition.label}</span>
-                          </div>
-                        </label>
-                      ))}
+                      {editions.map(ed => {
+                        const gradient = getEditionGradient(ed.slug)
+                        return (
+                          <label
+                            key={ed.slug}
+                            className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                              selectedEditions.includes(ed.slug)
+                                ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30'
+                                : 'border-border hover:border-purple-500/50'
+                            }`}
+                          >
+                            <Checkbox
+                              checked={selectedEditions.includes(ed.slug)}
+                              onCheckedChange={() => toggleEdition(ed.slug)}
+                            />
+                            <div className="flex items-center gap-2">
+                              <div className={`h-6 w-6 rounded-md bg-gradient-to-r ${gradient.from} ${gradient.to}`} />
+                              <span className="font-medium">{ed.display_name}</span>
+                            </div>
+                          </label>
+                        )
+                      })}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       You can always update this later in settings

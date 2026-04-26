@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { Header } from '@/components/layout/header'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useEditions } from '@/hooks/use-editions'
 
 interface PageRef {
   pageNumber: number
@@ -24,11 +25,11 @@ export default function EditionReferencesPage() {
   const params = useParams()
   const router = useRouter()
   const edition = params.edition as string
+  const { getEditionName } = useEditions()
   const [pages, setPages] = useState<PageRef[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  const editionNames: Record<string, string> = { lavender: 'Lavender Edition', pink: 'Pink Edition', christmas: 'Christmas Edition' }
-  const editionName = editionNames[edition] || `${edition.charAt(0).toUpperCase() + edition.slice(1)} Edition`
+  const editionName = getEditionName(edition)
 
   useEffect(() => {
     const fetchPages = async () => {

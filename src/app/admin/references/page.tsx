@@ -10,11 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import type { Edition } from '@/types/database'
+import { useEditions } from '@/hooks/use-editions'
 
 interface ReferenceImage {
   id: string
-  edition: Edition
+  edition: string
   page_number: number
   image_url: string
   is_official: boolean
@@ -23,8 +23,9 @@ interface ReferenceImage {
 
 export default function AdminReferencesPage() {
   const supabase = createClient()
+  const { editions: availableEditions } = useEditions()
   const [isUploading, setIsUploading] = useState(false)
-  const [edition, setEdition] = useState<Edition>('lavender')
+  const [edition, setEdition] = useState('')
   const [pageNumber, setPageNumber] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -62,8 +63,8 @@ export default function AdminReferencesPage() {
   }
 
   const handleUpload = async () => {
-    if (!selectedFile || !pageNumber) {
-      toast.error('Please select a file and enter a page number')
+    if (!selectedFile || !pageNumber || !edition) {
+      toast.error('Please select an edition, file, and page number')
       return
     }
 
@@ -153,14 +154,16 @@ export default function AdminReferencesPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Edition</Label>
-              <Select value={edition} onValueChange={(v) => setEdition(v as Edition)}>
+              <Select value={edition} onValueChange={setEdition}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select edition" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="lavender">Lavender Edition</SelectItem>
-                  <SelectItem value="pink">Pink Edition</SelectItem>
-                  <SelectItem value="christmas">Christmas Edition</SelectItem>
+                  {availableEditions.map((ed) => (
+                    <SelectItem key={ed.slug} value={ed.slug}>
+                      {ed.display_name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -217,7 +220,7 @@ export default function AdminReferencesPage() {
 
             <Button
               onClick={handleUpload}
-              disabled={!selectedFile || !pageNumber || isUploading}
+              disabled={!selectedFile || !pageNumber || !edition || isUploading}
               className="w-full"
             >
               {isUploading ? (

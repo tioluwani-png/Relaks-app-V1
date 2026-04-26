@@ -10,26 +10,21 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useAuth } from '@/hooks/use-auth'
+import { useEditions } from '@/hooks/use-editions'
 import { uploadAvatar } from '@/lib/upload'
 import { toast } from 'sonner'
-import type { Edition } from '@/types/database'
-
-const editions: { value: Edition; label: string }[] = [
-  { value: 'lavender', label: 'Lavender Edition' },
-  { value: 'pink', label: 'Pink Edition' },
-  { value: 'christmas', label: 'Christmas Edition' },
-]
 
 export default function EditProfilePage() {
   const router = useRouter()
   const { profile, refreshProfile } = useAuth()
+  const { editions } = useEditions()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [displayName, setDisplayName] = useState(profile?.display_name || '')
   const [bio, setBio] = useState(profile?.bio || '')
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '')
-  const [editionsOwned, setEditionsOwned] = useState<Edition[]>(
+  const [editionsOwned, setEditionsOwned] = useState<string[]>(
     profile?.editions_owned || []
   )
 
@@ -54,11 +49,11 @@ export default function EditProfilePage() {
     }
   }
 
-  const toggleEdition = (edition: Edition) => {
+  const toggleEdition = (slug: string) => {
     setEditionsOwned(prev =>
-      prev.includes(edition)
-        ? prev.filter(e => e !== edition)
-        : [...prev, edition]
+      prev.includes(slug)
+        ? prev.filter(e => e !== slug)
+        : [...prev, slug]
     )
   }
 
@@ -190,16 +185,16 @@ export default function EditProfilePage() {
           <div className="space-y-3">
             <Label>Relaks Books Owned</Label>
             <div className="space-y-2">
-              {editions.map((edition) => (
+              {editions.map((ed) => (
                 <label
-                  key={edition.value}
+                  key={ed.slug}
                   className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
                 >
                   <Checkbox
-                    checked={editionsOwned.includes(edition.value)}
-                    onCheckedChange={() => toggleEdition(edition.value)}
+                    checked={editionsOwned.includes(ed.slug)}
+                    onCheckedChange={() => toggleEdition(ed.slug)}
                   />
-                  <span>{edition.label}</span>
+                  <span>{ed.display_name}</span>
                 </label>
               ))}
             </div>

@@ -7,7 +7,7 @@ export const updateProfileSchema = z.object({
   display_name: z.string().max(100).optional().nullable(),
   bio: z.string().max(150).optional().nullable(),
   avatar_url: z.string().url().optional().nullable(),
-  editions_owned: z.array(z.enum(['lavender', 'pink', 'christmas'])).optional(),
+  editions_owned: z.array(z.string().min(1).max(50)).optional(),
 })
 
 // ==========================================
@@ -17,7 +17,7 @@ export const createPostSchema = z.object({
   image_url: z.string().url(),
   thumbnail_url: z.string().url().optional().nullable(),
   caption: z.string().max(500).optional().nullable(),
-  edition: z.enum(['lavender', 'pink', 'christmas']).optional().nullable(),
+  edition: z.string().min(1).max(50).optional().nullable(),
   page_number: z.number().int().positive().optional().nullable(),
   is_public: z.boolean().default(true),
 })

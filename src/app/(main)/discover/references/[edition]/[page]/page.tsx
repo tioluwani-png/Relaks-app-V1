@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { ChevronLeft, ChevronRight, ZoomIn, X } from 'lucide-react'
+import { useEditions } from '@/hooks/use-editions'
 
 interface ReferenceImage {
   id: string
@@ -28,9 +29,10 @@ export default function PageReferencesPage() {
   }>({ official: [], community: [] })
   const [isLoading, setIsLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const { getEdition } = useEditions()
 
-  const editionNames: Record<string, string> = { lavender: 'Lavender', pink: 'Pink', christmas: 'Christmas' }
-  const editionName = editionNames[edition] || edition.charAt(0).toUpperCase() + edition.slice(1)
+  const editionRecord = getEdition(edition)
+  const editionName = editionRecord?.display_name?.replace(' Edition', '') || edition.charAt(0).toUpperCase() + edition.slice(1)
 
   useEffect(() => {
     const fetchReferences = async () => {

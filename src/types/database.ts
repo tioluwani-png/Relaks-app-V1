@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Edition = 'lavender' | 'pink' | 'christmas'
+export type Edition = string
 export type Mood = 'great' | 'good' | 'okay' | 'bad' | 'terrible'
 export type PurchaseType = 'single' | 'bundle' | 'unlimited' | 'ai_pack'
 export type AIStyle = 'mandala' | 'floral' | 'animals' | 'abstract' | 'portrait' | 'landscape'
@@ -588,6 +588,53 @@ export interface Database {
           created_at?: string
         }
       }
+      editions: {
+        Row: {
+          id: string
+          slug: string
+          display_name: string
+          description: string | null
+          color: string
+          gradient_from: string
+          gradient_to: string
+          gradient_bg: string
+          cover_image_url: string | null
+          is_active: boolean
+          display_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          display_name: string
+          description?: string | null
+          color: string
+          gradient_from: string
+          gradient_to: string
+          gradient_bg: string
+          cover_image_url?: string | null
+          is_active?: boolean
+          display_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          slug?: string
+          display_name?: string
+          description?: string | null
+          color?: string
+          gradient_from?: string
+          gradient_to?: string
+          gradient_bg?: string
+          cover_image_url?: string | null
+          is_active?: boolean
+          display_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
       reports: {
         Row: {
           id: string
@@ -637,7 +684,6 @@ export interface Database {
       }
     }
     Enums: {
-      edition: Edition
       mood: Mood
       purchase_type: PurchaseType
       ai_style: AIStyle
@@ -686,6 +732,8 @@ export type BlogCommentWithUser = BlogComment & {
 }
 
 export type BlogSubmission = Database['public']['Tables']['blog_submissions']['Row']
+
+export type EditionRecord = Database['public']['Tables']['editions']['Row']
 
 export type UserProfile = User & {
   is_following?: boolean

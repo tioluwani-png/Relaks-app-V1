@@ -8,7 +8,15 @@ export async function GET(
   const supabase = await createClient()
   const { edition } = await params
 
-  if (!['lavender', 'pink', 'christmas'].includes(edition)) {
+  // Validate edition exists in the database
+  const { data: editionRecord } = await supabase
+    .from('editions')
+    .select('slug')
+    .eq('slug', edition)
+    .eq('is_active', true)
+    .single() as { data: { slug: string } | null; error: unknown }
+
+  if (!editionRecord) {
     return NextResponse.json({ error: 'Invalid edition' }, { status: 400 })
   }
 

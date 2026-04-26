@@ -13,12 +13,9 @@ interface Edition {
   name: string
   pageCount: number
   color: string
-}
-
-const editionGradients: Record<string, { from: string; to: string; bg: string }> = {
-  lavender: { from: 'from-purple-500', to: 'to-violet-600', bg: 'bg-purple-50 dark:bg-purple-950/30' },
-  pink: { from: 'from-pink-500', to: 'to-rose-500', bg: 'bg-pink-50 dark:bg-pink-950/30' },
-  christmas: { from: 'from-red-500', to: 'to-green-600', bg: 'bg-red-50 dark:bg-red-950/30' },
+  gradient_from: string
+  gradient_to: string
+  gradient_bg: string
 }
 
 export function ReferencesContent() {
@@ -58,17 +55,19 @@ export function ReferencesContent() {
       ) : (
         <div className="space-y-4">
           {editions.map((edition, index) => {
-            const gradient = editionGradients[edition.id] || editionGradients.lavender
+            const from = edition.gradient_from || 'from-purple-500'
+            const to = edition.gradient_to || 'to-violet-600'
+            const bg = edition.gradient_bg || 'bg-purple-50 dark:bg-purple-950/30'
             return (
               <FadeIn key={edition.id} delay={index * 0.1}>
                 <Link href={`/references/${edition.id}`}>
                   <motion.div
                     whileHover={{ scale: 1.01, y: -2 }}
                     whileTap={{ scale: 0.99 }}
-                    className={`relative rounded-2xl overflow-hidden shadow-[0_2px_20px_rgba(0,0,0,0.06)] ${gradient.bg}`}
+                    className={`relative rounded-2xl overflow-hidden shadow-[0_2px_20px_rgba(0,0,0,0.06)] ${bg}`}
                   >
                     {/* Gradient strip at top */}
-                    <div className={`h-2 bg-gradient-to-r ${gradient.from} ${gradient.to}`} />
+                    <div className={`h-2 bg-gradient-to-r ${from} ${to}`} />
 
                     <div className="p-5">
                       <div className="flex items-center justify-between">
@@ -80,7 +79,7 @@ export function ReferencesContent() {
                               : 'Coming soon'}
                           </p>
                         </div>
-                        <div className={`h-12 w-12 rounded-xl bg-gradient-to-r ${gradient.from} ${gradient.to} flex items-center justify-center`}>
+                        <div className={`h-12 w-12 rounded-xl bg-gradient-to-r ${from} ${to} flex items-center justify-center`}>
                           <Images className="h-6 w-6 text-white" />
                         </div>
                       </div>

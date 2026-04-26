@@ -103,6 +103,25 @@ export async function PATCH(
     // Only allow safe fields to be updated (no role, credits, ban status, etc.)
     const { display_name, bio, avatar_url, editions_owned } = validation.data
 
+    // Validate editions_owned values against the editions table
+    if (editions_owned && editions_owned.length > 0) {
+      const { data: validEditions } = await supabase
+        .from('editions')
+        .select('slug')
+        .in('slug', editions_owned)
+        .eq('is_active', true)
+
+      const validSlugs = new Set((validEditions || []).map((e: { slug: string }) => e.slug))
+      const invalid = editions_owned.filter((slug: string) => !validSlugs.has(slug))
+
+      if (invalid.length > 0) {
+        return NextResponse.json(
+          { error: `Invalid editions: ${invalid.join(', ')}` },
+          { status: 400 }
+        )
+      }
+    }
+
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (display_name !== undefined) updateData.display_name = display_name
     if (bio !== undefined) updateData.bio = bio
