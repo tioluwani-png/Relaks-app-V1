@@ -68,7 +68,38 @@ ALTER TABLE editions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view editions" ON editions
   FOR SELECT USING (true);
 
--- Admin insert/update/delete is enforced at the API level using role checks
+-- Allow admins to insert editions
+CREATE POLICY "Admins can insert editions" ON editions
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND users.role IN ('admin', 'super_admin')
+    )
+  );
+
+-- Allow admins to update editions
+CREATE POLICY "Admins can update editions" ON editions
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND users.role IN ('admin', 'super_admin')
+    )
+  );
+
+-- Allow admins to delete editions
+CREATE POLICY "Admins can delete editions" ON editions
+  FOR DELETE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND users.role IN ('admin', 'super_admin')
+    )
+  );
 
 -- Step 9: Updated_at trigger (reuses existing function from 001)
 CREATE TRIGGER update_editions_updated_at
