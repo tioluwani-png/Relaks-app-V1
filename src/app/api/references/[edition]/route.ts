@@ -8,7 +8,7 @@ export async function GET(
   const supabase = await createClient()
   const { edition } = await params
 
-  // Validate edition exists in the database
+  // Validate edition - check DB first, fall back to known slugs if table doesn't exist
   const { data: editionRecord } = await supabase
     .from('editions')
     .select('slug')
@@ -16,7 +16,8 @@ export async function GET(
     .eq('is_active', true)
     .single() as { data: { slug: string } | null; error: unknown }
 
-  if (!editionRecord) {
+  const knownSlugs = ['lavender', 'pink', 'christmas']
+  if (!editionRecord && !knownSlugs.includes(edition)) {
     return NextResponse.json({ error: 'Invalid edition' }, { status: 400 })
   }
 
