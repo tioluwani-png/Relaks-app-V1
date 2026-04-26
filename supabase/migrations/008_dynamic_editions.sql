@@ -31,22 +31,23 @@ VALUES
   ('christmas', 'Christmas Edition', '#C41E3A', 'from-red-500', 'to-green-600', 'bg-red-50 dark:bg-red-950/30', true, 3)
 ON CONFLICT (slug) DO NOTHING;
 
--- Step 3: Migrate columns from edition enum to TEXT
+-- Step 3: Drop the default on editions_owned BEFORE converting types
+-- (the default references the edition enum type which blocks DROP TYPE)
+ALTER TABLE users ALTER COLUMN editions_owned DROP DEFAULT;
+
+-- Step 4: Migrate columns from edition enum to TEXT
 -- This preserves all existing data while enabling dynamic editions
-
--- Convert users.editions_owned from edition[] to TEXT[]
 ALTER TABLE users ALTER COLUMN editions_owned TYPE TEXT[] USING editions_owned::TEXT[];
-
--- Convert posts.edition from edition to TEXT
 ALTER TABLE posts ALTER COLUMN edition TYPE TEXT USING edition::TEXT;
-
--- Convert reference_images.edition from edition to TEXT
 ALTER TABLE reference_images ALTER COLUMN edition TYPE TEXT USING edition::TEXT;
 
--- Step 4: Drop the old enum type
+-- Step 5: Restore a TEXT[] default on editions_owned
+ALTER TABLE users ALTER COLUMN editions_owned SET DEFAULT '{}';
+
+-- Step 6: Drop the old enum type (now safe)
 DROP TYPE IF EXISTS edition;
 
--- Step 5: Add foreign key constraints
+-- Step 7: Add foreign key constraints
 -- reference_images.edition -> editions.slug (NOT NULL column)
 ALTER TABLE reference_images
   ADD CONSTRAINT fk_reference_images_edition
@@ -60,7 +61,7 @@ ALTER TABLE posts
 -- Note: users.editions_owned is TEXT[] - PostgreSQL does not support FK on array elements.
 -- Validation is handled at the API layer.
 
--- Step 6: RLS policies
+-- Step 8: RLS policies
 ALTER TABLE editions ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can view editions
@@ -69,7 +70,7 @@ CREATE POLICY "Anyone can view editions" ON editions
 
 -- Admin insert/update/delete is enforced at the API level using role checks
 
--- Step 7: Updated_at trigger (reuses existing function from 001)
+-- Step 9: Updated_at trigger (reuses existing function from 001)
 CREATE TRIGGER update_editions_updated_at
   BEFORE UPDATE ON editions
   FOR EACH ROW
