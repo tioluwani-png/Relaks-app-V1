@@ -144,7 +144,7 @@ export function PostCard({ post }: PostCardProps) {
 
       {/* Image */}
       <Link href={`/post/${post.id}`}>
-        <div className="relative aspect-square bg-muted mx-3 rounded-xl overflow-hidden">
+        <div className="relative aspect-[4/5] bg-muted mx-3 rounded-xl overflow-hidden">
           <Image
             src={post.image_url}
             alt={post.caption || 'Colored artwork'}
