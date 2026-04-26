@@ -4,11 +4,11 @@
 /* Safelist dynamic gradient classes used by editions stored in DB */
 @source inline("
   from-purple-500 from-pink-500 from-red-500 from-green-500 from-blue-500 from-orange-500 from-yellow-500 from-violet-500 from-rose-500 from-emerald-500 from-teal-500 from-cyan-500 from-amber-500 from-indigo-500 from-fuchsia-500 from-lime-500 from-sky-500
-  from-purple-600 from-pink-600 from-red-600 from-green-600 from-blue-600 from-orange-600 from-violet-600 from-rose-600 from-indigo-600 from-fuchsia-600
+  from-purple-600 from-pink-600 from-red-600 from-green-600 from-blue-600 from-orange-600 from-violet-600 from-rose-600 from-indigo-600 from-fuchsia-600 from-teal-600 from-cyan-600 from-emerald-600 from-amber-600 from-sky-600 from-yellow-600 from-lime-600
   to-purple-500 to-pink-500 to-red-500 to-green-500 to-blue-500 to-orange-500 to-yellow-500 to-violet-500 to-rose-500 to-emerald-500 to-teal-500 to-cyan-500 to-amber-500 to-indigo-500 to-fuchsia-500 to-lime-500 to-sky-500
-  to-purple-600 to-pink-600 to-red-600 to-green-600 to-blue-600 to-orange-600 to-violet-600 to-rose-600 to-indigo-600 to-fuchsia-600
+  to-purple-600 to-pink-600 to-red-600 to-green-600 to-blue-600 to-orange-600 to-violet-600 to-rose-600 to-indigo-600 to-fuchsia-600 to-teal-600 to-cyan-600 to-emerald-600 to-amber-600 to-sky-600 to-yellow-600 to-lime-600
   bg-purple-50 bg-pink-50 bg-red-50 bg-green-50 bg-blue-50 bg-orange-50 bg-yellow-50 bg-violet-50 bg-rose-50 bg-emerald-50 bg-teal-50 bg-cyan-50 bg-amber-50 bg-indigo-50 bg-fuchsia-50 bg-lime-50 bg-sky-50
-  dark:bg-purple-950/30 dark:bg-pink-950/30 dark:bg-red-950/30 dark:bg-green-950/30 dark:bg-blue-950/30 dark:bg-orange-950/30 dark:bg-violet-950/30 dark:bg-rose-950/30 dark:bg-emerald-950/30 dark:bg-teal-950/30 dark:bg-indigo-950/30 dark:bg-fuchsia-950/30
+  dark:bg-purple-950/30 dark:bg-pink-950/30 dark:bg-red-950/30 dark:bg-green-950/30 dark:bg-blue-950/30 dark:bg-orange-950/30 dark:bg-yellow-950/30 dark:bg-violet-950/30 dark:bg-rose-950/30 dark:bg-emerald-950/30 dark:bg-teal-950/30 dark:bg-cyan-950/30 dark:bg-amber-950/30 dark:bg-indigo-950/30 dark:bg-fuchsia-950/30 dark:bg-lime-950/30 dark:bg-sky-950/30
 ");
 
 @custom-variant dark (&:is(.dark *));

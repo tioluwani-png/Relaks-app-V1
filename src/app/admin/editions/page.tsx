@@ -6,21 +6,45 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import type { EditionRecord } from '@/types/database'
+
+const COLOR_THEMES = [
+  { name: 'Purple',  color: '#8b5cf6', from: 'from-purple-500',  to: 'to-violet-600',  bg: 'bg-purple-50 dark:bg-purple-950/30' },
+  { name: 'Pink',    color: '#ec4899', from: 'from-pink-500',    to: 'to-rose-500',     bg: 'bg-pink-50 dark:bg-pink-950/30' },
+  { name: 'Red',     color: '#ef4444', from: 'from-red-500',     to: 'to-rose-600',     bg: 'bg-red-50 dark:bg-red-950/30' },
+  { name: 'Orange',  color: '#f97316', from: 'from-orange-500',  to: 'to-amber-500',    bg: 'bg-orange-50 dark:bg-orange-950/30' },
+  { name: 'Yellow',  color: '#eab308', from: 'from-yellow-500',  to: 'to-amber-500',    bg: 'bg-yellow-50 dark:bg-yellow-950/30' },
+  { name: 'Green',   color: '#22c55e', from: 'from-green-500',   to: 'to-emerald-600',  bg: 'bg-green-50 dark:bg-green-950/30' },
+  { name: 'Teal',    color: '#14b8a6', from: 'from-teal-500',    to: 'to-cyan-600',     bg: 'bg-teal-50 dark:bg-teal-950/30' },
+  { name: 'Blue',    color: '#3b82f6', from: 'from-blue-500',    to: 'to-indigo-600',   bg: 'bg-blue-50 dark:bg-blue-950/30' },
+  { name: 'Indigo',  color: '#6366f1', from: 'from-indigo-500',  to: 'to-violet-600',   bg: 'bg-indigo-50 dark:bg-indigo-950/30' },
+  { name: 'Violet',  color: '#7c3aed', from: 'from-violet-500',  to: 'to-purple-600',   bg: 'bg-violet-50 dark:bg-violet-950/30' },
+  { name: 'Fuchsia', color: '#d946ef', from: 'from-fuchsia-500', to: 'to-pink-600',     bg: 'bg-fuchsia-50 dark:bg-fuchsia-950/30' },
+  { name: 'Rose',    color: '#f43f5e', from: 'from-rose-500',    to: 'to-pink-600',     bg: 'bg-rose-50 dark:bg-rose-950/30' },
+  { name: 'Christmas', color: '#C41E3A', from: 'from-red-500',   to: 'to-green-600',    bg: 'bg-red-50 dark:bg-red-950/30' },
+]
+
+const DEFAULT_THEME = COLOR_THEMES[0]
 
 const DEFAULT_FORM = {
   slug: '',
   display_name: '',
   description: '',
-  color: '#7c3aed',
-  gradient_from: 'from-purple-500',
-  gradient_to: 'to-violet-600',
-  gradient_bg: 'bg-purple-50 dark:bg-purple-950/30',
+  color: DEFAULT_THEME.color,
+  gradient_from: DEFAULT_THEME.from,
+  gradient_to: DEFAULT_THEME.to,
+  gradient_bg: DEFAULT_THEME.bg,
   cover_image_url: '',
   is_active: true,
   display_order: 0,
+}
+
+function detectTheme(from: string, to: string): string {
+  const match = COLOR_THEMES.find(t => t.from === from && t.to === to)
+  return match?.name || 'custom'
 }
 
 export default function AdminEditionsPage() {
@@ -30,6 +54,7 @@ export default function AdminEditionsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(DEFAULT_FORM)
+  const [selectedTheme, setSelectedTheme] = useState(DEFAULT_THEME.name)
   const [togglingId, setTogglingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -66,9 +91,22 @@ export default function AdminEditionsPage() {
     setForm(prev => ({
       ...prev,
       display_name: name,
-      // Auto-generate slug only when creating (not editing)
       ...(editingId ? {} : { slug: generateSlug(name) }),
     }))
+  }
+
+  const handleThemeChange = (themeName: string) => {
+    setSelectedTheme(themeName)
+    const theme = COLOR_THEMES.find(t => t.name === themeName)
+    if (theme) {
+      setForm(prev => ({
+        ...prev,
+        color: theme.color,
+        gradient_from: theme.from,
+        gradient_to: theme.to,
+        gradient_bg: theme.bg,
+      }))
+    }
   }
 
   const handleSubmit = async () => {
@@ -100,6 +138,7 @@ export default function AdminEditionsPage() {
 
       toast.success(editingId ? 'Edition updated!' : 'Edition created!')
       setForm(DEFAULT_FORM)
+      setSelectedTheme(DEFAULT_THEME.name)
       setEditingId(null)
       loadEditions()
     } catch (error) {
@@ -123,12 +162,14 @@ export default function AdminEditionsPage() {
       is_active: edition.is_active,
       display_order: edition.display_order,
     })
+    setSelectedTheme(detectTheme(edition.gradient_from, edition.gradient_to))
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleCancelEdit = () => {
     setEditingId(null)
     setForm(DEFAULT_FORM)
+    setSelectedTheme(DEFAULT_THEME.name)
   }
 
   const handleToggleActive = async (edition: EditionRecord) => {
@@ -218,24 +259,62 @@ export default function AdminEditionsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Brand Color (hex) *</Label>
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="color"
-                    value={form.color}
-                    onChange={(e) => setForm(prev => ({ ...prev, color: e.target.value }))}
-                    className="w-10 h-10 rounded cursor-pointer border-0"
+            {/* Color Theme Picker */}
+            <div className="space-y-2">
+              <Label>Color Theme *</Label>
+              <Select value={selectedTheme} onValueChange={handleThemeChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a color theme" />
+                </SelectTrigger>
+                <SelectContent>
+                  {COLOR_THEMES.map((theme) => (
+                    <SelectItem key={theme.name} value={theme.name}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="h-4 w-4 rounded-full border border-gray-200 dark:border-gray-700"
+                          style={{ backgroundColor: theme.color }}
+                        />
+                        {theme.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {/* Color swatches for quick preview */}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {COLOR_THEMES.map((theme) => (
+                  <button
+                    key={theme.name}
+                    type="button"
+                    onClick={() => handleThemeChange(theme.name)}
+                    title={theme.name}
+                    className={`h-8 w-8 rounded-full border-2 transition-all ${
+                      selectedTheme === theme.name
+                        ? 'border-gray-900 dark:border-white scale-110 shadow-md'
+                        : 'border-transparent hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: theme.color }}
                   />
-                  <Input
-                    value={form.color}
-                    onChange={(e) => setForm(prev => ({ ...prev, color: e.target.value }))}
-                    placeholder="#7c3aed"
-                    className="flex-1"
-                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Gradient Preview */}
+            <div className="space-y-2">
+              <Label>Preview</Label>
+              <div className={`rounded-xl overflow-hidden ${form.gradient_bg.split(' ').slice(0, 2).join(' ')}`}>
+                <div className={`h-2 bg-gradient-to-r ${form.gradient_from} ${form.gradient_to}`} />
+                <div className="p-4 flex items-center justify-between">
+                  <div>
+                    <p className="font-bold">{form.display_name || 'Edition Name'}</p>
+                    <p className="text-sm text-muted-foreground">Preview of how this will look</p>
+                  </div>
+                  <div className={`h-10 w-10 rounded-lg bg-gradient-to-r ${form.gradient_from} ${form.gradient_to}`} />
                 </div>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Display Order</Label>
                 <Input
@@ -245,45 +324,14 @@ export default function AdminEditionsPage() {
                   min="0"
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Gradient Classes</Label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Tailwind gradient classes for the edition card styling. Example: from-purple-500, to-violet-600
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label>Cover Image URL (optional)</Label>
                 <Input
-                  placeholder="from-purple-500"
-                  value={form.gradient_from}
-                  onChange={(e) => setForm(prev => ({ ...prev, gradient_from: e.target.value }))}
-                />
-                <Input
-                  placeholder="to-violet-600"
-                  value={form.gradient_to}
-                  onChange={(e) => setForm(prev => ({ ...prev, gradient_to: e.target.value }))}
-                />
-                <Input
-                  placeholder="bg-purple-50 dark:bg-purple-950/30"
-                  value={form.gradient_bg}
-                  onChange={(e) => setForm(prev => ({ ...prev, gradient_bg: e.target.value }))}
+                  placeholder="https://..."
+                  value={form.cover_image_url}
+                  onChange={(e) => setForm(prev => ({ ...prev, cover_image_url: e.target.value }))}
                 />
               </div>
-              {/* Gradient Preview */}
-              <div className="flex items-center gap-3 mt-2">
-                <span className="text-xs text-muted-foreground">Preview:</span>
-                <div className={`h-6 w-32 rounded-md bg-gradient-to-r ${form.gradient_from} ${form.gradient_to}`} />
-                <div className={`h-6 w-20 rounded-md ${form.gradient_bg.split(' ')[0]}`} />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Cover Image URL (optional)</Label>
-              <Input
-                placeholder="https://..."
-                value={form.cover_image_url}
-                onChange={(e) => setForm(prev => ({ ...prev, cover_image_url: e.target.value }))}
-              />
             </div>
 
             <div className="flex gap-3 pt-2">
