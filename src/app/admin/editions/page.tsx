@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import { useEditions } from '@/hooks/use-editions'
 import type { EditionRecord } from '@/types/database'
 
 const COLOR_THEMES = [
@@ -49,6 +50,7 @@ function detectTheme(from: string, to: string): string {
 
 export default function AdminEditionsPage() {
   const supabase = createClient()
+  const { invalidateCache } = useEditions()
   const [editions, setEditions] = useState<EditionRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -137,6 +139,7 @@ export default function AdminEditionsPage() {
       }
 
       toast.success(editingId ? 'Edition updated!' : 'Edition created!')
+      invalidateCache()
       setForm(DEFAULT_FORM)
       setSelectedTheme(DEFAULT_THEME.name)
       setEditingId(null)
@@ -187,6 +190,7 @@ export default function AdminEditionsPage() {
       }
 
       toast.success(`Edition ${edition.is_active ? 'deactivated' : 'activated'}`)
+      invalidateCache()
       loadEditions()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to toggle')
@@ -213,6 +217,7 @@ export default function AdminEditionsPage() {
       }
 
       toast.success('Edition deactivated')
+      invalidateCache()
       loadEditions()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete')
