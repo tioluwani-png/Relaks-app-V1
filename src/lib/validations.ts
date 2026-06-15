@@ -110,6 +110,94 @@ export const searchSchema = z.object({
 })
 
 // ==========================================
+// Reading Club - Books
+// ==========================================
+export const createBookSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(300, 'Title is too long').trim(),
+  author: z.string().min(1, 'Author is required').max(200, 'Author name is too long').trim(),
+  genre_id: z.string().uuid().optional().nullable(),
+  description: z.string().max(5000, 'Description is too long').optional().nullable(),
+  cover_url: z.string().url('Invalid cover URL').optional().nullable(),
+  isbn: z.string().max(20).optional().nullable(),
+  page_count: z.number().int().positive().optional().nullable(),
+  published_year: z.number().int().min(1000).max(new Date().getFullYear() + 1).optional().nullable(),
+})
+
+export const updateBookSchema = createBookSchema.partial()
+
+// ==========================================
+// Reading Club - Reading Status
+// ==========================================
+export const updateReadStatusSchema = z.object({
+  status: z.enum(['want_to_read', 'reading', 'read', 'dnf']),
+  rating: z.number().int().min(1).max(5).optional().nullable(),
+})
+
+// ==========================================
+// Reading Club - Book Requests
+// ==========================================
+export const createBookRequestSchema = z.object({
+  book_title: z.string().min(1, 'Book title is required').max(300, 'Title is too long').trim(),
+  author: z.string().max(200, 'Author name is too long').optional().nullable(),
+  reason: z.string().max(500, 'Reason is too long').optional().nullable(),
+})
+
+export const updateBookRequestSchema = z.object({
+  status: z.enum(['pending', 'approved', 'rejected', 'fulfilled']),
+  admin_notes: z.string().max(1000).optional().nullable(),
+  fulfilled_book_id: z.string().uuid().optional().nullable(),
+})
+
+// ==========================================
+// Reading Club - Reading Lists
+// ==========================================
+export const createReadingListSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(200, 'Title is too long').trim(),
+  description: z.string().max(1000, 'Description is too long').optional().nullable(),
+  is_public: z.boolean().default(true),
+})
+
+export const updateReadingListSchema = createReadingListSchema.partial()
+
+export const addBookToListSchema = z.object({
+  book_id: z.string().uuid(),
+  notes: z.string().max(500).optional().nullable(),
+})
+
+// ==========================================
+// Reading Club - Reviews
+// ==========================================
+export const createBookReviewSchema = z.object({
+  rating: z.number().int().min(1, 'Rating is required').max(5),
+  title: z.string().max(200, 'Title is too long').optional().nullable(),
+  body: z.string().min(10, 'Review must be at least 10 characters').max(5000, 'Review is too long').trim(),
+  is_spoiler: z.boolean().default(false),
+})
+
+export const updateBookReviewSchema = createBookReviewSchema.partial()
+
+// ==========================================
+// Reading Club - Comments
+// ==========================================
+export const createBookCommentSchema = z.object({
+  content: z.string().min(1, 'Comment cannot be empty').max(500, 'Comment is too long').trim(),
+  parent_id: z.string().uuid().optional().nullable(),
+})
+
+// ==========================================
+// Reading Club - Book Genres (Admin)
+// ==========================================
+export const createBookGenreSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100).trim(),
+  slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase with hyphens only'),
+  description: z.string().max(500).optional().nullable(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').default('#A855F7'),
+  display_order: z.number().int().min(0).default(0),
+})
+
+export const updateBookGenreSchema = createBookGenreSchema.partial()
+
+// ==========================================
 // Utility: validate and return typed data
 // ==========================================
 export function validate<T>(schema: z.ZodSchema<T>, data: unknown): {

@@ -17,6 +17,10 @@ export type VerificationType = 'staff' | 'creator' | 'brand' | 'notable'
 export type BlogPostStatus = 'draft' | 'published' | 'archived'
 export type BlogSubmissionStatus = 'pending' | 'approved' | 'rejected'
 
+// Reading Club types
+export type ReadingStatus = 'want_to_read' | 'reading' | 'read' | 'dnf'
+export type BookRequestStatus = 'pending' | 'approved' | 'rejected' | 'fulfilled'
+
 export interface Database {
   public: {
     Tables: {
@@ -673,6 +677,403 @@ export interface Database {
           created_at?: string
         }
       }
+      // ==========================================
+      // Reading Club Tables
+      // ==========================================
+      book_genres: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          description: string | null
+          color: string
+          display_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          description?: string | null
+          color?: string
+          display_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string
+          description?: string | null
+          color?: string
+          display_order?: number
+          created_at?: string
+        }
+      }
+      books: {
+        Row: {
+          id: string
+          title: string
+          author: string
+          genre_id: string | null
+          description: string | null
+          cover_url: string | null
+          isbn: string | null
+          page_count: number | null
+          published_year: number | null
+          like_count: number
+          save_count: number
+          review_count: number
+          is_active: boolean
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          author: string
+          genre_id?: string | null
+          description?: string | null
+          cover_url?: string | null
+          isbn?: string | null
+          page_count?: number | null
+          published_year?: number | null
+          like_count?: number
+          save_count?: number
+          review_count?: number
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          author?: string
+          genre_id?: string | null
+          description?: string | null
+          cover_url?: string | null
+          isbn?: string | null
+          page_count?: number | null
+          published_year?: number | null
+          like_count?: number
+          save_count?: number
+          review_count?: number
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      book_saves: {
+        Row: {
+          user_id: string
+          book_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          book_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          book_id?: string
+          created_at?: string
+        }
+      }
+      book_reads: {
+        Row: {
+          id: string
+          user_id: string
+          book_id: string
+          status: ReadingStatus
+          rating: number | null
+          started_at: string | null
+          finished_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          book_id: string
+          status?: ReadingStatus
+          rating?: number | null
+          started_at?: string | null
+          finished_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          book_id?: string
+          status?: ReadingStatus
+          rating?: number | null
+          started_at?: string | null
+          finished_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      book_requests: {
+        Row: {
+          id: string
+          user_id: string | null
+          book_title: string
+          author: string | null
+          reason: string | null
+          vote_count: number
+          status: BookRequestStatus
+          fulfilled_book_id: string | null
+          admin_notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          book_title: string
+          author?: string | null
+          reason?: string | null
+          vote_count?: number
+          status?: BookRequestStatus
+          fulfilled_book_id?: string | null
+          admin_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          book_title?: string
+          author?: string | null
+          reason?: string | null
+          vote_count?: number
+          status?: BookRequestStatus
+          fulfilled_book_id?: string | null
+          admin_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      book_request_votes: {
+        Row: {
+          user_id: string
+          request_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          request_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          request_id?: string
+          created_at?: string
+        }
+      }
+      reading_lists: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          description: string | null
+          cover_url: string | null
+          is_public: boolean
+          book_count: number
+          like_count: number
+          follower_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          description?: string | null
+          cover_url?: string | null
+          is_public?: boolean
+          book_count?: number
+          like_count?: number
+          follower_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          cover_url?: string | null
+          is_public?: boolean
+          book_count?: number
+          like_count?: number
+          follower_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      reading_list_items: {
+        Row: {
+          list_id: string
+          book_id: string
+          position: number
+          notes: string | null
+          added_at: string
+        }
+        Insert: {
+          list_id: string
+          book_id: string
+          position?: number
+          notes?: string | null
+          added_at?: string
+        }
+        Update: {
+          list_id?: string
+          book_id?: string
+          position?: number
+          notes?: string | null
+          added_at?: string
+        }
+      }
+      reading_list_follows: {
+        Row: {
+          user_id: string
+          list_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          list_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          list_id?: string
+          created_at?: string
+        }
+      }
+      book_reviews: {
+        Row: {
+          id: string
+          user_id: string
+          book_id: string
+          rating: number
+          title: string | null
+          body: string
+          like_count: number
+          is_spoiler: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          book_id: string
+          rating: number
+          title?: string | null
+          body: string
+          like_count?: number
+          is_spoiler?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          book_id?: string
+          rating?: number
+          title?: string | null
+          body?: string
+          like_count?: number
+          is_spoiler?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      book_likes: {
+        Row: {
+          user_id: string
+          book_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          book_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          book_id?: string
+          created_at?: string
+        }
+      }
+      book_comments: {
+        Row: {
+          id: string
+          user_id: string
+          book_id: string
+          parent_id: string | null
+          content: string
+          like_count: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          book_id: string
+          parent_id?: string | null
+          content: string
+          like_count?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          book_id?: string
+          parent_id?: string | null
+          content?: string
+          like_count?: number
+          created_at?: string
+        }
+      }
+      book_comment_likes: {
+        Row: {
+          user_id: string
+          comment_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          comment_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          comment_id?: string
+          created_at?: string
+        }
+      }
+      book_review_likes: {
+        Row: {
+          user_id: string
+          review_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          review_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          review_id?: string
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -689,6 +1090,8 @@ export interface Database {
       ai_style: AIStyle
       ai_complexity: AIComplexity
       user_role: UserRole
+      reading_status: ReadingStatus
+      book_request_status: BookRequestStatus
     }
   }
 }
@@ -738,4 +1141,58 @@ export type EditionRecord = Database['public']['Tables']['editions']['Row']
 export type UserProfile = User & {
   is_following?: boolean
   posts?: Post[]
+}
+
+// ==========================================
+// Reading Club Utility Types
+// ==========================================
+export type BookGenre = Database['public']['Tables']['book_genres']['Row']
+export type Book = Database['public']['Tables']['books']['Row']
+export type BookSave = Database['public']['Tables']['book_saves']['Row']
+export type BookRead = Database['public']['Tables']['book_reads']['Row']
+export type BookRequest = Database['public']['Tables']['book_requests']['Row']
+export type BookRequestVote = Database['public']['Tables']['book_request_votes']['Row']
+export type ReadingList = Database['public']['Tables']['reading_lists']['Row']
+export type ReadingListItem = Database['public']['Tables']['reading_list_items']['Row']
+export type ReadingListFollow = Database['public']['Tables']['reading_list_follows']['Row']
+export type BookReview = Database['public']['Tables']['book_reviews']['Row']
+export type BookLike = Database['public']['Tables']['book_likes']['Row']
+export type BookComment = Database['public']['Tables']['book_comments']['Row']
+export type BookCommentLike = Database['public']['Tables']['book_comment_likes']['Row']
+export type BookReviewLike = Database['public']['Tables']['book_review_likes']['Row']
+
+// Extended types with relations
+export type BookWithGenre = Book & {
+  genre: BookGenre | null
+  is_liked?: boolean
+  is_saved?: boolean
+  user_read_status?: ReadingStatus | null
+  user_rating?: number | null
+}
+
+export type BookReviewWithUser = BookReview & {
+  user: Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url' | 'is_verified' | 'verification_type'>
+  is_liked?: boolean
+}
+
+export type BookCommentWithUser = BookComment & {
+  user: Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url' | 'is_verified' | 'verification_type'>
+  replies?: BookCommentWithUser[]
+  is_liked?: boolean
+}
+
+export type ReadingListWithUser = ReadingList & {
+  user: Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url' | 'is_verified' | 'verification_type'>
+  is_following?: boolean
+}
+
+export type ReadingListWithBooks = ReadingList & {
+  user: Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url'>
+  books: Book[]
+  is_following?: boolean
+}
+
+export type BookRequestWithUser = BookRequest & {
+  user: Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url'> | null
+  has_voted?: boolean
 }

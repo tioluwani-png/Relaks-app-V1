@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Images, Plus, BookHeart, User } from 'lucide-react'
+import { Home, Images, Plus, Library, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 
@@ -24,9 +24,9 @@ const navItems = [
     isCenter: true,
   },
   {
-    href: '/journal',
-    icon: BookHeart,
-    label: 'Journal',
+    href: '/books',
+    icon: Library,
+    label: 'Books',
   },
   {
     href: '/profile',
