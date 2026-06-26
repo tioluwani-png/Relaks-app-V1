@@ -33,6 +33,7 @@ interface UseReadingListReturn {
   unfollow: () => Promise<void>
   addBook: (bookId: string, notes?: string) => Promise<boolean>
   removeBook: (bookId: string) => Promise<boolean>
+  updateBookNotes: (bookId: string, notes: string | null) => Promise<boolean>
   updateList: (data: { title?: string; description?: string; is_public?: boolean }) => Promise<boolean>
   deleteList: () => Promise<boolean>
   refresh: () => Promise<void>
@@ -166,6 +167,37 @@ export function useReadingList(id: string, currentUserId?: string): UseReadingLi
     }
   }
 
+  const updateBookNotes = async (bookId: string, notes: string | null): Promise<boolean> => {
+    if (!list) return false
+
+    // Optimistic update
+    setList({
+      ...list,
+      books: list.books.map(b =>
+        b.id === bookId ? { ...b, notes } : b
+      ),
+    })
+
+    try {
+      const response = await fetch(`/api/reading-lists/${id}/books`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ book_id: bookId, notes }),
+      })
+
+      if (!response.ok) {
+        await fetchList()
+        return false
+      }
+
+      return true
+    } catch (err) {
+      console.error('[useReadingList] Update notes failed:', err)
+      await fetchList()
+      return false
+    }
+  }
+
   const updateList = async (data: { title?: string; description?: string; is_public?: boolean }): Promise<boolean> => {
     if (!list) return false
 
@@ -223,6 +255,7 @@ export function useReadingList(id: string, currentUserId?: string): UseReadingLi
     unfollow,
     addBook,
     removeBook,
+    updateBookNotes,
     updateList,
     deleteList,
     refresh: fetchList,

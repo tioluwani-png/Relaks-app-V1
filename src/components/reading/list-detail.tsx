@@ -15,6 +15,8 @@ import {
   BookOpen,
   UserPlus,
   UserMinus,
+  StickyNote,
+  X,
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -59,6 +61,7 @@ export function ListDetail({ listId, currentUserId }: ListDetailProps) {
     follow,
     unfollow,
     removeBook,
+    updateBookNotes,
     updateList,
     deleteList,
   } = useReadingList(listId, currentUserId)
@@ -70,6 +73,13 @@ export function ListDetail({ listId, currentUserId }: ListDetailProps) {
   const [editIsPublic, setEditIsPublic] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Notes state
+  const [showNotesDialog, setShowNotesDialog] = useState(false)
+  const [notesBookId, setNotesBookId] = useState<string | null>(null)
+  const [notesBookTitle, setNotesBookTitle] = useState('')
+  const [notesContent, setNotesContent] = useState('')
+  const [isSavingNotes, setIsSavingNotes] = useState(false)
 
   const handleFollow = async () => {
     if (list?.is_following) {
@@ -132,6 +142,28 @@ export function ListDetail({ listId, currentUserId }: ListDetailProps) {
     } else {
       toast.error('Failed to remove book')
     }
+  }
+
+  const handleOpenNotes = (bookId: string, bookTitle: string, currentNotes: string | null) => {
+    setNotesBookId(bookId)
+    setNotesBookTitle(bookTitle)
+    setNotesContent(currentNotes || '')
+    setShowNotesDialog(true)
+  }
+
+  const handleSaveNotes = async () => {
+    if (!notesBookId) return
+
+    setIsSavingNotes(true)
+    const success = await updateBookNotes(notesBookId, notesContent.trim() || null)
+
+    if (success) {
+      toast.success('Notes saved')
+      setShowNotesDialog(false)
+    } else {
+      toast.error('Failed to save notes')
+    }
+    setIsSavingNotes(false)
   }
 
   if (isLoading) {
@@ -275,13 +307,36 @@ export function ListDetail({ listId, currentUserId }: ListDetailProps) {
               <div className="relative group">
                 <BookCard book={book} showActions={false} />
                 {isOwner && (
-                  <button
-                    onClick={() => handleRemoveBook(book.id, book.title)}
-                    className="absolute top-2 right-2 p-2 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Remove from list"
+                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleOpenNotes(book.id, book.title, book.notes)}
+                      className={cn(
+                        "p-2 rounded-full text-white transition-colors",
+                        book.notes
+                          ? "bg-purple-500 hover:bg-purple-600"
+                          : "bg-gray-500 hover:bg-gray-600"
+                      )}
+                      title={book.notes ? "Edit notes" : "Add notes"}
+                    >
+                      <StickyNote className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleRemoveBook(book.id, book.title)}
+                      className="p-2 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors"
+                      title="Remove from list"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+                {/* Show notes indicator */}
+                {book.notes && (
+                  <div
+                    className="absolute bottom-2 left-2 right-2 p-2 bg-black/70 rounded-lg text-white text-xs line-clamp-2 cursor-pointer"
+                    onClick={() => isOwner && handleOpenNotes(book.id, book.title, book.notes)}
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                    {book.notes}
+                  </div>
                 )}
               </div>
             </FadeIn>
@@ -383,6 +438,46 @@ export function ListDetail({ listId, currentUserId }: ListDetailProps) {
                 </>
               ) : (
                 'Delete'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Notes Dialog */}
+      <Dialog open={showNotesDialog} onOpenChange={setShowNotesDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Notes for &quot;{notesBookTitle}&quot;</DialogTitle>
+            <DialogDescription>
+              Add personal notes about this book in your list
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              value={notesContent}
+              onChange={(e) => setNotesContent(e.target.value)}
+              placeholder="Why did you add this book? What do you want to remember about it?"
+              rows={4}
+              disabled={isSavingNotes}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNotesDialog(false)}
+              disabled={isSavingNotes}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveNotes} disabled={isSavingNotes}>
+              {isSavingNotes ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : (
+                'Save Notes'
               )}
             </Button>
           </DialogFooter>

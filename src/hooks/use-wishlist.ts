@@ -21,20 +21,14 @@ export function useWishlist(): UseWishlistReturn {
     setError(null)
 
     try {
-      // Fetch all books and filter by saved status on the server
-      // For better UX, we could create a dedicated wishlist endpoint
-      const response = await fetch('/api/books?limit=100')
+      const response = await fetch('/api/wishlist')
       const data = await response.json()
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to fetch wishlist')
       }
 
-      // Filter to only saved books
-      const savedBooks = (data.books || []).filter(
-        (book: BookWithGenre) => book.is_saved
-      )
-      setBooks(savedBooks)
+      setBooks(data.books || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {

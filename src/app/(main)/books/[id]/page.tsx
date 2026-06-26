@@ -36,12 +36,16 @@ export async function generateMetadata({ params }: BookPageProps): Promise<Metad
 
 export default async function BookPage({ params }: BookPageProps) {
   const { id } = await params
+  const supabase = await createClient()
 
   // Validate UUID format
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (!uuidRegex.test(id)) {
     notFound()
   }
+
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser()
 
   return (
     <div className="min-h-screen pb-24">
@@ -50,7 +54,7 @@ export default async function BookPage({ params }: BookPageProps) {
 
         {/* Reviews Section */}
         <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-6">
-          <BookReviews bookId={id} />
+          <BookReviews bookId={id} currentUserId={user?.id} />
         </div>
 
         {/* Comments Section */}

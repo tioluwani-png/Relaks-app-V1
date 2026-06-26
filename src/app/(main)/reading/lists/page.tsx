@@ -1,20 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft, Plus, ListTree, Loader2 } from 'lucide-react'
+import { ArrowLeft, Plus, ListTree, Loader2, Compass } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useReadingLists } from '@/hooks/use-reading-lists'
 import { FadeIn } from '@/components/shared/motion'
+import { NewListDialog } from '@/components/reading/new-list-dialog'
 
 export default function ReadingListsPage() {
   const { lists, isLoading, error, createList } = useReadingLists({ mine: true })
-
-  const handleCreateList = async () => {
-    const title = prompt('Enter list name:')
-    if (title?.trim()) {
-      await createList({ title: title.trim(), is_public: true })
-    }
-  }
 
   return (
     <div className="min-h-screen pb-24">
@@ -38,10 +32,23 @@ export default function ReadingListsPage() {
                 </p>
               </div>
             </div>
-            <Button onClick={handleCreateList} size="sm" className="gap-2">
-              <Plus className="h-4 w-4" />
-              New List
-            </Button>
+            <div className="flex items-center gap-2">
+              <Link href="/reading/lists/discover">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Compass className="h-4 w-4" />
+                  Discover
+                </Button>
+              </Link>
+              <NewListDialog
+                onSubmit={createList}
+                trigger={
+                  <Button size="sm" className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    New List
+                  </Button>
+                }
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -67,10 +74,15 @@ export default function ReadingListsPage() {
             <p className="text-gray-500 dark:text-gray-400 max-w-sm mb-4">
               Create reading lists to organize and share your favorite books
             </p>
-            <Button onClick={handleCreateList} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Create your first list
-            </Button>
+            <NewListDialog
+              onSubmit={createList}
+              trigger={
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create your first list
+                </Button>
+              }
+            />
           </FadeIn>
         ) : (
           <div className="space-y-4">
