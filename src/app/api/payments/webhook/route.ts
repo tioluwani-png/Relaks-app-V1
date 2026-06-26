@@ -65,7 +65,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Order not found' }, { status: 404 })
       }
 
-      if (order.status !== 'pending') {
+      // Cast to proper type
+      const orderTyped = order as { id: string; status: string }
+
+      if (orderTyped.status !== 'pending') {
         console.log('Rental order already processed:', order_id)
         return NextResponse.json({ received: true })
       }

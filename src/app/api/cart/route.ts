@@ -35,8 +35,23 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Cast to proper type since cart_items is a new table
+    type CartItemRow = {
+      id: string
+      user_id: string
+      book_id: string
+      created_at: string
+      book: {
+        id: string
+        title: string
+        author: string
+        cover_url: string | null
+        description: string | null
+      } | null
+    }
+
     // Transform to CartItemWithBook format
-    const items = (cartItems || []).map(item => ({
+    const items = ((cartItems || []) as CartItemRow[]).map(item => ({
       id: item.id,
       user_id: item.user_id,
       book_id: item.book_id,
@@ -107,9 +122,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
+    // Cast to proper type
+    const cartItemTyped = cartItem as { id: string; user_id: string; book_id: string; created_at: string }
+
     // Return with book data
     const item = {
-      ...cartItem,
+      ...cartItemTyped,
       book,
     }
 

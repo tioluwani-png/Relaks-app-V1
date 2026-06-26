@@ -43,11 +43,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const nextCursor = orders && orders.length === limit
-      ? orders[orders.length - 1].created_at
+    // Cast to proper type since rental_orders is a new table
+    const ordersTyped = (orders || []) as Array<{ created_at: string; [key: string]: unknown }>
+
+    const nextCursor = ordersTyped.length === limit
+      ? ordersTyped[ordersTyped.length - 1].created_at
       : null
 
-    return NextResponse.json({ orders, nextCursor })
+    return NextResponse.json({ orders: ordersTyped, nextCursor })
   } catch (error) {
     console.error('Error fetching orders:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -126,9 +129,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: orderError.message }, { status: 500 })
     }
 
+    // Cast to proper type
+    const orderTyped = order as { id: string; [key: string]: unknown }
+
     // Create order items
     const orderItems = cartItemsArray.map(item => ({
-      order_id: order.id,
+      order_id: orderTyped.id,
       book_id: item.book_id,
       price: BOOK_RENTAL_PRICE,
     }))
@@ -139,11 +145,11 @@ export async function POST(request: NextRequest) {
 
     if (itemsError) {
       // Clean up the order if items failed
-      await supabase.from('rental_orders').delete().eq('id', order.id)
+      await supabase.from('rental_orders').delete().eq('id', orderTyped.id)
       return NextResponse.json({ error: itemsError.message }, { status: 500 })
     }
 
-    return NextResponse.json({ order }, { status: 201 })
+    return NextResponse.json({ order: orderTyped }, { status: 201 })
   } catch (error) {
     console.error('Error creating order:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

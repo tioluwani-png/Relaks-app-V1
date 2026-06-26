@@ -29,8 +29,16 @@ export async function POST(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
 
+    // Cast to proper type since rental_orders is a new table
+    const orderTyped = order as {
+      id: string
+      status: string
+      email: string
+      total: number
+    }
+
     // Check if order is already paid
-    if (order.status !== 'pending') {
+    if (orderTyped.status !== 'pending') {
       return NextResponse.json({ error: 'Order is already processed' }, { status: 400 })
     }
 
@@ -53,8 +61,8 @@ export async function POST(
 
     // Initialize Paystack payment
     const paystackResponse = await initializePayment(
-      order.email,
-      order.total, // Already in kobo
+      orderTyped.email,
+      orderTyped.total, // Already in kobo
       reference,
       {
         order_id: id,

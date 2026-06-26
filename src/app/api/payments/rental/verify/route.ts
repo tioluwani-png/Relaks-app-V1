@@ -42,8 +42,11 @@ export async function GET(request: NextRequest) {
       }, { status: 404 })
     }
 
+    // Cast to proper type
+    const orderTyped = order as { id: string; user_id: string; status: string }
+
     // Verify user owns this order
-    if (order.user_id !== user.id) {
+    if (orderTyped.user_id !== user.id) {
       return NextResponse.json({
         status: 'failed',
         message: 'Unauthorized',
@@ -51,11 +54,11 @@ export async function GET(request: NextRequest) {
     }
 
     // If already processed, just return success
-    if (order.status !== 'pending') {
+    if (orderTyped.status !== 'pending') {
       return NextResponse.json({
         status: 'success',
         message: 'Order already processed',
-        order_id: order.id,
+        order_id: orderTyped.id,
       })
     }
 
@@ -66,7 +69,7 @@ export async function GET(request: NextRequest) {
         status: 'paid',
         paid_at: new Date().toISOString(),
       } as never)
-      .eq('id', order.id)
+      .eq('id', orderTyped.id)
 
     if (updateError) {
       console.error('Error updating order:', updateError)
@@ -85,7 +88,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       status: 'success',
       message: 'Payment verified successfully',
-      order_id: order.id,
+      order_id: orderTyped.id,
     })
   } catch (error) {
     console.error('Error verifying rental payment:', error)
