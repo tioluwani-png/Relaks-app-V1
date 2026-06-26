@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Plus, Loader2, Pencil, Trash2, Eye, EyeOff, Search, BookOpen } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Plus, Loader2, Pencil, Trash2, Eye, EyeOff, Search, BookOpen, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import { uploadBookCover, validateImageFile, fileToDataUrl } from '@/lib/upload'
 import type { Book, BookGenre } from '@/types/database'
 import Image from 'next/image'
 
@@ -47,6 +48,12 @@ export default function AdminBooksPage() {
   const [form, setForm] = useState(DEFAULT_FORM)
   const [searchQuery, setSearchQuery] = useState('')
   const [togglingId, setTogglingId] = useState<string | null>(null)
+
+  // Cover image upload state
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     loadBooks()
@@ -82,6 +89,32 @@ export default function AdminBooksPage() {
     setGenres(data || [])
   }
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file
+    const validation = await validateImageFile(file)
+    if (!validation.valid) {
+      toast.error(validation.error)
+      return
+    }
+
+    setCoverFile(file)
+
+    // Create preview
+    const preview = await fileToDataUrl(file)
+    setCoverPreview(preview)
+  }
+
+  const clearCoverFile = () => {
+    setCoverFile(null)
+    setCoverPreview(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.title.trim() || !form.author.trim()) {
@@ -92,12 +125,29 @@ export default function AdminBooksPage() {
     setIsSaving(true)
 
     try {
+      let coverUrl = form.cover_url.trim() || null
+
+      // Upload cover image if a new file is selected
+      if (coverFile) {
+        setIsUploading(true)
+        try {
+          coverUrl = await uploadBookCover(coverFile, editingId || undefined)
+        } catch (uploadError) {
+          console.error('Cover upload failed:', uploadError)
+          toast.error('Failed to upload cover image')
+          setIsUploading(false)
+          setIsSaving(false)
+          return
+        }
+        setIsUploading(false)
+      }
+
       const payload = {
         title: form.title.trim(),
         author: form.author.trim(),
         genre_id: form.genre_id || null,
         description: form.description.trim() || null,
-        cover_url: form.cover_url.trim() || null,
+        cover_url: coverUrl,
         isbn: form.isbn.trim() || null,
         page_count: form.page_count ? parseInt(form.page_count) : null,
         published_year: form.published_year ? parseInt(form.published_year) : null,
@@ -120,6 +170,8 @@ export default function AdminBooksPage() {
 
       toast.success(editingId ? 'Book updated!' : 'Book created!')
       setForm(DEFAULT_FORM)
+      setCoverFile(null)
+      setCoverPreview(null)
       setEditingId(null)
       setIsDialogOpen(false)
       loadBooks()
@@ -142,6 +194,9 @@ export default function AdminBooksPage() {
       page_count: book.page_count?.toString() || '',
       published_year: book.published_year?.toString() || '',
     })
+    // Reset file state when editing
+    setCoverFile(null)
+    setCoverPreview(null)
     setEditingId(book.id)
     setIsDialogOpen(true)
   }
@@ -196,6 +251,8 @@ export default function AdminBooksPage() {
 
   const openNewDialog = () => {
     setForm(DEFAULT_FORM)
+    setCoverFile(null)
+    setCoverPreview(null)
     setEditingId(null)
     setIsDialogOpen(true)
   }
@@ -392,13 +449,71 @@ export default function AdminBooksPage() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <Label>Cover Image URL</Label>
-                <Input
-                  value={form.cover_url}
-                  onChange={(e) => setForm({ ...form, cover_url: e.target.value })}
-                  placeholder="https://..."
-                  disabled={isSaving}
-                />
+                <Label>Cover Image</Label>
+                <div className="mt-2">
+                  {/* Preview */}
+                  {(coverPreview || form.cover_url) && (
+                    <div className="relative w-32 h-48 mb-3 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                      <Image
+                        src={coverPreview || form.cover_url}
+                        alt="Cover preview"
+                        fill
+                        className="object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearCoverFile()
+                          setForm({ ...form, cover_url: '' })
+                        }}
+                        className="absolute top-1 right-1 p-1 rounded-full bg-red-500 text-white hover:bg-red-600"
+                        disabled={isSaving}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Upload Area */}
+                  {!coverPreview && !form.cover_url && (
+                    <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg cursor-pointer hover:border-purple-500 transition-colors">
+                      <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                      <span className="text-sm text-gray-500">Click to upload cover image</span>
+                      <span className="text-xs text-gray-400 mt-1">JPEG, PNG, WebP (max 10MB)</span>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        disabled={isSaving}
+                      />
+                    </label>
+                  )}
+
+                  {/* Change Image Button */}
+                  {(coverPreview || form.cover_url) && (
+                    <label className="inline-flex items-center gap-2 px-3 py-2 text-sm border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                      <Upload className="h-4 w-4" />
+                      Change Image
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        disabled={isSaving}
+                      />
+                    </label>
+                  )}
+
+                  {isUploading && (
+                    <div className="flex items-center gap-2 mt-2 text-sm text-purple-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading cover image...
+                    </div>
+                  )}
+                </div>
               </div>
               <div>
                 <Label>ISBN</Label>

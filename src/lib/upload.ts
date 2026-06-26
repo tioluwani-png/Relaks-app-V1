@@ -166,6 +166,37 @@ export async function uploadAvatar(file: File, userId: string): Promise<string> 
   return uploadToSupabase(compressed, 'avatars', filename)
 }
 
+export async function uploadBookCover(file: File, bookId?: string): Promise<string> {
+  // Validate file before uploading
+  const validation = await validateImageFile(file)
+  if (!validation.valid) {
+    throw new Error(validation.error)
+  }
+
+  const extension = getSafeExtension(file.type)
+  const timestamp = Date.now()
+  const randomId = Math.random().toString(36).substring(2, 9)
+  const filename = bookId
+    ? `${bookId}/cover.${extension}`
+    : `${timestamp}-${randomId}.${extension}`
+
+  // Compress for book covers - good quality but reasonable size
+  const compressed = await compressImage(file, {
+    maxSizeMB: 1,
+    maxWidthOrHeight: 800,
+  })
+
+  // If updating existing book, try to delete old cover first
+  if (bookId) {
+    const supabase = createClient()
+    await supabase.storage.from('book-covers').remove([filename]).catch(() => {
+      // Ignore errors if file doesn't exist
+    })
+  }
+
+  return uploadToSupabase(compressed, 'book-covers', filename)
+}
+
 export function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image()
