@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Heart, Bookmark, BookOpen, Check, X, Star } from 'lucide-react'
+import { Heart, Bookmark, BookOpen, Check, X, Star, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -17,12 +17,15 @@ interface BookActionsProps {
   bookId: string
   isLiked: boolean
   isSaved: boolean
+  isInCart?: boolean
   readStatus: ReadingStatus | null
   likeCount: number
   saveCount: number
   onLike: () => Promise<void>
   onSave: () => Promise<void>
   onReadStatusChange: (status: ReadingStatus) => Promise<void>
+  onAddToCart?: () => Promise<void>
+  showCartButton?: boolean
 }
 
 const readingStatusLabels: Record<ReadingStatus, { label: string; icon: React.ReactNode }> = {
@@ -36,15 +39,19 @@ export function BookActions({
   bookId,
   isLiked,
   isSaved,
+  isInCart = false,
   readStatus,
   likeCount,
   saveCount,
   onLike,
   onSave,
   onReadStatusChange,
+  onAddToCart,
+  showCartButton = true,
 }: BookActionsProps) {
   const [isLikeLoading, setIsLikeLoading] = useState(false)
   const [isSaveLoading, setIsSaveLoading] = useState(false)
+  const [isCartLoading, setIsCartLoading] = useState(false)
 
   const handleLike = async () => {
     if (isLikeLoading) return
@@ -63,6 +70,16 @@ export function BookActions({
       await onSave()
     } finally {
       setIsSaveLoading(false)
+    }
+  }
+
+  const handleAddToCart = async () => {
+    if (isCartLoading || !onAddToCart || isInCart) return
+    setIsCartLoading(true)
+    try {
+      await onAddToCart()
+    } finally {
+      setIsCartLoading(false)
     }
   }
 
@@ -99,6 +116,24 @@ export function BookActions({
         <Bookmark className={cn('h-5 w-5', isSaved && 'fill-current')} />
         <span>{saveCount}</span>
       </motion.button>
+
+      {/* Cart Button */}
+      {showCartButton && onAddToCart && (
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={handleAddToCart}
+          disabled={isCartLoading || isInCart}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors',
+            isInCart
+              ? 'bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400'
+              : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600'
+          )}
+        >
+          <ShoppingCart className={cn('h-5 w-5', isInCart && 'fill-current')} />
+          <span>{isInCart ? 'In Cart' : 'Rent'}</span>
+        </motion.button>
+      )}
 
       {/* Reading Status Dropdown */}
       <DropdownMenu>

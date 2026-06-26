@@ -40,12 +40,58 @@ export async function POST(request: NextRequest) {
 
     const { data } = event
     const { reference, metadata, amount } = data
-    const { user_id, type, page_id } = metadata
+    const { user_id, type, page_id, order_id } = metadata
 
     // 3. Validate metadata exists
     if (!user_id || !type) {
       console.error('Webhook missing metadata:', { reference, metadata })
       return NextResponse.json({ error: 'Invalid metadata' }, { status: 400 })
+    }
+
+    // Handle rental payments separately
+    if (type === 'rental' && order_id) {
+      const supabase = await createAdminClient()
+
+      // Check if already processed
+      const { data: order } = await supabase
+        .from('rental_orders')
+        .select('id, status')
+        .eq('id', order_id)
+        .eq('payment_reference', reference)
+        .single()
+
+      if (!order) {
+        console.error('Rental order not found:', { order_id, reference })
+        return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+      }
+
+      if (order.status !== 'pending') {
+        console.log('Rental order already processed:', order_id)
+        return NextResponse.json({ received: true })
+      }
+
+      // Update order status
+      const { error: updateError } = await supabase
+        .from('rental_orders')
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+        } as never)
+        .eq('id', order_id)
+
+      if (updateError) {
+        console.error('Failed to update rental order:', updateError)
+        return NextResponse.json({ error: 'Failed to update order' }, { status: 500 })
+      }
+
+      // Clear user's cart
+      await supabase
+        .from('cart_items')
+        .delete()
+        .eq('user_id', user_id)
+
+      console.log('Rental payment processed:', { reference, order_id, user_id, amount })
+      return NextResponse.json({ received: true })
     }
 
     // 4. Verify amount matches expected price

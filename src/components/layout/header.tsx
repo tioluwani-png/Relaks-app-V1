@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Bell, BookOpen, Search, Trophy } from 'lucide-react'
+import { ArrowLeft, Bell, BookOpen, Search, Trophy, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/use-auth'
+import { useCartStore } from '@/stores/cart-store'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface HeaderProps {
@@ -14,6 +15,7 @@ interface HeaderProps {
   showBack?: boolean
   showSearch?: boolean
   showNotifications?: boolean
+  showCart?: boolean
 }
 
 export function Header({
@@ -21,10 +23,19 @@ export function Header({
   showBack = false,
   showSearch = true,
   showNotifications = true,
+  showCart = true,
 }: HeaderProps) {
   const router = useRouter()
   const { profile, isAuthenticated } = useAuth()
+  const { items, fetchCart, isInitialized } = useCartStore()
   const [unreadCount, setUnreadCount] = useState(0)
+
+  // Fetch cart on mount
+  useEffect(() => {
+    if (isAuthenticated && !isInitialized) {
+      fetchCart()
+    }
+  }, [isAuthenticated, isInitialized, fetchCart])
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -91,6 +102,19 @@ export function Header({
               <Link href="/search">
                 <Search className="h-5 w-5" />
                 <span className="sr-only">Search</span>
+              </Link>
+            </Button>
+          )}
+          {showCart && (
+            <Button variant="ghost" size="icon" className="relative rounded-xl" asChild>
+              <Link href="/checkout">
+                <ShoppingCart className="h-5 w-5" />
+                {items.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full gradient-purple-pink text-white text-[10px] flex items-center justify-center font-bold">
+                    {items.length > 9 ? '9+' : items.length}
+                  </span>
+                )}
+                <span className="sr-only">Cart</span>
               </Link>
             </Button>
           )}

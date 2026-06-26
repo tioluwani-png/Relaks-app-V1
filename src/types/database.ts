@@ -21,6 +21,9 @@ export type BlogSubmissionStatus = 'pending' | 'approved' | 'rejected'
 export type ReadingStatus = 'want_to_read' | 'reading' | 'read' | 'dnf'
 export type BookRequestStatus = 'pending' | 'approved' | 'rejected' | 'fulfilled'
 
+// Rental/Cart types
+export type RentalOrderStatus = 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'returned' | 'cancelled'
+
 export interface Database {
   public: {
     Tables: {
@@ -1074,6 +1077,120 @@ export interface Database {
           created_at?: string
         }
       }
+      // ==========================================
+      // Cart & Rental Tables
+      // ==========================================
+      cart_items: {
+        Row: {
+          id: string
+          user_id: string
+          book_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          book_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          book_id?: string
+          created_at?: string
+        }
+      }
+      rental_orders: {
+        Row: {
+          id: string
+          user_id: string
+          status: RentalOrderStatus
+          subtotal: number
+          delivery_fee: number
+          total: number
+          full_name: string
+          phone: string
+          email: string
+          address: string
+          city: string
+          state: string
+          landmark: string | null
+          delivery_notes: string | null
+          payment_reference: string | null
+          paid_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          status?: RentalOrderStatus
+          subtotal: number
+          delivery_fee: number
+          total: number
+          full_name: string
+          phone: string
+          email: string
+          address: string
+          city: string
+          state: string
+          landmark?: string | null
+          delivery_notes?: string | null
+          payment_reference?: string | null
+          paid_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          status?: RentalOrderStatus
+          subtotal?: number
+          delivery_fee?: number
+          total?: number
+          full_name?: string
+          phone?: string
+          email?: string
+          address?: string
+          city?: string
+          state?: string
+          landmark?: string | null
+          delivery_notes?: string | null
+          payment_reference?: string | null
+          paid_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      rental_order_items: {
+        Row: {
+          id: string
+          order_id: string
+          book_id: string
+          price: number
+          rental_start_date: string | null
+          rental_end_date: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          book_id: string
+          price: number
+          rental_start_date?: string | null
+          rental_end_date?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          book_id?: string
+          price?: number
+          rental_start_date?: string | null
+          rental_end_date?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -1092,6 +1209,7 @@ export interface Database {
       user_role: UserRole
       reading_status: ReadingStatus
       book_request_status: BookRequestStatus
+      rental_order_status: RentalOrderStatus
     }
   }
 }
@@ -1196,4 +1314,21 @@ export type ReadingListWithBooks = ReadingList & {
 export type BookRequestWithUser = BookRequest & {
   user: Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url'> | null
   has_voted?: boolean
+}
+
+// ==========================================
+// Cart & Rental Utility Types
+// ==========================================
+export type CartItem = Database['public']['Tables']['cart_items']['Row']
+export type RentalOrder = Database['public']['Tables']['rental_orders']['Row']
+export type RentalOrderItem = Database['public']['Tables']['rental_order_items']['Row']
+
+export type CartItemWithBook = CartItem & {
+  book: Book
+}
+
+export type RentalOrderWithItems = RentalOrder & {
+  items: (RentalOrderItem & {
+    book: Pick<Book, 'id' | 'title' | 'author' | 'cover_url'>
+  })[]
 }
