@@ -13,11 +13,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: list } = await supabase
+  const { data } = await supabase
     .from('reading_lists')
     .select('title, description, is_public')
     .eq('id', id)
     .single()
+
+  const list = data as { title: string; description: string | null; is_public: boolean } | null
 
   if (!list || !list.is_public) {
     return {

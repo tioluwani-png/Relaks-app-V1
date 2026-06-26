@@ -28,12 +28,14 @@ export async function POST(
     }
 
     // Verify comment exists and belongs to this book
-    const { data: comment } = await supabase
+    const { data: commentData } = await supabase
       .from('book_comments')
       .select('id, like_count')
       .eq('id', comment_id)
       .eq('book_id', book_id)
       .single()
+
+    const comment = commentData as { id: string; like_count: number } | null
 
     if (!comment) {
       return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
@@ -76,11 +78,13 @@ export async function DELETE(
     }
 
     // Get current like count
-    const { data: comment } = await supabase
+    const { data: commentData } = await supabase
       .from('book_comments')
       .select('like_count')
       .eq('id', comment_id)
       .single()
+
+    const comment = commentData as { like_count: number } | null
 
     // Delete like and update count
     const [deleteResult] = await Promise.all([

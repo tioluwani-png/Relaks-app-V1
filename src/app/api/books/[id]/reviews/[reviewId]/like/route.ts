@@ -28,19 +28,21 @@ export async function POST(
     }
 
     // Verify review exists and belongs to this book
-    const { data: review } = await supabase
+    const { data: reviewData } = await supabase
       .from('book_reviews')
       .select('id, like_count')
       .eq('id', review_id)
       .eq('book_id', book_id)
       .single()
 
+    const review = reviewData as { id: string; like_count: number } | null
+
     if (!review) {
       return NextResponse.json({ error: 'Review not found' }, { status: 404 })
     }
 
     // Insert like and update count in parallel
-    const [insertResult, updateResult] = await Promise.all([
+    const [insertResult] = await Promise.all([
       supabase
         .from('book_review_likes')
         .insert({ user_id: user.id, review_id } as never),
@@ -76,11 +78,13 @@ export async function DELETE(
     }
 
     // Get current like count
-    const { data: review } = await supabase
+    const { data: reviewData } = await supabase
       .from('book_reviews')
       .select('like_count')
       .eq('id', review_id)
       .single()
+
+    const review = reviewData as { like_count: number } | null
 
     // Delete like and update count
     const [deleteResult] = await Promise.all([

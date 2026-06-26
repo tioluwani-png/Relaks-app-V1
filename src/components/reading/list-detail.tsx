@@ -99,7 +99,7 @@ export function ListDetail({ listId, currentUserId }: ListDetailProps) {
     setIsSaving(true)
     const success = await updateList({
       title: editTitle.trim(),
-      description: editDescription.trim() || null,
+      description: editDescription.trim() || undefined,
       is_public: editIsPublic,
     })
 
