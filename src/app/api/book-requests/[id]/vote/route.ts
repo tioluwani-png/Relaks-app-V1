@@ -27,12 +27,31 @@ export async function POST(
       return NextResponse.json({ error: 'Already voted' }, { status: 400 })
     }
 
-    const { error } = await supabase
-      .from('book_request_votes')
-      .insert({ user_id: user.id, request_id } as never)
+    // Get current vote count
+    const { data: requestData } = await supabase
+      .from('book_requests')
+      .select('vote_count')
+      .eq('id', request_id)
+      .single()
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    const requestInfo = requestData as { vote_count: number } | null
+    if (!requestInfo) {
+      return NextResponse.json({ error: 'Request not found' }, { status: 404 })
+    }
+
+    // Insert vote and update count in parallel
+    const [insertResult] = await Promise.all([
+      supabase
+        .from('book_request_votes')
+        .insert({ user_id: user.id, request_id } as never),
+      supabase
+        .from('book_requests')
+        .update({ vote_count: (requestInfo.vote_count || 0) + 1 } as never)
+        .eq('id', request_id),
+    ])
+
+    if (insertResult.error) {
+      return NextResponse.json({ error: insertResult.error.message }, { status: 500 })
     }
 
     return NextResponse.json({ voted: true }, { status: 201 })
@@ -56,14 +75,30 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { error } = await supabase
-      .from('book_request_votes')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('request_id', request_id)
+    // Get current vote count
+    const { data: requestData } = await supabase
+      .from('book_requests')
+      .select('vote_count')
+      .eq('id', request_id)
+      .single()
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    const requestInfo = requestData as { vote_count: number } | null
+
+    // Delete vote and update count in parallel
+    const [deleteResult] = await Promise.all([
+      supabase
+        .from('book_request_votes')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('request_id', request_id),
+      supabase
+        .from('book_requests')
+        .update({ vote_count: Math.max(0, (requestInfo?.vote_count || 1) - 1) } as never)
+        .eq('id', request_id),
+    ])
+
+    if (deleteResult.error) {
+      return NextResponse.json({ error: deleteResult.error.message }, { status: 500 })
     }
 
     return NextResponse.json({ voted: false })

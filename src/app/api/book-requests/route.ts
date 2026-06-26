@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
       .from('book_requests')
       .insert({
         user_id: user.id,
+        vote_count: 1, // Initialize with 1 since user auto-votes
         ...validation.data,
       } as never)
       .select(`

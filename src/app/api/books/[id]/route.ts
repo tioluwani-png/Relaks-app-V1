@@ -26,9 +26,21 @@ export async function GET(
       return NextResponse.json({ error: 'Book not found' }, { status: 404 })
     }
 
+    // Calculate average rating from reviews
+    const { data: ratingData } = await supabase
+      .from('book_reviews')
+      .select('rating')
+      .eq('book_id', id)
+
+    const ratings = (ratingData || []) as { rating: number }[]
+    const averageRating = ratings.length > 0
+      ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
+      : null
+
     // Get user's interaction with this book
-    const bookData = book as Record<string, unknown>
-    let bookWithUserData = bookData
+    const bookObject = book as Record<string, unknown>
+    const bookData: Record<string, unknown> = { ...bookObject, average_rating: averageRating }
+    let bookWithUserData: Record<string, unknown> = bookData
     if (user) {
       const [likeResult, saveResult, readResult] = await Promise.all([
         supabase

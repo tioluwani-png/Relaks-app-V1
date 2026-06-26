@@ -130,11 +130,11 @@ export function BookDetail({ bookId }: BookDetailProps) {
           )}
 
           {/* Rating */}
-          {book.review_count > 0 && (
+          {book.review_count > 0 && book.average_rating && (
             <div className="flex items-center gap-2 mt-3">
-              <StarRating rating={4} size="sm" />
+              <StarRating rating={Math.round(book.average_rating)} size="sm" />
               <span className="text-sm text-gray-500">
-                ({book.review_count} reviews)
+                {book.average_rating.toFixed(1)} ({book.review_count} {book.review_count === 1 ? 'review' : 'reviews'})
               </span>
             </div>
           )}

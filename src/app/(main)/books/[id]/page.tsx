@@ -1,4 +1,6 @@
 import { BookDetail } from '@/components/books/book-detail'
+import { BookReviews } from '@/components/books/book-reviews'
+import { BookComments } from '@/components/books/book-comments'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
@@ -43,8 +45,18 @@ export default async function BookPage({ params }: BookPageProps) {
 
   return (
     <div className="min-h-screen pb-24">
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-8">
         <BookDetail bookId={id} />
+
+        {/* Reviews Section */}
+        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-6">
+          <BookReviews bookId={id} />
+        </div>
+
+        {/* Comments Section */}
+        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-6">
+          <BookComments bookId={id} />
+        </div>
       </div>
     </div>
   )

@@ -1168,6 +1168,7 @@ export type BookWithGenre = Book & {
   is_saved?: boolean
   user_read_status?: ReadingStatus | null
   user_rating?: number | null
+  average_rating?: number | null
 }
 
 export type BookReviewWithUser = BookReview & {

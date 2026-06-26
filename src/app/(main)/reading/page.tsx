@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { BookMarked, History, ListTree, ChevronRight } from 'lucide-react'
+import { BookMarked, History, ListTree, ChevronRight, BookPlus } from 'lucide-react'
 
 export const metadata = {
   title: 'My Reading | Relaks',
@@ -27,6 +27,13 @@ const sections = [
     title: 'My Lists',
     description: 'Your curated reading lists',
     color: 'from-blue-500 to-indigo-600',
+  },
+  {
+    href: '/reading/requests',
+    icon: BookPlus,
+    title: 'Book Requests',
+    description: 'Request and vote for new books',
+    color: 'from-amber-500 to-orange-600',
   },
 ]
 

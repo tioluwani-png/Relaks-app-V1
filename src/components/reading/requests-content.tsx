@@ -1,11 +1,7 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
-import { BookRequestCard } from './book-request-card'
-import { BookRequestForm } from './book-request-form'
-import { useBookRequests } from '@/hooks/use-book-requests'
-import { FadeIn } from '@/components/shared/motion'
-import { BookPlus, Loader2, Filter } from 'lucide-react'
+import { useState } from 'react'
+import { Loader2, BookPlus, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -13,6 +9,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { RequestCard } from './request-card'
+import { NewRequestDialog } from './new-request-dialog'
+import { FadeIn } from '@/components/shared/motion'
+import { useBookRequests } from '@/hooks/use-book-requests'
 import { cn } from '@/lib/utils'
 
 type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected' | 'fulfilled'
@@ -25,7 +25,7 @@ const statusTabs: { value: StatusFilter; label: string }[] = [
   { value: 'fulfilled', label: 'Fulfilled' },
 ]
 
-export function BookRequestsList() {
+export function RequestsContent() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending')
   const [sortBy, setSortBy] = useState<SortOption>('votes')
 
@@ -42,38 +42,14 @@ export function BookRequestsList() {
   } = useBookRequests({
     status: statusFilter,
     sort: sortBy,
+    limit: 20,
   })
-
-  // Infinite scroll
-  const observerRef = useRef<IntersectionObserver | null>(null)
-  const loadMoreRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (isLoadingMore) return
-      if (observerRef.current) observerRef.current.disconnect()
-
-      observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasMore) {
-          loadMore()
-        }
-      })
-
-      if (node) observerRef.current.observe(node)
-    },
-    [isLoadingMore, hasMore, loadMore]
-  )
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <p className="text-red-500">{error}</p>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-6">
-      {/* Status Tabs */}
+      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
+        {/* Status Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
           {statusTabs.map((tab) => (
             <button
@@ -90,6 +66,8 @@ export function BookRequestsList() {
             </button>
           ))}
         </div>
+
+        {/* Sort & New Request */}
         <div className="flex gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -107,23 +85,19 @@ export function BookRequestsList() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <BookRequestForm onSubmit={createRequest} />
+
+          <NewRequestDialog onSubmit={createRequest} />
         </div>
       </div>
 
-      {/* Requests List */}
-      {isLoading ? (
-        <div className="space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="animate-pulse flex gap-4 p-4 bg-white dark:bg-gray-900 rounded-2xl">
-              <div className="w-16 h-20 bg-gray-200 dark:bg-gray-800 rounded-xl" />
-              <div className="flex-1 space-y-2">
-                <div className="h-5 bg-gray-200 dark:bg-gray-800 rounded w-3/4" />
-                <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-1/2" />
-                <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-1/4" />
-              </div>
-            </div>
-          ))}
+      {/* Content */}
+      {error ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-red-500">{error}</p>
+        </div>
+      ) : isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
         </div>
       ) : requests.length === 0 ? (
         <FadeIn className="flex flex-col items-center justify-center py-16 text-center">
@@ -133,15 +107,25 @@ export function BookRequestsList() {
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
             No requests yet
           </h3>
-          <p className="text-gray-500 dark:text-gray-400 max-w-sm">
-            Be the first to request a book you'd like to see in our collection!
+          <p className="text-gray-500 dark:text-gray-400 max-w-sm mb-4">
+            {statusFilter === 'all'
+              ? "Be the first to request a book you'd like to see added!"
+              : `No ${statusFilter} requests at the moment`}
           </p>
+          {statusFilter !== 'all' && (
+            <Button
+              variant="outline"
+              onClick={() => setStatusFilter('all')}
+            >
+              View all requests
+            </Button>
+          )}
         </FadeIn>
       ) : (
         <>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {requests.map((request) => (
-              <BookRequestCard
+              <RequestCard
                 key={request.id}
                 request={request}
                 onVote={vote}
@@ -150,12 +134,22 @@ export function BookRequestsList() {
             ))}
           </div>
 
-          {/* Load More Trigger */}
           {hasMore && (
-            <div ref={loadMoreRef} className="flex justify-center py-8">
-              {isLoadingMore && (
-                <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
-              )}
+            <div className="flex justify-center pt-4">
+              <Button
+                variant="outline"
+                onClick={loadMore}
+                disabled={isLoadingMore}
+              >
+                {isLoadingMore ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Loading...
+                  </>
+                ) : (
+                  'Load more'
+                )}
+              </Button>
             </div>
           )}
         </>
