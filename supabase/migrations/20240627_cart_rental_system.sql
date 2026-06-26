@@ -4,7 +4,7 @@
 -- Cart items (temporary storage before checkout)
 CREATE TABLE IF NOT EXISTS cart_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, book_id)
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS cart_items (
 -- Rental orders
 CREATE TABLE IF NOT EXISTS rental_orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'pending', -- pending, paid, processing, shipped, delivered, returned, cancelled
   subtotal INTEGER NOT NULL, -- in kobo
   delivery_fee INTEGER NOT NULL, -- in kobo
@@ -116,9 +116,9 @@ CREATE POLICY "Admins can view all orders"
   ON rental_orders FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role IN ('admin', 'super_admin')
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND users.role IN ('admin', 'super_admin')
     )
   );
 
@@ -126,9 +126,9 @@ CREATE POLICY "Admins can update all orders"
   ON rental_orders FOR UPDATE
   USING (
     EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role IN ('admin', 'super_admin')
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND users.role IN ('admin', 'super_admin')
     )
   );
 
@@ -136,9 +136,9 @@ CREATE POLICY "Admins can view all order items"
   ON rental_order_items FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role IN ('admin', 'super_admin')
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+      AND users.role IN ('admin', 'super_admin')
     )
   );
 
