@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { BOOK_RENTAL_PRICE, LAGOS_DELIVERY_FEE } from '@/stores/cart-store'
+import { BOOK_RENTAL_PRICE, LAGOS_DELIVERY_FEE } from '@/lib/pricing'
 
 // GET - Fetch user's orders
 export async function GET(request: NextRequest) {

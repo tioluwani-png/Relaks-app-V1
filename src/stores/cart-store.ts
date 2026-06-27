@@ -3,14 +3,9 @@
 import { create } from 'zustand'
 import type { CartItemWithBook } from '@/types/database'
 
-// Pricing constants (in kobo)
-export const BOOK_RENTAL_PRICE = 300000 // ₦3,000
-export const LAGOS_DELIVERY_FEE = 300000 // ₦3,000
-
-// Format price from kobo to Naira
-export function formatPrice(kobo: number): string {
-  return `₦${(kobo / 100).toLocaleString()}`
-}
+// Re-export pricing from shared module for convenience
+export { BOOK_RENTAL_PRICE, LAGOS_DELIVERY_FEE, formatPrice } from '@/lib/pricing'
+import { BOOK_RENTAL_PRICE, LAGOS_DELIVERY_FEE } from '@/lib/pricing'
 
 interface CartState {
   items: CartItemWithBook[]
