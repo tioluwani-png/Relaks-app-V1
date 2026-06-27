@@ -28,6 +28,8 @@ src/
 │   │   ├── profile/       # User profile, settings, credits
 │   │   ├── reading/       # Reading club (books, wishlists, lists)
 │   │   ├── books/         # Book catalog
+│   │   ├── checkout/      # Cart and checkout flow
+│   │   ├── orders/        # Order history and details
 │   │   ├── references/    # Coloring page editions
 │   │   ├── notifications/ # User notifications
 │   │   └── search/        # Search functionality
@@ -47,11 +49,12 @@ src/
 2. **Social Feed** - Posts with images, likes, comments, follows
 3. **Coloring Pages** - Upload and AI-generate coloring pages
 4. **Reading Club** - Book catalog, wishlists, reading history, custom lists
-5. **Journal** - Personal journaling with date-based history
-6. **References** - Coloring page editions with individual pages
-7. **Blog** - Public blog with user submission system
-8. **Credits System** - Paystack payments for credits
-9. **Admin Panel** - User management, content moderation, analytics
+5. **Book Rental** - Cart system, checkout with delivery, Paystack payments
+6. **Journal** - Personal journaling with date-based history
+7. **References** - Coloring page editions with individual pages
+8. **Blog** - Public blog with user submission system
+9. **Credits System** - Paystack payments for credits
+10. **Admin Panel** - User management, content moderation, analytics
 
 ## UI Design
 
@@ -76,9 +79,31 @@ Supabase with the following storage buckets:
 - `references` - Reference page images
 - `coloring-pages` - Coloring page uploads
 - `ai-generations` - AI-generated images
+- `book-covers` - Book cover images (admin upload)
+
+Key tables for rental system:
+- `cart_items` - User shopping cart
+- `rental_orders` - Order records with delivery details
+- `rental_order_items` - Books in each order
+
+## Book Rental System
+
+- **Pricing**: ₦3,000 per book rental, ₦3,000 Lagos delivery (flat rate)
+- **Cart**: Zustand store (`src/stores/cart-store.ts`) with optimistic updates
+- **Checkout**: `/checkout` - cart review, delivery form, Paystack payment
+- **Orders**: `/orders` - order history and tracking
+- **Payment**: Paystack integration with webhook handling
 
 ## Recent Development
 
-- Reading Club feature (Phase 1) - books, wishlists, reading history, lists
+- Book rental/cart system with Paystack integration
+- Book cover image upload in admin (replacing URL input)
+- Reading Club Phase 2 - reviews, comments, list enhancements
+- Reading Club Phase 1 - books, wishlists, reading history, lists
 - Color theme picker for editions (replacing gradient inputs)
 - Cache invalidation for editions after admin mutations
+
+## TypeScript Notes
+
+- New tables (cart_items, rental_orders, rental_order_items) require type casting in API routes until Supabase types are regenerated
+- Pattern: `const orderTyped = order as { id: string; status: string }`
