@@ -30,30 +30,22 @@ export async function POST(
     // Verify comment exists and belongs to this book
     const { data: commentData } = await supabase
       .from('book_comments')
-      .select('id, like_count')
+      .select('id')
       .eq('id', comment_id)
       .eq('book_id', book_id)
       .single()
 
-    const comment = commentData as { id: string; like_count: number } | null
-
-    if (!comment) {
+    if (!commentData) {
       return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
     }
 
-    // Insert like and update count in parallel
-    const [insertResult] = await Promise.all([
-      supabase
-        .from('book_comment_likes')
-        .insert({ user_id: user.id, comment_id } as never),
-      supabase
-        .from('book_comments')
-        .update({ like_count: (comment.like_count || 0) + 1 } as never)
-        .eq('id', comment_id),
-    ])
+    // Insert like - trigger handles like_count update
+    const { error: insertError } = await supabase
+      .from('book_comment_likes')
+      .insert({ user_id: user.id, comment_id } as never)
 
-    if (insertResult.error) {
-      return NextResponse.json({ error: insertResult.error.message }, { status: 500 })
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
     return NextResponse.json({ liked: true }, { status: 201 })
@@ -77,30 +69,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get current like count
-    const { data: commentData } = await supabase
-      .from('book_comments')
-      .select('like_count')
-      .eq('id', comment_id)
-      .single()
+    // Delete like - trigger handles like_count update
+    const { error: deleteError } = await supabase
+      .from('book_comment_likes')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('comment_id', comment_id)
 
-    const comment = commentData as { like_count: number } | null
-
-    // Delete like and update count
-    const [deleteResult] = await Promise.all([
-      supabase
-        .from('book_comment_likes')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('comment_id', comment_id),
-      supabase
-        .from('book_comments')
-        .update({ like_count: Math.max(0, (comment?.like_count || 1) - 1) } as never)
-        .eq('id', comment_id),
-    ])
-
-    if (deleteResult.error) {
-      return NextResponse.json({ error: deleteResult.error.message }, { status: 500 })
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 500 })
     }
 
     return NextResponse.json({ liked: false })
