@@ -1,20 +1,14 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
-import { PRICING, toKobo } from '@/lib/paystack'
+import {
+  grantCreditPurchase,
+  grantRentalPurchase,
+  EXPECTED_AMOUNTS,
+} from '@/lib/payment-fulfillment'
 import { sendPurchaseEmail, handleFirstPurchase } from '@/lib/email'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
-
-// Expected amounts in kobo for each purchase type
-const EXPECTED_AMOUNTS: Record<string, number> = {
-  single: toKobo(PRICING.singlePage),
-  bundle: toKobo(PRICING.bundle10),
-  unlimited: toKobo(PRICING.unlimited),
-  ai_starter: toKobo(PRICING.aiStarter),
-  ai_popular: toKobo(PRICING.aiPopular),
-  ai_pro: toKobo(PRICING.aiPro),
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +21,7 @@ export async function POST(request: NextRequest) {
       .digest('hex')
 
     if (hash !== signature) {
-      console.error('Webhook signature mismatch')
+      console.error('[webhook] Signature mismatch')
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
     }
 
@@ -44,63 +38,34 @@ export async function POST(request: NextRequest) {
 
     // 3. Validate metadata exists
     if (!user_id || !type) {
-      console.error('Webhook missing metadata:', { reference, metadata })
+      console.error('[webhook] Missing metadata:', { reference, metadata })
       return NextResponse.json({ error: 'Invalid metadata' }, { status: 400 })
     }
 
-    // Handle rental payments separately
+    const supabase = await createAdminClient()
+
+    // Handle rental payments
     if (type === 'rental' && order_id) {
-      const supabase = await createAdminClient()
+      const result = await grantRentalPurchase(supabase, order_id, reference, user_id)
 
-      // Check if already processed
-      const { data: order } = await supabase
-        .from('rental_orders')
-        .select('id, status')
-        .eq('id', order_id)
-        .eq('payment_reference', reference)
-        .single()
-
-      if (!order) {
-        console.error('Rental order not found:', { order_id, reference })
-        return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+      if (!result.success) {
+        console.error('[webhook] Rental fulfillment failed:', result.error)
+        return NextResponse.json({ error: result.error }, { status: 500 })
       }
 
-      // Cast to proper type
-      const orderTyped = order as { id: string; status: string }
-
-      if (orderTyped.status !== 'pending') {
-        console.log('Rental order already processed:', order_id)
-        return NextResponse.json({ received: true })
+      if (result.alreadyProcessed) {
+        console.log('[webhook] Rental already processed:', { order_id, reference })
+      } else {
+        console.log('[webhook] Rental fulfilled:', { reference, order_id, user_id, amount })
       }
 
-      // Update order status
-      const { error: updateError } = await supabase
-        .from('rental_orders')
-        .update({
-          status: 'paid',
-          paid_at: new Date().toISOString(),
-        } as never)
-        .eq('id', order_id)
-
-      if (updateError) {
-        console.error('Failed to update rental order:', updateError)
-        return NextResponse.json({ error: 'Failed to update order' }, { status: 500 })
-      }
-
-      // Clear user's cart
-      await supabase
-        .from('cart_items')
-        .delete()
-        .eq('user_id', user_id)
-
-      console.log('Rental payment processed:', { reference, order_id, user_id, amount })
       return NextResponse.json({ received: true })
     }
 
-    // 4. Verify amount matches expected price
+    // 4. Verify amount matches expected price for credits
     const expectedAmount = EXPECTED_AMOUNTS[type]
     if (expectedAmount && amount !== expectedAmount) {
-      console.error('Amount mismatch!', {
+      console.error('[webhook] Amount mismatch!', {
         expected: expectedAmount,
         actual: amount,
         reference,
@@ -110,87 +75,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Amount verification failed' }, { status: 400 })
     }
 
-    const supabase = await createAdminClient()
+    // 5. Grant credits (idempotent and atomic)
+    const result = await grantCreditPurchase(
+      supabase,
+      user_id,
+      type,
+      reference,
+      amount,
+      page_id
+    )
 
-    // 5. Check if this payment was already processed (prevent double-spend)
-    const { data: existingPurchase } = await supabase
-      .from('purchases')
-      .select('id')
-      .eq('paystack_reference', reference)
-      .single()
+    if (!result.success) {
+      console.error('[webhook] Credit fulfillment failed:', result.error)
+      return NextResponse.json({ error: result.error }, { status: 500 })
+    }
 
-    if (existingPurchase) {
-      console.log('Duplicate webhook for reference:', reference)
+    if (result.alreadyProcessed) {
+      console.log('[webhook] Already processed:', reference)
       return NextResponse.json({ received: true })
     }
 
-    // 6. Record the purchase
-    const { error: purchaseError } = await supabase.from('purchases').insert({
-      user_id,
-      page_id: page_id || null,
-      type,
-      amount_naira: amount / 100,
-      paystack_reference: reference,
-    } as never)
+    console.log('[webhook] Credits granted:', { reference, userId: user_id, type, amount })
 
-    if (purchaseError) {
-      console.error('Failed to record purchase:', purchaseError)
-      return NextResponse.json({ error: 'Failed to record purchase' }, { status: 500 })
-    }
-
-    // 7. Update user credits/pages based on purchase type
+    // 6. Send purchase confirmation email (non-blocking)
     const { data: userData } = await supabase
       .from('users')
-      .select('free_pages_remaining, ai_credits, email, username')
+      .select('email, username')
       .eq('id', user_id)
       .single()
 
-    const userDataTyped = userData as { free_pages_remaining: number; ai_credits: number; email: string; username: string } | null
+    const userDataTyped = userData as { email: string; username: string } | null
 
-    if (!userDataTyped) {
-      console.error('User not found for credit update:', user_id)
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    switch (type) {
-      case 'bundle':
-        await supabase.from('users').update({
-          free_pages_remaining: userDataTyped.free_pages_remaining + 10,
-        } as never).eq('id', user_id)
-        break
-
-      case 'ai_starter':
-        await supabase.from('users').update({
-          ai_credits: userDataTyped.ai_credits + 5,
-        } as never).eq('id', user_id)
-        break
-
-      case 'ai_popular':
-        await supabase.from('users').update({
-          ai_credits: userDataTyped.ai_credits + 25,
-        } as never).eq('id', user_id)
-        break
-
-      case 'ai_pro':
-        await supabase.from('users').update({
-          ai_credits: userDataTyped.ai_credits + 50,
-        } as never).eq('id', user_id)
-        break
-    }
-
-    console.log('Payment processed:', { reference, userId: user_id, type, amount })
-
-    // 8. Send purchase confirmation email (non-blocking)
-    if (userDataTyped.email) {
+    if (userDataTyped?.email) {
       sendPurchaseEmail(
         userDataTyped.email,
         userDataTyped.username || 'there',
         type,
         amount / 100,
         reference
-      ).catch(err => console.error('Purchase email error:', err))
+      ).catch(err => console.error('[webhook] Email error:', err))
 
-      // Check if this is their first purchase - tag in Mailchimp
+      // Check if this is their first purchase
       const { count } = await supabase
         .from('purchases')
         .select('*', { count: 'exact', head: true })
@@ -198,14 +123,14 @@ export async function POST(request: NextRequest) {
 
       if (count === 1) {
         handleFirstPurchase(userDataTyped.email).catch(err =>
-          console.error('First purchase tag error:', err)
+          console.error('[webhook] First purchase tag error:', err)
         )
       }
     }
 
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error('Webhook error:', error)
+    console.error('[webhook] Error:', error)
     return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
   }
 }

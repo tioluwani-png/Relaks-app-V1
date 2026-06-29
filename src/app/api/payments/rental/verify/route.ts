@@ -1,25 +1,35 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyPayment } from '@/lib/paystack'
+import { verifyWithPaystack, grantRentalPurchase } from '@/lib/payment-fulfillment'
 
+/**
+ * Rental payment verification endpoint.
+ *
+ * NOTE: This endpoint does NOT require authentication because:
+ * 1. Users may lose their session during Paystack redirect
+ * 2. We verify the payment directly with Paystack (source of truth)
+ * 3. Fulfillment is idempotent (safe to call multiple times)
+ * 4. Order ownership is validated via payment metadata from Paystack
+ */
 export async function GET(request: NextRequest) {
-  const supabase = await createClient()
   const { searchParams } = new URL(request.url)
   const reference = searchParams.get('reference')
 
-  if (!reference) {
-    return NextResponse.json({ error: 'Reference is required' }, { status: 400 })
+  // 1. Validate reference format
+  if (!reference || reference.length < 5 || reference.length > 100) {
+    return NextResponse.json({ error: 'Invalid reference' }, { status: 400 })
   }
 
   try {
-    const { data: { user } } = await supabase.auth.getUser()
+    // 2. Verify payment directly with Paystack (source of truth)
+    const paystackResponse = await verifyWithPaystack(reference)
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!paystackResponse) {
+      return NextResponse.json({
+        status: 'error',
+        message: 'Unable to verify payment. Please contact support if payment was deducted.',
+      }, { status: 502 })
     }
-
-    // Verify with Paystack
-    const paystackResponse = await verifyPayment(reference)
 
     if (!paystackResponse.status || paystackResponse.data.status !== 'success') {
       return NextResponse.json({
@@ -28,73 +38,53 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Find the order by payment reference
-    const { data: order, error: orderError } = await supabase
-      .from('rental_orders')
-      .select('id, user_id, status')
-      .eq('payment_reference', reference)
-      .single()
+    const { metadata } = paystackResponse.data
+    const { user_id, order_id, type } = metadata
 
-    if (orderError || !order) {
+    // 3. Validate this is a rental payment
+    if (type !== 'rental' || !order_id || !user_id) {
       return NextResponse.json({
-        status: 'failed',
-        message: 'Order not found',
-      }, { status: 404 })
+        status: 'error',
+        message: 'Invalid rental payment metadata. Please contact support.',
+      }, { status: 400 })
     }
 
-    // Cast to proper type
-    const orderTyped = order as { id: string; user_id: string; status: string }
+    const supabase = await createAdminClient()
 
-    // Verify user owns this order
-    if (orderTyped.user_id !== user.id) {
+    // 4. Attempt fulfillment (idempotent - safe if webhook already processed)
+    const result = await grantRentalPurchase(supabase, order_id, reference, user_id)
+
+    if (!result.success) {
+      // If order not found, it might have been deleted or reference is wrong
+      if (result.error === 'Order not found') {
+        return NextResponse.json({
+          status: 'error',
+          message: 'Order not found. Please contact support.',
+        }, { status: 404 })
+      }
+      console.error('[rental/verify] Fulfillment failed:', result.error)
       return NextResponse.json({
-        status: 'failed',
-        message: 'Unauthorized',
-      }, { status: 403 })
-    }
-
-    // If already processed, just return success
-    if (orderTyped.status !== 'pending') {
-      return NextResponse.json({
-        status: 'success',
-        message: 'Order already processed',
-        order_id: orderTyped.id,
-      })
-    }
-
-    // Update order status to paid
-    const { error: updateError } = await supabase
-      .from('rental_orders')
-      .update({
-        status: 'paid',
-        paid_at: new Date().toISOString(),
-      } as never)
-      .eq('id', orderTyped.id)
-
-    if (updateError) {
-      console.error('Error updating order:', updateError)
-      return NextResponse.json({
-        status: 'failed',
-        message: 'Failed to update order status',
+        status: 'error',
+        message: 'Failed to process order. Please contact support.',
       }, { status: 500 })
     }
 
-    // Clear the user's cart
-    await supabase
-      .from('cart_items')
-      .delete()
-      .eq('user_id', user.id)
+    if (result.alreadyProcessed) {
+      console.log('[rental/verify] Already processed (webhook handled it):', reference)
+    } else {
+      console.log('[rental/verify] Fulfilled via callback:', reference)
+    }
 
     return NextResponse.json({
       status: 'success',
-      message: 'Payment verified successfully',
-      order_id: orderTyped.id,
+      message: 'Payment verified successfully!',
+      order_id: order_id,
     })
   } catch (error) {
-    console.error('Error verifying rental payment:', error)
+    console.error('[rental/verify] Error:', error)
     return NextResponse.json({
-      status: 'failed',
-      message: 'An error occurred while verifying payment',
+      status: 'error',
+      message: 'Verification failed. Please contact support if payment was deducted.',
     }, { status: 500 })
   }
 }

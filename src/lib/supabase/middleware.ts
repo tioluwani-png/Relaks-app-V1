@@ -2,7 +2,9 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Routes that require authentication
-const PROTECTED_PATHS = ['/feed', '/discover', '/create', '/journal', '/profile', '/notifications', '/search', '/references', '/color', '/payment']
+// NOTE: /payment is intentionally NOT protected - users return here after Paystack redirect
+// and their session may not survive the redirect. Verify endpoints handle auth separately.
+const PROTECTED_PATHS = ['/feed', '/discover', '/create', '/journal', '/profile', '/notifications', '/search', '/references', '/color']
 
 // Routes that require admin role
 const ADMIN_PATHS = ['/admin']
