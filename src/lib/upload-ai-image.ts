@@ -40,7 +40,8 @@ export async function uploadAIImage(
     })
 
   if (uploadError) {
-    throw new Error(`Failed to save image: ${uploadError.message}`)
+    console.error('[upload-ai-image] Storage error:', uploadError)
+    throw new Error('Failed to save image')
   }
 
   // Get the permanent public URL

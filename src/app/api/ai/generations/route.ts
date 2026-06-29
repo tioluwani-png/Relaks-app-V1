@@ -18,7 +18,8 @@ export async function GET() {
       .order('created_at', { ascending: false })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('[generations] Database error:', error)
+      return NextResponse.json({ error: 'Failed to load generations' }, { status: 500 })
     }
 
     // Get user's AI credits

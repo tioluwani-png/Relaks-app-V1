@@ -1,6 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { transformPhotoToColoring } from '@/lib/ai'
+import { transformPhotoToColoring, AIError, AI_ERRORS } from '@/lib/ai'
 import { uploadAIImage } from '@/lib/upload-ai-image'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { sendLowCreditsEmail } from '@/lib/email'
@@ -8,7 +8,15 @@ import { sendLowCreditsEmail } from '@/lib/email'
 const CREDIT_COST = 5
 const MAX_GENERATIONS_PER_HOUR = 10
 const MAX_FILE_SIZE = 4 * 1024 * 1024 // 4MB
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
+// We now accept more types since sharp handles conversion
+const ALLOWED_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -39,9 +47,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No image provided' }, { status: 400 })
     }
 
-    // 4. Validate file type strictly
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json({ error: 'File must be a JPEG, PNG, or WebP image' }, { status: 400 })
+    // 4. Validate file type (allow HEIC now)
+    const fileType = file.type.toLowerCase()
+    if (!ALLOWED_TYPES.includes(fileType) && !fileType.startsWith('image/')) {
+      return NextResponse.json(
+        { error: 'Please upload a JPEG, PNG, WebP, or HEIC image' },
+        { status: 400 }
+      )
     }
 
     // 5. Validate file size
@@ -80,15 +92,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 9. Validate magic bytes
+    // 9. Convert file to buffer (sharp will handle format detection)
     const arrayBuffer = await file.arrayBuffer()
-    const bytes = new Uint8Array(arrayBuffer.slice(0, 12))
-    if (!isValidImageBytes(bytes)) {
-      return NextResponse.json({ error: 'File does not appear to be a valid image' }, { status: 400 })
-    }
-
-    // 10. Convert and generate
     const imageBuffer = Buffer.from(arrayBuffer)
+
+    // 10. Convert and generate (normalization happens inside transformPhotoToColoring)
     const resultUrl = await transformPhotoToColoring(imageBuffer, validComplexity)
 
     // 11. Upload to Supabase Storage
@@ -109,10 +117,14 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (dbError) {
-      return NextResponse.json({ error: dbError.message }, { status: 500 })
+      console.error('[photo-to-coloring] Database error:', dbError)
+      return NextResponse.json(
+        { error: 'Failed to save generation. Please try again.' },
+        { status: 500 }
+      )
     }
 
-    // 13. Deduct credits (via admin client)
+    // 13. Deduct credits AFTER successful generation
     const creditsRemaining = userInfo.ai_credits - CREDIT_COST
     await supabaseAdmin
       .from('users')
@@ -131,21 +143,20 @@ export async function POST(request: NextRequest) {
       credits_remaining: creditsRemaining,
     })
   } catch (error) {
-    console.error('Error converting photo:', error)
+    // Handle our custom AIError (has safe user message)
+    if (error instanceof AIError) {
+      console.error('[photo-to-coloring] AIError:', error.message, error.logDetails)
+      return NextResponse.json(
+        { error: error.userMessage },
+        { status: 500 }
+      )
+    }
+
+    // Handle unexpected errors - never expose details
+    console.error('[photo-to-coloring] Unexpected error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to convert photo' },
+      { error: AI_ERRORS.GENERATION_FAILED },
       { status: 500 }
     )
   }
-}
-
-function isValidImageBytes(bytes: Uint8Array): boolean {
-  // JPEG: FF D8 FF
-  if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) return true
-  // PNG: 89 50 4E 47
-  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) return true
-  // WebP: 52 49 46 46 ... 57 45 42 50
-  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46
-    && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return true
-  return false
 }

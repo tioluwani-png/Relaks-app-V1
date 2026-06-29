@@ -1,6 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { generateColoringPage, moderatePrompt } from '@/lib/ai'
+import { generateColoringPage, moderatePrompt, AIError, AI_ERRORS } from '@/lib/ai'
 import { uploadAIImage } from '@/lib/upload-ai-image'
 import { aiGenerateSchema, validate } from '@/lib/validations'
 import { checkRateLimit } from '@/lib/rate-limit'
@@ -95,10 +95,14 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (dbError) {
-      return NextResponse.json({ error: dbError.message }, { status: 500 })
+      console.error('[generate] Database error:', dbError)
+      return NextResponse.json(
+        { error: 'Failed to save generation. Please try again.' },
+        { status: 500 }
+      )
     }
 
-    // 11. Deduct credits atomically (via admin client)
+    // 11. Deduct credits AFTER successful generation
     const creditsRemaining = userInfo.ai_credits - CREDIT_COST
     await supabaseAdmin
       .from('users')
@@ -117,9 +121,19 @@ export async function POST(request: NextRequest) {
       credits_remaining: creditsRemaining,
     })
   } catch (error) {
-    console.error('Error generating image:', error)
+    // Handle our custom AIError (has safe user message)
+    if (error instanceof AIError) {
+      console.error('[generate] AIError:', error.message, error.logDetails)
+      return NextResponse.json(
+        { error: error.userMessage },
+        { status: 500 }
+      )
+    }
+
+    // Handle unexpected errors - never expose details
+    console.error('[generate] Unexpected error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to generate image' },
+      { error: AI_ERRORS.GENERATION_FAILED },
       { status: 500 }
     )
   }
