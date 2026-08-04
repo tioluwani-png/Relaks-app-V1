@@ -24,6 +24,10 @@ export type BookRequestStatus = 'pending' | 'approved' | 'rejected' | 'fulfilled
 // Rental/Cart types
 export type RentalOrderStatus = 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'returned' | 'cancelled'
 
+// Rental Subscription types (Phase 2)
+export type SwapFrequency = 'monthly' | 'end_of_term'
+export type RentalSubscriptionStatus = 'pending_payment' | 'active' | 'awaiting_return' | 'completed' | 'cancelled'
+
 export interface Database {
   public: {
     Tables: {
@@ -1191,6 +1195,193 @@ export interface Database {
           created_at?: string
         }
       }
+      // ==========================================
+      // Rental Subscription Tables (Phase 2)
+      // ==========================================
+      rental_plans: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          books_per_cycle: number
+          duration_days: number
+          price_naira: number
+          delivery_included: boolean
+          swap_frequency: SwapFrequency
+          is_active: boolean
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          books_per_cycle: number
+          duration_days: number
+          price_naira: number
+          delivery_included?: boolean
+          swap_frequency?: SwapFrequency
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          books_per_cycle?: number
+          duration_days?: number
+          price_naira?: number
+          delivery_included?: boolean
+          swap_frequency?: SwapFrequency
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+      }
+      rental_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          plan_id: string
+          status: RentalSubscriptionStatus
+          started_at: string | null
+          expires_at: string | null
+          delivery_lga: string
+          delivery_address: string
+          delivery_phone: string
+          dispatched_at: string | null
+          delivered_at: string | null
+          returned_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          plan_id: string
+          status?: RentalSubscriptionStatus
+          started_at?: string | null
+          expires_at?: string | null
+          delivery_lga: string
+          delivery_address: string
+          delivery_phone: string
+          dispatched_at?: string | null
+          delivered_at?: string | null
+          returned_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          plan_id?: string
+          status?: RentalSubscriptionStatus
+          started_at?: string | null
+          expires_at?: string | null
+          delivery_lga?: string
+          delivery_address?: string
+          delivery_phone?: string
+          dispatched_at?: string | null
+          delivered_at?: string | null
+          returned_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      rental_subscription_books: {
+        Row: {
+          id: string
+          subscription_id: string
+          book_id: string
+          returned: boolean
+          returned_at: string | null
+        }
+        Insert: {
+          id?: string
+          subscription_id: string
+          book_id: string
+          returned?: boolean
+          returned_at?: string | null
+        }
+        Update: {
+          id?: string
+          subscription_id?: string
+          book_id?: string
+          returned?: boolean
+          returned_at?: string | null
+        }
+      }
+      rental_payments: {
+        Row: {
+          id: string
+          user_id: string
+          subscription_id: string
+          plan_id: string
+          amount_naira: number
+          paystack_reference: string
+          paystack_status: string
+          authorization_code: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          subscription_id: string
+          plan_id: string
+          amount_naira: number
+          paystack_reference: string
+          paystack_status?: string
+          authorization_code?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          subscription_id?: string
+          plan_id?: string
+          amount_naira?: number
+          paystack_reference?: string
+          paystack_status?: string
+          authorization_code?: string | null
+          created_at?: string
+        }
+      }
+      rental_books: {
+        Row: {
+          id: string
+          title: string
+          author: string
+          cover_url: string | null
+          genre: string | null
+          description: string | null
+          available_copies: number
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          author: string
+          cover_url?: string | null
+          genre?: string | null
+          description?: string | null
+          available_copies?: number
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          author?: string
+          cover_url?: string | null
+          genre?: string | null
+          description?: string | null
+          available_copies?: number
+          is_active?: boolean
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -1330,5 +1521,21 @@ export type CartItemWithBook = CartItem & {
 export type RentalOrderWithItems = RentalOrder & {
   items: (RentalOrderItem & {
     book: Pick<Book, 'id' | 'title' | 'author' | 'cover_url'>
+  })[]
+}
+
+// ==========================================
+// Rental Subscription Utility Types (Phase 2)
+// ==========================================
+export type RentalPlan = Database['public']['Tables']['rental_plans']['Row']
+export type RentalSubscription = Database['public']['Tables']['rental_subscriptions']['Row']
+export type RentalSubscriptionBook = Database['public']['Tables']['rental_subscription_books']['Row']
+export type RentalPayment = Database['public']['Tables']['rental_payments']['Row']
+export type RentalBook = Database['public']['Tables']['rental_books']['Row']
+
+export type RentalSubscriptionWithDetails = RentalSubscription & {
+  plan: RentalPlan
+  books: (RentalSubscriptionBook & {
+    book: RentalBook
   })[]
 }

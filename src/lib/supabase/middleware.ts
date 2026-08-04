@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 // Routes that require authentication
 // NOTE: /payment is intentionally NOT protected - users return here after Paystack redirect
 // and their session may not survive the redirect. Verify endpoints handle auth separately.
-const PROTECTED_PATHS = ['/feed', '/discover', '/create', '/journal', '/profile', '/notifications', '/search', '/references', '/color']
+const PROTECTED_PATHS = ['/feed', '/discover', '/create', '/journal', '/profile', '/notifications', '/search', '/references', '/color', '/rent/checkout', '/rent/my-rentals', '/rent/success']
 
 // Routes that require admin role
 const ADMIN_PATHS = ['/admin']

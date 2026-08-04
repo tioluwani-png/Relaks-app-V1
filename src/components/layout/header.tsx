@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Bell, BookOpen, Search, Trophy, ShoppingCart } from 'lucide-react'
+import { ArrowLeft, Bell, BookOpen, Search, Trophy, ShoppingCart, BookMarked } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/use-auth'
 import { useCartStore } from '@/stores/cart-store'
@@ -85,6 +85,12 @@ export function Header({
         </div>
 
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="rounded-xl" asChild>
+            <Link href="/rent">
+              <BookMarked className="h-5 w-5 text-purple-500" />
+              <span className="sr-only">Rent Books</span>
+            </Link>
+          </Button>
           <Button variant="ghost" size="icon" className="rounded-xl" asChild>
             <Link href="/blog">
               <BookOpen className="h-5 w-5" />

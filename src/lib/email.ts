@@ -485,6 +485,114 @@ export async function handleFirstPurchase(email: string) {
   await updateMailchimpTags(email, ['paying_customer'])
 }
 
+// ============================================
+// RENTAL CONFIRMATION EMAIL
+// ============================================
+
+export async function sendRentalConfirmationEmail(
+  to: string,
+  username: string,
+  planName: string,
+  books: { id: string; title: string; author: string; cover_url: string | null }[],
+  deliveryAddress: string,
+  deliveryLga: string,
+  expiresAt: string,
+  swapFrequency: 'monthly' | 'end_of_term'
+) {
+  const expiresDate = new Date(expiresAt)
+  const formattedDate = expiresDate.toLocaleDateString('en-NG', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+
+  const bookListHtml = books
+    .map(
+      (book) => `
+      <div style="display: inline-block; margin-right: 12px; text-align: center; width: 80px;">
+        ${
+          book.cover_url
+            ? `<img src="${book.cover_url}" alt="${book.title}" style="width: 60px; height: 90px; object-fit: cover; border-radius: 8px; margin-bottom: 4px;" />`
+            : `<div style="width: 60px; height: 90px; background: #f3f4f6; border-radius: 8px; margin-bottom: 4px;"></div>`
+        }
+        <p style="font-size: 11px; color: #4b5563; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${book.title}</p>
+      </div>
+    `
+    )
+    .join('')
+
+  const keyDateMessage =
+    swapFrequency === 'monthly'
+      ? `We'll come swap your books around <strong>${formattedDate}</strong>`
+      : `These books are yours until <strong>${formattedDate}</strong>`
+
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: 'Relaks <hello@hello.relaks.co>',
+      to,
+      subject: 'Your books are on their way!',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #FFFBF5;">
+          <h1 style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; margin-bottom: 24px;">
+            Relaks
+          </h1>
+
+          <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 8px;">Your books are on their way!</h2>
+
+          <p style="color: #4b5563; font-size: 16px; margin-bottom: 24px;">
+            Hey ${username}, we're so excited to get these books to you.
+          </p>
+
+          <div style="background: white; border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid #f3f4f6;">
+            <p style="color: #6b7280; font-size: 14px; margin-bottom: 12px;">Your books:</p>
+            <div style="overflow-x: auto; white-space: nowrap; padding-bottom: 8px;">
+              ${bookListHtml}
+            </div>
+          </div>
+
+          <div style="background: white; border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid #f3f4f6;">
+            <p style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">Delivering to:</p>
+            <p style="color: #1f2937; font-size: 16px; font-weight: 600; margin: 0;">
+              ${deliveryAddress}, ${deliveryLga}
+            </p>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 16px; margin-bottom: 8px;">Expected delivery:</p>
+            <p style="color: #1f2937; font-size: 16px; font-weight: 600; margin: 0;">
+              Within 2-4 days
+            </p>
+          </div>
+
+          <div style="background: linear-gradient(135deg, #faf5ff, #fdf2f8); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+            <p style="color: #4b5563; font-size: 15px; margin: 0;">
+              ${keyDateMessage}
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="https://relaks.co/rent/my-rentals" style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+              View My Rentals
+            </a>
+          </div>
+
+          <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 40px;">
+            Happy reading!<br>
+            The Relaks Team
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('Rental confirmation email error:', error)
+      return { success: false, error }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('Rental confirmation email send error:', error)
+    return { success: false, error }
+  }
+}
+
 // Add tag when user reaches milestones
 export async function handleMilestone(email: string, milestone: string) {
   await updateMailchimpTags(email, [milestone])
