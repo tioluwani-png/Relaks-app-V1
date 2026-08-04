@@ -171,8 +171,10 @@ export function BookCatalog({ planId }: BookCatalogProps) {
     )
   }
 
+  // Selection bar height (~88px) + bottom nav height (64px) + safe area + buffer
+  // Using pb-44 (176px) to ensure last row scrolls fully above both bars
   return (
-    <div className={cn('space-y-6', isSelectionMode && 'pb-32')}>
+    <div className={cn('space-y-6', isSelectionMode && 'pb-44')}>
       {/* Selection mode banner */}
       {isSelectionMode && plan && (
         <div className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 rounded-2xl p-4 text-white">
@@ -271,10 +273,10 @@ export function BookCatalog({ planId }: BookCatalogProps) {
         </>
       )}
 
-      {/* Selection bar (fixed at bottom) */}
+      {/* Selection bar (fixed above bottom nav) */}
       {isSelectionMode && plan && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-          <div className="max-w-4xl mx-auto px-4 py-4">
+        <div className="fixed left-0 right-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bottom-[calc(4rem+env(safe-area-inset-bottom))]">
+          <div className="max-w-4xl mx-auto px-4 py-3">
             <div className="flex items-center gap-4">
               {/* Selected books thumbnails */}
               <div className="flex-1 flex items-center gap-2 min-w-0">
