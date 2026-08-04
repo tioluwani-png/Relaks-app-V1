@@ -18,7 +18,16 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/use-auth'
-import type { RentalPlan, RentalBook } from '@/types/database'
+import type { RentalPlan } from '@/types/database'
+
+// Book type from the books table (via /api/rental/books)
+interface RentalBook {
+  id: string
+  title: string
+  author: string
+  cover_url: string | null
+  genre?: string | null
+}
 
 // Lagos LGAs
 const LAGOS_LGAS = [
@@ -111,7 +120,7 @@ function CheckoutContent() {
             const thePlan = plans.find((p: RentalPlan) => p.id === planId)
             if (thePlan && selected.length !== thePlan.books_per_cycle) {
               toast.error('Please select the correct number of books')
-              router.replace(`/rent/catalogue?plan=${planId}`)
+              router.replace(`/books?plan=${planId}`)
               return
             }
           }
@@ -278,7 +287,7 @@ function CheckoutContent() {
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <Link
-              href={`/rent/catalogue?plan=${planId}&books=${bookIdsParam}`}
+              href={`/books?plan=${planId}&books=${bookIdsParam}`}
               className="p-2 -ml-2 hover:bg-gray-100 rounded-xl transition-colors"
             >
               <ArrowLeft className="w-5 h-5 text-gray-600" />

@@ -185,7 +185,7 @@ export default function RentPage() {
                     </div>
                   </div>
 
-                  <Link href={`/rent/catalogue?plan=${plan.id}`}>
+                  <Link href={`/books?plan=${plan.id}`}>
                     <Button
                       className="w-full h-12 rounded-2xl text-base font-semibold bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:opacity-90 transition-opacity"
                     >

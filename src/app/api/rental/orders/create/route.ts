@@ -12,11 +12,10 @@ const createOrderSchema = z.object({
   deliveryPhone: z.string().min(10).max(20),
 })
 
-// Type for rental book query result
-interface RentalBookRow {
+// Type for book query result
+interface BookRow {
   id: string
   title: string
-  available_copies: number
   is_active: boolean
 }
 
@@ -78,10 +77,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 7. Validate all books exist, are active, and have available copies
+    // 7. Validate all books exist and are active
     const { data: booksData, error: booksError } = await adminSupabase
-      .from('rental_books')
-      .select('id, title, available_copies, is_active')
+      .from('books')
+      .select('id, title, is_active')
       .in('id', bookIds)
 
     if (booksError) {
@@ -90,21 +89,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Type assertion for books
-    const books = (booksData || []) as unknown as RentalBookRow[]
+    const books = (booksData || []) as unknown as BookRow[]
 
     if (books.length !== bookIds.length) {
       return NextResponse.json({ error: 'One or more books not found' }, { status: 400 })
     }
 
-    const unavailableBooks = books.filter(
-      (b) => !b.is_active || b.available_copies < 1
-    )
+    const inactiveBooks = books.filter((b) => !b.is_active)
 
-    if (unavailableBooks.length > 0) {
+    if (inactiveBooks.length > 0) {
       return NextResponse.json(
         {
           error: 'Some books are unavailable',
-          unavailable: unavailableBooks.map((b) => b.title),
+          unavailable: inactiveBooks.map((b) => b.title),
         },
         { status: 400 }
       )

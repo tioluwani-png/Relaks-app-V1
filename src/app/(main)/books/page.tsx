@@ -1,11 +1,14 @@
+'use client'
+
+import { Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { BookCatalog } from '@/components/books/book-catalog'
+import { Loader2 } from 'lucide-react'
 
-export const metadata = {
-  title: 'Books | Relaks',
-  description: 'Discover and track your reading journey with our curated book catalog',
-}
+function BooksPageContent() {
+  const searchParams = useSearchParams()
+  const planId = searchParams.get('plan')
 
-export default function BooksPage() {
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
@@ -15,15 +18,27 @@ export default function BooksPage() {
             Reading Club
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Discover your next favorite read
+            {planId ? 'Select your books' : 'Discover your next favorite read'}
           </p>
         </div>
       </div>
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <BookCatalog />
+        <BookCatalog planId={planId} />
       </div>
     </div>
+  )
+}
+
+export default function BooksPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+      </div>
+    }>
+      <BooksPageContent />
+    </Suspense>
   )
 }
