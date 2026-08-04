@@ -1,13 +1,11 @@
 'use client'
 
-import { useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, Share2, BookOpen, Calendar, Hash } from 'lucide-react'
+import { ArrowLeft, Share2, BookOpen, Calendar, Hash, BookMarked } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BookActions, StarRating } from './book-actions'
 import { useBook } from '@/hooks/use-book'
-import { useCartStore, formatPrice, BOOK_RENTAL_PRICE } from '@/stores/cart-store'
 import { FadeIn } from '@/components/shared/motion'
 import { toast } from 'sonner'
 import type { ReadingStatus } from '@/types/database'
@@ -25,24 +23,6 @@ export function BookDetail({ bookId }: BookDetailProps) {
     saveBook,
     updateReadStatus,
   } = useBook(bookId)
-
-  const { isInCart, addToCart, fetchCart, isInitialized } = useCartStore()
-
-  // Fetch cart on mount
-  useEffect(() => {
-    if (!isInitialized) {
-      fetchCart()
-    }
-  }, [fetchCart, isInitialized])
-
-  const handleAddToCart = async () => {
-    const success = await addToCart(bookId)
-    if (success) {
-      toast.success('Added to cart!')
-    } else {
-      toast.error('Failed to add to cart')
-    }
-  }
 
   const handleShare = async () => {
     if (navigator.share && book) {
@@ -188,24 +168,26 @@ export function BookDetail({ bookId }: BookDetailProps) {
         bookId={book.id}
         isLiked={book.is_liked || false}
         isSaved={book.is_saved || false}
-        isInCart={isInCart(bookId)}
         readStatus={book.user_read_status || null}
         likeCount={book.like_count}
         saveCount={book.save_count}
         onLike={likeBook}
         onSave={saveBook}
         onReadStatusChange={handleReadStatusChange}
-        onAddToCart={handleAddToCart}
-        showCartButton={true}
       />
 
-      {/* Rental Price Info */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-2xl p-4">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          <span className="font-semibold text-purple-600 dark:text-purple-400">Rent this book:</span>{' '}
-          {formatPrice(BOOK_RENTAL_PRICE)} / rental
-        </p>
-      </div>
+      {/* Rental CTA */}
+      <Link href="/rent" className="block">
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-2xl p-4 hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-950/30 dark:hover:to-pink-950/30 transition-colors">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-purple-600 dark:text-purple-400">Want to rent this book?</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Join our Book Club - delivery included</p>
+            </div>
+            <BookMarked className="h-6 w-6 text-purple-500" />
+          </div>
+        </div>
+      </Link>
 
       {/* Description */}
       {book.description && (

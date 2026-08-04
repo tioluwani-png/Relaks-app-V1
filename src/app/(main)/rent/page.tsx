@@ -3,24 +3,31 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { BookOpen, Truck, RefreshCw, ArrowRight, Loader2, MapPin } from 'lucide-react'
+import { BookOpen, Truck, RefreshCw, ArrowRight, Loader2, MapPin, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { RentalPlan } from '@/types/database'
 
 export default function RentPage() {
   const [plans, setPlans] = useState<RentalPlan[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadPlans() {
       try {
         const res = await fetch('/api/rental/plans')
-        if (res.ok) {
-          const data = await res.json()
+        if (!res.ok) {
+          throw new Error('Failed to load plans')
+        }
+        const data = await res.json()
+        if (!data || data.length === 0) {
+          setError('No plans available. Please check back later.')
+        } else {
           setPlans(data)
         }
-      } catch (error) {
-        console.error('Failed to load plans:', error)
+      } catch (err) {
+        console.error('Failed to load plans:', err)
+        setError('Unable to load plans. Please try again later.')
       } finally {
         setIsLoading(false)
       }
@@ -92,6 +99,23 @@ export default function RentPage() {
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
           </div>
+        ) : error ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-12 text-center"
+          >
+            <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
+              <AlertCircle className="w-8 h-8 text-red-500" />
+            </div>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button
+              variant="outline"
+              onClick={() => window.location.reload()}
+            >
+              Try Again
+            </Button>
+          </motion.div>
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
             {plans.map((plan, index) => (

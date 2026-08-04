@@ -19,9 +19,13 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FadeIn } from '@/components/shared/motion'
-import { formatPrice } from '@/stores/cart-store'
 import { format } from 'date-fns'
 import type { RentalOrderWithItems, RentalOrderStatus } from '@/types/database'
+
+// Format price from kobo to Naira
+function formatPrice(kobo: number): string {
+  return `₦${(kobo / 100).toLocaleString()}`
+}
 
 const statusConfig: Record<RentalOrderStatus, { label: string; icon: React.ReactNode; color: string }> = {
   pending: {
