@@ -276,66 +276,78 @@ export function BookCatalog({ planId }: BookCatalogProps) {
       {/* Selection bar (fixed above bottom nav) */}
       {isSelectionMode && plan && (
         <div className="fixed left-0 right-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] bottom-[calc(4rem+env(safe-area-inset-bottom))]">
-          <div className="max-w-4xl mx-auto px-4 py-3">
-            <div className="flex items-center gap-4">
-              {/* Selected books thumbnails */}
-              <div className="flex-1 flex items-center gap-2 min-w-0">
-                <div className="flex -space-x-2">
-                  {selectedBookDetails.slice(0, 5).map(book => (
-                    <div
-                      key={book.id}
-                      className="w-10 h-14 rounded-lg overflow-hidden border-2 border-white dark:border-gray-900 bg-gray-100 shrink-0"
-                    >
-                      {book.cover_url ? (
-                        <Image
-                          src={book.cover_url}
-                          alt={book.title}
-                          width={40}
-                          height={56}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <BookOpen className="w-4 h-4 text-gray-300" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {/* Empty slots */}
-                  {Array.from({ length: Math.max(0, plan.books_per_cycle - selectedBooks.length) }).map((_, i) => (
-                    <div
-                      key={`empty-${i}`}
-                      className="w-10 h-14 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 shrink-0 flex items-center justify-center"
-                    >
-                      <span className="text-gray-300 dark:text-gray-600 text-lg">+</span>
-                    </div>
-                  ))}
-                </div>
-                <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">
-                  {selectedBooks.length} of {plan.books_per_cycle}
-                </span>
+          <div className="max-w-4xl mx-auto px-4 py-3 space-y-3">
+            {/* Row 1: Thumbnails + Clear button */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex -space-x-2">
+                {selectedBookDetails.slice(0, 5).map(book => (
+                  <div
+                    key={book.id}
+                    className="w-10 h-14 rounded-lg overflow-hidden border-2 border-white dark:border-gray-900 bg-gray-100 shrink-0"
+                  >
+                    {book.cover_url ? (
+                      <Image
+                        src={book.cover_url}
+                        alt={book.title}
+                        width={40}
+                        height={56}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <BookOpen className="w-4 h-4 text-gray-300" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {/* Empty slots */}
+                {Array.from({ length: Math.max(0, plan.books_per_cycle - selectedBooks.length) }).map((_, i) => (
+                  <div
+                    key={`empty-${i}`}
+                    className="w-10 h-14 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 shrink-0 flex items-center justify-center"
+                  >
+                    <span className="text-gray-300 dark:text-gray-600 text-lg">+</span>
+                  </div>
+                ))}
               </div>
 
-              {/* Clear button */}
+              {/* Clear button - always visible when there are selections, with proper tap target */}
               {selectedBooks.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
                   onClick={clearSelection}
-                  className="text-gray-500"
+                  className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  aria-label="Clear selection"
                 >
-                  <X className="w-4 h-4" />
-                </Button>
+                  <X className="w-5 h-5" />
+                </button>
               )}
+            </div>
 
-              {/* Continue button */}
+            {/* Row 2: Counter + Continue button */}
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {selectedBooks.length} of {plan.books_per_cycle} selected
+              </span>
+
+              {/* Continue button - visually distinct enabled/disabled states */}
               <Button
                 onClick={handleContinue}
                 disabled={selectedBooks.length !== plan.books_per_cycle}
-                className="h-12 px-6 rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className={cn(
+                  'h-11 px-5 rounded-2xl font-semibold transition-all',
+                  selectedBooks.length === plan.books_per_cycle
+                    ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 text-white hover:opacity-90'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                )}
               >
-                Continue
-                <ArrowRight className="w-5 h-5 ml-2" />
+                {selectedBooks.length === plan.books_per_cycle ? (
+                  <>
+                    Continue
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                ) : (
+                  `Select ${plan.books_per_cycle - selectedBooks.length} more`
+                )}
               </Button>
             </div>
           </div>
