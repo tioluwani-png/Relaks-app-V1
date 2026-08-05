@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
@@ -17,12 +17,14 @@ import {
   BookOpen,
   Clock,
   User,
+  PlayCircle,
+  PackageCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import { format } from 'date-fns'
+import { format, differenceInDays } from 'date-fns'
 import type { RentalSubscriptionStatus } from '@/types/database'
 
 interface OrderDetail {
@@ -34,9 +36,11 @@ interface OrderDetail {
   delivery_lga: string
   delivery_address: string
   delivery_phone: string
-  dispatched_at: string | null
+  picked_up_at: string | null
+  in_transit_at: string | null
   delivered_at: string | null
   returned_at: string | null
+  auto_renew: boolean
   user: { id: string; username: string; email: string } | null
   plan: { id: string; name: string; books_per_cycle: number; duration_days: number; swap_frequency: string } | null
   books: Array<{
@@ -48,15 +52,16 @@ interface OrderDetail {
   payment: { amount_naira: number; paystack_reference: string; created_at: string } | null
 }
 
+type ActionType = 'process' | 'pickup' | 'transit' | 'deliver' | 'return'
+
 export default function OrderDetailPage() {
   const params = useParams()
-  const router = useRouter()
   const orderId = params.id as string
   const supabase = createClient()
 
   const [order, setOrder] = useState<OrderDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState<ActionType | null>(null)
 
   useEffect(() => {
     loadOrder()
@@ -75,9 +80,11 @@ export default function OrderDetailPage() {
           delivery_lga,
           delivery_address,
           delivery_phone,
-          dispatched_at,
+          picked_up_at,
+          in_transit_at,
           delivered_at,
           returned_at,
+          auto_renew,
           user:users(id, username, email),
           plan:rental_plans(id, name, books_per_cycle, duration_days, swap_frequency),
           books:rental_subscription_books(
@@ -111,7 +118,7 @@ export default function OrderDetailPage() {
     }
   }
 
-  const handleAction = async (action: 'dispatch' | 'deliver' | 'return') => {
+  const handleAction = async (action: ActionType, successMessage: string) => {
     setActionLoading(action)
     try {
       const response = await fetch(`/api/club-admin/orders/${orderId}/${action}`, {
@@ -123,7 +130,7 @@ export default function OrderDetailPage() {
         throw new Error(data.error || `Failed to ${action}`)
       }
 
-      toast.success(`Order marked as ${action === 'dispatch' ? 'dispatched' : action === 'deliver' ? 'delivered' : 'returned'}`)
+      toast.success(successMessage)
       loadOrder()
     } catch (error) {
       console.error(`${action} error:`, error)
@@ -190,9 +197,71 @@ Action: ${action}
     )
   }
 
-  const canDispatch = order.status === 'active' && !order.dispatched_at
-  const canDeliver = order.status === 'active' && order.dispatched_at && !order.delivered_at
-  const canReturn = (order.status === 'active' || order.status === 'awaiting_return') && order.delivered_at && !order.returned_at
+  // Determine available actions based on status
+  const getAvailableActions = () => {
+    const actions: { action: ActionType; label: string; icon: React.ReactNode; className: string }[] = []
+
+    switch (order.status) {
+      case 'active':
+        actions.push({
+          action: 'process',
+          label: 'Start Processing',
+          icon: <PlayCircle className="h-4 w-4 mr-2" />,
+          className: 'bg-yellow-500 hover:bg-yellow-600',
+        })
+        break
+      case 'processing':
+        actions.push({
+          action: 'pickup',
+          label: 'Mark Picked Up',
+          icon: <PackageCheck className="h-4 w-4 mr-2" />,
+          className: 'bg-indigo-500 hover:bg-indigo-600',
+        })
+        break
+      case 'picked_up':
+        actions.push({
+          action: 'transit',
+          label: 'Mark In Transit',
+          icon: <Truck className="h-4 w-4 mr-2" />,
+          className: 'bg-purple-500 hover:bg-purple-600',
+        })
+        actions.push({
+          action: 'deliver',
+          label: 'Mark Delivered',
+          icon: <CheckCircle2 className="h-4 w-4 mr-2" />,
+          className: 'bg-green-500 hover:bg-green-600',
+        })
+        break
+      case 'in_transit':
+        actions.push({
+          action: 'deliver',
+          label: 'Mark Delivered',
+          icon: <CheckCircle2 className="h-4 w-4 mr-2" />,
+          className: 'bg-green-500 hover:bg-green-600',
+        })
+        break
+      case 'delivered':
+      case 'awaiting_return':
+        if (!order.returned_at) {
+          actions.push({
+            action: 'return',
+            label: 'Mark Returned',
+            icon: <RotateCcw className="h-4 w-4 mr-2" />,
+            className: 'bg-gray-500 hover:bg-gray-600',
+          })
+        }
+        break
+    }
+
+    return actions
+  }
+
+  const availableActions = getAvailableActions()
+
+  // Calculate days remaining if delivered
+  const daysRemaining = order.delivered_at && order.expires_at
+    ? Math.max(0, differenceInDays(new Date(order.expires_at), new Date()))
+    : null
 
   return (
     <div className="space-y-6">
@@ -243,6 +312,11 @@ Action: ${action}
               <Phone className="h-5 w-5 text-gray-400" />
               <p className="font-medium">{order.delivery_phone}</p>
             </div>
+            {order.auto_renew && (
+              <div className="mt-2 px-3 py-2 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 text-sm">
+                Auto-renew enabled
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -256,106 +330,126 @@ Action: ${action}
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {/* Paid */}
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
                 </div>
                 <div>
-                  <p className="font-medium">Order Created</p>
+                  <p className="font-medium">Paid</p>
                   <p className="text-sm text-gray-500">
                     {format(new Date(order.created_at), 'MMM d, yyyy h:mm a')}
                   </p>
                 </div>
               </div>
 
+              {/* Processing */}
               <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${order.dispatched_at ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                  <Truck className={`h-4 w-4 ${order.dispatched_at ? 'text-blue-600' : 'text-gray-400'}`} />
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  ['processing', 'picked_up', 'in_transit', 'delivered', 'awaiting_return', 'completed'].includes(order.status)
+                    ? 'bg-yellow-100' : 'bg-gray-100'
+                }`}>
+                  <PlayCircle className={`h-4 w-4 ${
+                    ['processing', 'picked_up', 'in_transit', 'delivered', 'awaiting_return', 'completed'].includes(order.status)
+                      ? 'text-yellow-600' : 'text-gray-400'
+                  }`} />
                 </div>
                 <div>
-                  <p className={`font-medium ${!order.dispatched_at && 'text-gray-400'}`}>Dispatched</p>
+                  <p className={`font-medium ${order.status === 'active' && 'text-gray-400'}`}>Processing</p>
                   <p className="text-sm text-gray-500">
-                    {order.dispatched_at
-                      ? format(new Date(order.dispatched_at), 'MMM d, yyyy h:mm a')
-                      : 'Not yet'}
+                    {['processing', 'picked_up', 'in_transit', 'delivered', 'awaiting_return', 'completed'].includes(order.status)
+                      ? 'Started'
+                      : 'Pending'}
                   </p>
                 </div>
               </div>
 
+              {/* Picked Up */}
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${order.picked_up_at ? 'bg-indigo-100' : 'bg-gray-100'}`}>
+                  <PackageCheck className={`h-4 w-4 ${order.picked_up_at ? 'text-indigo-600' : 'text-gray-400'}`} />
+                </div>
+                <div>
+                  <p className={`font-medium ${!order.picked_up_at && 'text-gray-400'}`}>Picked Up</p>
+                  <p className="text-sm text-gray-500">
+                    {order.picked_up_at
+                      ? format(new Date(order.picked_up_at), 'MMM d, yyyy h:mm a')
+                      : 'Pending'}
+                  </p>
+                </div>
+              </div>
+
+              {/* In Transit (optional) */}
+              {order.in_transit_at && (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                    <Truck className="h-4 w-4 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium">In Transit</p>
+                    <p className="text-sm text-gray-500">
+                      {format(new Date(order.in_transit_at), 'MMM d, yyyy h:mm a')}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Delivered */}
               <div className="flex items-center gap-3">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${order.delivered_at ? 'bg-green-100' : 'bg-gray-100'}`}>
-                  <CheckCircle2 className={`h-4 w-4 ${order.delivered_at ? 'text-green-600' : 'text-gray-400'}`} />
+                  <Package className={`h-4 w-4 ${order.delivered_at ? 'text-green-600' : 'text-gray-400'}`} />
                 </div>
                 <div>
                   <p className={`font-medium ${!order.delivered_at && 'text-gray-400'}`}>Delivered</p>
                   <p className="text-sm text-gray-500">
                     {order.delivered_at
                       ? format(new Date(order.delivered_at), 'MMM d, yyyy h:mm a')
-                      : 'Not yet'}
+                      : 'Pending'}
                   </p>
+                  {daysRemaining !== null && (
+                    <p className="text-sm text-orange-600 font-medium">
+                      {daysRemaining} days remaining
+                    </p>
+                  )}
                 </div>
               </div>
 
+              {/* Returned */}
               <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${order.returned_at ? 'bg-purple-100' : 'bg-gray-100'}`}>
-                  <RotateCcw className={`h-4 w-4 ${order.returned_at ? 'text-purple-600' : 'text-gray-400'}`} />
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${order.returned_at ? 'bg-emerald-100' : 'bg-gray-100'}`}>
+                  <RotateCcw className={`h-4 w-4 ${order.returned_at ? 'text-emerald-600' : 'text-gray-400'}`} />
                 </div>
                 <div>
                   <p className={`font-medium ${!order.returned_at && 'text-gray-400'}`}>Returned</p>
                   <p className="text-sm text-gray-500">
                     {order.returned_at
                       ? format(new Date(order.returned_at), 'MMM d, yyyy h:mm a')
-                      : 'Not yet'}
+                      : 'Pending'}
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-2 mt-6 pt-4 border-t">
-              {canDispatch && (
-                <Button
-                  onClick={() => handleAction('dispatch')}
-                  disabled={!!actionLoading}
-                  className="bg-blue-500 hover:bg-blue-600"
-                >
-                  {actionLoading === 'dispatch' ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Truck className="h-4 w-4 mr-2" />
-                  )}
-                  Mark Dispatched
-                </Button>
-              )}
-              {canDeliver && (
-                <Button
-                  onClick={() => handleAction('deliver')}
-                  disabled={!!actionLoading}
-                  className="bg-green-500 hover:bg-green-600"
-                >
-                  {actionLoading === 'deliver' ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                  )}
-                  Mark Delivered
-                </Button>
-              )}
-              {canReturn && (
-                <Button
-                  onClick={() => handleAction('return')}
-                  disabled={!!actionLoading}
-                  variant="outline"
-                >
-                  {actionLoading === 'return' ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                  )}
-                  Mark Returned
-                </Button>
-              )}
-            </div>
+            {availableActions.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t">
+                {availableActions.map(({ action, label, icon, className }) => (
+                  <Button
+                    key={action}
+                    onClick={() => handleAction(action, `${label} completed`)}
+                    disabled={!!actionLoading}
+                    className={className}
+                  >
+                    {actionLoading === action ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      icon
+                    )}
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -431,6 +525,33 @@ Action: ${action}
             </CardContent>
           </Card>
         )}
+
+        {/* Subscription Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Subscription</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Plan</span>
+              <span className="font-semibold">{order.plan?.name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Duration</span>
+              <span>{order.plan?.duration_days} days</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Swap Frequency</span>
+              <span className="capitalize">{order.plan?.swap_frequency?.replace('_', ' ')}</span>
+            </div>
+            {order.expires_at && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Expires</span>
+                <span>{format(new Date(order.expires_at), 'MMM d, yyyy')}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

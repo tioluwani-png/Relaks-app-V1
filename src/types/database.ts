@@ -26,7 +26,24 @@ export type RentalOrderStatus = 'pending' | 'paid' | 'processing' | 'shipped' | 
 
 // Rental Subscription types (Phase 2)
 export type SwapFrequency = 'monthly' | 'end_of_term'
-export type RentalSubscriptionStatus = 'pending_payment' | 'active' | 'awaiting_return' | 'completed' | 'cancelled'
+export type RentalSubscriptionStatus =
+  | 'pending_payment'
+  | 'active'           // Paid, awaiting processing
+  | 'processing'       // Admin started processing
+  | 'picked_up'        // Books picked up from warehouse
+  | 'in_transit'       // En route to customer (optional step)
+  | 'delivered'        // Delivered to customer, countdown started
+  | 'awaiting_return'  // Rental period ended, awaiting book collection
+  | 'completed'        // Books returned, subscription complete
+  | 'cancelled'
+
+// Rental email types for idempotent email logging
+export type RentalEmailType =
+  | 'delivery_confirmation'
+  | 'expiry_reminder'
+  | 'renewal_receipt'
+  | 'renewal_failed'
+  | 'collection_scheduled'
 
 export interface Database {
   public: {
@@ -1251,8 +1268,11 @@ export interface Database {
           delivery_address: string
           delivery_phone: string
           dispatched_at: string | null
+          picked_up_at: string | null
+          in_transit_at: string | null
           delivered_at: string | null
           returned_at: string | null
+          auto_renew: boolean
           created_at: string
           updated_at: string
         }
@@ -1267,8 +1287,11 @@ export interface Database {
           delivery_address: string
           delivery_phone: string
           dispatched_at?: string | null
+          picked_up_at?: string | null
+          in_transit_at?: string | null
           delivered_at?: string | null
           returned_at?: string | null
+          auto_renew?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -1283,8 +1306,11 @@ export interface Database {
           delivery_address?: string
           delivery_phone?: string
           dispatched_at?: string | null
+          picked_up_at?: string | null
+          in_transit_at?: string | null
           delivered_at?: string | null
           returned_at?: string | null
+          auto_renew?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -1380,6 +1406,58 @@ export interface Database {
           available_copies?: number
           is_active?: boolean
           created_at?: string
+        }
+      }
+      rental_book_ratings: {
+        Row: {
+          id: string
+          user_id: string
+          subscription_id: string
+          book_id: string
+          rating: number
+          review: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          subscription_id: string
+          book_id: string
+          rating: number
+          review?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          subscription_id?: string
+          book_id?: string
+          rating?: number
+          review?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      rental_email_log: {
+        Row: {
+          id: string
+          subscription_id: string
+          email_type: RentalEmailType
+          sent_at: string
+        }
+        Insert: {
+          id?: string
+          subscription_id: string
+          email_type: RentalEmailType
+          sent_at?: string
+        }
+        Update: {
+          id?: string
+          subscription_id?: string
+          email_type?: RentalEmailType
+          sent_at?: string
         }
       }
     }
@@ -1538,4 +1616,18 @@ export type RentalSubscriptionWithDetails = RentalSubscription & {
   books: (RentalSubscriptionBook & {
     book: RentalBook
   })[]
+}
+
+// ==========================================
+// Rental Lifecycle Types
+// ==========================================
+export type RentalBookRating = Database['public']['Tables']['rental_book_ratings']['Row']
+export type RentalEmailLog = Database['public']['Tables']['rental_email_log']['Row']
+
+export type RentalBookRatingWithBook = RentalBookRating & {
+  book: RentalBook
+}
+
+export type RentalSubscriptionWithRatings = RentalSubscriptionWithDetails & {
+  ratings: RentalBookRatingWithBook[]
 }

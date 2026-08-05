@@ -1,5 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { sendDeliveryConfirmationEmail } from '@/lib/email'
 
 const CLUB_ADMIN_ROLES = ['partner', 'admin', 'super_admin']
 
@@ -17,11 +18,18 @@ async function verifyClubAdmin(supabase: Awaited<ReturnType<typeof createClient>
   return user
 }
 
+/**
+ * POST /api/club-admin/orders/[id]/deliver
+ * Transition: picked_up OR in_transit → delivered
+ * Sets delivered_at, expires_at (delivery + duration), status to 'delivered'
+ * Sends delivery confirmation email
+ */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const supabase = await createClient()
+  const adminSupabase = await createAdminClient()
   const { id: orderId } = await params
 
   const user = await verifyClubAdmin(supabase)
@@ -30,10 +38,14 @@ export async function POST(
   }
 
   try {
-    // Get current subscription state
+    // Get current subscription state with plan and user
     const { data: subscription, error: fetchError } = await supabase
       .from('rental_subscriptions')
-      .select('id, status, dispatched_at, delivered_at, started_at, plan_id')
+      .select(`
+        id, status, picked_up_at, delivered_at, user_id, plan_id,
+        plan:rental_plans(duration_days, name),
+        user:users(email, username, display_name)
+      `)
       .eq('id', orderId)
       .single()
 
@@ -44,10 +56,12 @@ export async function POST(
     const sub = subscription as {
       id: string
       status: string
-      dispatched_at: string | null
+      picked_up_at: string | null
       delivered_at: string | null
-      started_at: string | null
+      user_id: string
       plan_id: string
+      plan: { duration_days: number; name: string } | null
+      user: { email: string; username: string; display_name: string | null } | null
     }
 
     // Idempotent: already delivered
@@ -55,53 +69,78 @@ export async function POST(
       return NextResponse.json({ success: true, message: 'Already delivered' })
     }
 
-    // Must be dispatched first
-    if (!sub.dispatched_at) {
-      return NextResponse.json({ error: 'Must dispatch before marking as delivered' }, { status: 400 })
+    // Already past delivered stage
+    if (['awaiting_return', 'completed'].includes(sub.status)) {
+      return NextResponse.json({ success: true, message: 'Already past delivery stage' })
     }
 
-    // Must be active
-    if (sub.status !== 'active') {
-      return NextResponse.json({ error: 'Can only deliver active subscriptions' }, { status: 400 })
+    // Must be picked_up or in_transit to deliver
+    if (!['picked_up', 'in_transit'].includes(sub.status)) {
+      return NextResponse.json(
+        { error: 'Must be picked up before marking as delivered' },
+        { status: 400 }
+      )
     }
 
+    // Calculate delivery time and expiry
     const now = new Date()
-    const updates: Record<string, unknown> = {
-      delivered_at: now.toISOString(),
-    }
+    const durationDays = sub.plan?.duration_days || 30 // Default 30 days if plan not found
+    const expiresAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000)
 
-    // If not started yet, set started_at and calculate expires_at
-    if (!sub.started_at) {
-      updates.started_at = now.toISOString()
-
-      // Get plan duration to calculate expiry
-      const { data: plan } = await supabase
-        .from('rental_plans')
-        .select('duration_days')
-        .eq('id', sub.plan_id)
-        .single()
-
-      if (plan) {
-        const planData = plan as { duration_days: number }
-        const expiresAt = new Date(now)
-        expiresAt.setDate(expiresAt.getDate() + planData.duration_days)
-        updates.expires_at = expiresAt.toISOString()
-      }
-    }
-
-    // Update subscription
-    const { error: updateError } = await supabase
+    // Update subscription - CRITICAL: expires_at is anchored to delivery date
+    const { error: updateError } = await adminSupabase
       .from('rental_subscriptions')
-      .update(updates as never)
+      .update({
+        status: 'delivered',
+        delivered_at: now.toISOString(),
+        started_at: now.toISOString(), // Rental period starts at delivery
+        expires_at: expiresAt.toISOString(),
+      } as never)
       .eq('id', orderId)
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true })
+    console.log('[club-admin/deliver] Order delivered:', {
+      orderId,
+      delivered_at: now.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      duration_days: durationDays,
+    })
+
+    // Send delivery confirmation email (non-blocking)
+    try {
+      if (sub.user) {
+        await sendDeliveryConfirmationEmail(
+          sub.user.email,
+          sub.user.display_name || sub.user.username,
+          sub.plan?.name || 'Rental Plan',
+          durationDays,
+          expiresAt.toISOString()
+        )
+
+        // Log email sent (idempotent via unique constraint)
+        await adminSupabase
+          .from('rental_email_log')
+          .insert({
+            subscription_id: orderId,
+            email_type: 'delivery_confirmation',
+          } as never)
+          .single()
+      }
+    } catch (emailError) {
+      // Email failure should not fail the delivery action
+      console.error('[club-admin/deliver] Email error:', emailError)
+    }
+
+    return NextResponse.json({
+      success: true,
+      delivered_at: now.toISOString(),
+      expires_at: expiresAt.toISOString(),
+    })
   } catch (error) {
-    console.error('Deliver error:', error)
+    console.error('[club-admin/deliver] Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

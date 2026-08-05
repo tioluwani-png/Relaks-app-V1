@@ -10,14 +10,46 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Fetch subscriptions with plan, books, and ratings
     const { data: subscriptions, error } = await supabase
       .from('rental_subscriptions')
       .select(`
-        *,
-        plan:rental_plans(*),
+        id,
+        status,
+        created_at,
+        started_at,
+        expires_at,
+        delivery_lga,
+        delivery_address,
+        delivery_phone,
+        picked_up_at,
+        in_transit_at,
+        delivered_at,
+        returned_at,
+        auto_renew,
+        plan:rental_plans(
+          id,
+          name,
+          books_per_cycle,
+          duration_days,
+          price_naira,
+          swap_frequency
+        ),
         books:rental_subscription_books(
-          *,
-          book:rental_books(*)
+          id,
+          book_id,
+          returned,
+          book:books(
+            id,
+            title,
+            author,
+            cover_url
+          )
+        ),
+        ratings:rental_book_ratings(
+          book_id,
+          rating,
+          review
         )
       `)
       .eq('user_id', user.id)

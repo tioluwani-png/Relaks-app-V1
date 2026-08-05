@@ -81,3 +81,90 @@ export const PRICING = {
 export function toKobo(naira: number): number {
   return naira * 100
 }
+
+// ============================================
+// CHARGE AUTHORIZATION (Recurring Payments)
+// ============================================
+
+export interface ChargeAuthorizationResponse {
+  status: boolean
+  message: string
+  data: {
+    status: 'success' | 'failed' | 'pending'
+    reference: string
+    amount: number
+    transaction_date: string
+    authorization: {
+      authorization_code: string
+      card_type: string
+      last4: string
+      exp_month: string
+      exp_year: string
+      bank: string
+    }
+  }
+}
+
+/**
+ * Charge a saved card using authorization_code
+ * Used for auto-renewal of rental subscriptions
+ *
+ * @param authorizationCode - The authorization code from a previous successful payment
+ * @param email - Customer email (must match the original payment)
+ * @param amountKobo - Amount in kobo (Naira * 100)
+ * @param reference - Unique reference for this charge
+ * @param metadata - Optional metadata to attach to the transaction
+ */
+export async function chargeAuthorization(
+  authorizationCode: string,
+  email: string,
+  amountKobo: number,
+  reference: string,
+  metadata: Record<string, unknown> = {}
+): Promise<{ success: boolean; data?: ChargeAuthorizationResponse['data']; error?: string }> {
+  try {
+    const response = await fetch('https://api.paystack.co/transaction/charge_authorization', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        authorization_code: authorizationCode,
+        email,
+        amount: amountKobo,
+        reference,
+        metadata,
+      }),
+    })
+
+    const result: ChargeAuthorizationResponse = await response.json()
+
+    if (!result.status) {
+      console.error('[chargeAuthorization] Paystack error:', result.message)
+      return { success: false, error: result.message }
+    }
+
+    if (result.data.status !== 'success') {
+      console.error('[chargeAuthorization] Charge failed:', result.data.status)
+      return { success: false, error: `Charge ${result.data.status}` }
+    }
+
+    console.log('[chargeAuthorization] Charge successful:', {
+      reference: result.data.reference,
+      amount: result.data.amount,
+    })
+
+    return { success: true, data: result.data }
+  } catch (error) {
+    console.error('[chargeAuthorization] Error:', error)
+    return { success: false, error: 'Failed to charge card' }
+  }
+}
+
+/**
+ * Generate a reference for auto-renewal charges
+ */
+export function generateRenewalReference(subscriptionId: string): string {
+  return `renewal_${subscriptionId}_${Date.now()}`
+}

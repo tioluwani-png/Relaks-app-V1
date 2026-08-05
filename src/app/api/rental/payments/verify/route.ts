@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
       for (const { book_id } of subscriptionBooks) {
         // Decrement available_copies, guarding against negative
         const { data: bookData } = await adminSupabase
-          .from('rental_books')
+          .from('books')
           .select('available_copies')
           .eq('id', book_id)
           .single()
@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
 
         if (book && book.available_copies > 0) {
           await adminSupabase
-            .from('rental_books')
+            .from('books')
             .update({ available_copies: book.available_copies - 1 } as never)
             .eq('id', book_id)
         }
@@ -256,7 +256,7 @@ export async function POST(request: NextRequest) {
     const { data: emailBooksData } = await adminSupabase
       .from('rental_subscription_books')
       .select(`
-        book:rental_books(id, title, author, cover_url)
+        book:books(id, title, author, cover_url)
       `)
       .eq('subscription_id', subscriptionId)
 

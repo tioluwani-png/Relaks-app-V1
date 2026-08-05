@@ -599,6 +599,390 @@ export async function handleMilestone(email: string, milestone: string) {
 }
 
 // ============================================
+// RENTAL LIFECYCLE EMAILS
+// ============================================
+
+/**
+ * Sent when books are delivered to the customer
+ * Marks the start of their rental countdown
+ */
+export async function sendDeliveryConfirmationEmail(
+  to: string,
+  username: string,
+  planName: string,
+  durationDays: number,
+  expiresAt: string
+) {
+  const expiresDate = new Date(expiresAt)
+  const formattedDate = expiresDate.toLocaleDateString('en-NG', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: 'Relaks <hello@hello.relaks.co>',
+      to,
+      subject: 'Your books have arrived! 📚',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #FFFBF5;">
+          <h1 style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; margin-bottom: 24px;">
+            Relaks
+          </h1>
+
+          <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 8px;">Your books have arrived! 📚</h2>
+
+          <p style="color: #4b5563; font-size: 16px; margin-bottom: 24px;">
+            Hey ${username}, your books are now in your hands. Your ${durationDays}-day reading adventure starts today!
+          </p>
+
+          <div style="background: white; border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid #f3f4f6;">
+            <p style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">Your reading period:</p>
+            <p style="color: #1f2937; font-size: 20px; font-weight: 700; margin: 0;">
+              ${durationDays} days
+            </p>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 16px; margin-bottom: 8px;">We'll collect your books on:</p>
+            <p style="color: #c05621; font-size: 18px; font-weight: 600; margin: 0;">
+              ${formattedDate}
+            </p>
+          </div>
+
+          <div style="background: linear-gradient(135deg, #faf5ff, #fdf2f8); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+            <p style="color: #4b5563; font-size: 15px; margin: 0;">
+              💡 <strong>Tip:</strong> Enable auto-renew in your account to keep the books flowing without interruption!
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="https://relaks.co/rent/my-rentals" style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+              View My Rentals
+            </a>
+          </div>
+
+          <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 40px;">
+            Happy reading!<br>
+            The Relaks Team
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[sendDeliveryConfirmationEmail] Error:', error)
+      return { success: false, error }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('[sendDeliveryConfirmationEmail] Send error:', error)
+    return { success: false, error }
+  }
+}
+
+/**
+ * Sent 7 days before rental expires
+ * Encourages renewal or lets them know collection is coming
+ */
+export async function sendRenewalReminderEmail(
+  to: string,
+  username: string,
+  expiresAt: string,
+  autoRenewEnabled: boolean,
+  planPrice: number
+) {
+  const expiresDate = new Date(expiresAt)
+  const formattedDate = expiresDate.toLocaleDateString('en-NG', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+
+  const autoRenewMessage = autoRenewEnabled
+    ? `<p style="color: #059669; font-size: 15px; margin: 0;">
+        ✅ <strong>Auto-renew is ON</strong> — We'll charge your saved card (₦${planPrice.toLocaleString()}) on ${formattedDate} and your books will keep coming!
+      </p>`
+    : `<p style="color: #4b5563; font-size: 15px; margin: 0;">
+        Want to keep reading? Enable auto-renew or renew manually before ${formattedDate}.
+      </p>`
+
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: 'Relaks <hello@hello.relaks.co>',
+      to,
+      subject: '7 days left on your rental 📖',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #FFFBF5;">
+          <h1 style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; margin-bottom: 24px;">
+            Relaks
+          </h1>
+
+          <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 8px;">7 days left on your rental</h2>
+
+          <p style="color: #4b5563; font-size: 16px; margin-bottom: 24px;">
+            Hey ${username}, your current rental period ends on <strong>${formattedDate}</strong>.
+          </p>
+
+          <div style="background: white; border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid #f3f4f6;">
+            ${autoRenewMessage}
+          </div>
+
+          ${!autoRenewEnabled ? `
+          <div style="background: linear-gradient(135deg, #faf5ff, #fdf2f8); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+            <p style="color: #4b5563; font-size: 15px; margin: 0 0 16px 0;">
+              <strong>Two options:</strong>
+            </p>
+            <p style="color: #4b5563; font-size: 14px; margin: 0 0 8px 0;">
+              1. <strong>Turn on auto-renew</strong> — Never run out of books
+            </p>
+            <p style="color: #4b5563; font-size: 14px; margin: 0;">
+              2. <strong>Renew manually</strong> — Pick new books now
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="https://relaks.co/rent/my-rentals" style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+              Renew Now
+            </a>
+          </div>
+          ` : `
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="https://relaks.co/rent/my-rentals" style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+              View My Rentals
+            </a>
+          </div>
+          `}
+
+          <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 40px;">
+            Questions? Just reply to this email.<br>
+            The Relaks Team
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[sendRenewalReminderEmail] Error:', error)
+      return { success: false, error }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('[sendRenewalReminderEmail] Send error:', error)
+    return { success: false, error }
+  }
+}
+
+/**
+ * Sent when auto-renewal charge succeeds
+ */
+export async function sendAutoRenewalSuccessEmail(
+  to: string,
+  username: string,
+  planName: string,
+  amountCharged: number,
+  newExpiresAt: string,
+  subscriptionId: string
+) {
+  const expiresDate = new Date(newExpiresAt)
+  const formattedDate = expiresDate.toLocaleDateString('en-NG', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: 'Relaks <hello@hello.relaks.co>',
+      to,
+      subject: 'Your rental has been renewed! 🎉',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #FFFBF5;">
+          <h1 style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; margin-bottom: 24px;">
+            Relaks
+          </h1>
+
+          <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 8px;">Your rental has been renewed! 🎉</h2>
+
+          <p style="color: #4b5563; font-size: 16px; margin-bottom: 24px;">
+            Hey ${username}, great news! We've automatically renewed your ${planName} subscription.
+          </p>
+
+          <div style="background: white; border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid #f3f4f6;">
+            <p style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">Amount charged:</p>
+            <p style="color: #1f2937; font-size: 20px; font-weight: 700; margin: 0 0 16px 0;">
+              ₦${amountCharged.toLocaleString()}
+            </p>
+            <p style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">Your next books are yours until:</p>
+            <p style="color: #059669; font-size: 18px; font-weight: 600; margin: 0;">
+              ${formattedDate}
+            </p>
+          </div>
+
+          <div style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+            <p style="color: #065f46; font-size: 15px; margin: 0;">
+              📚 <strong>Next step:</strong> Pick your books for this cycle! We'll deliver them when we collect your current books.
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="https://relaks.co/books?subscription=${subscriptionId}" style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+              Pick Your Books
+            </a>
+          </div>
+
+          <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 40px;">
+            Happy reading!<br>
+            The Relaks Team
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[sendAutoRenewalSuccessEmail] Error:', error)
+      return { success: false, error }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('[sendAutoRenewalSuccessEmail] Send error:', error)
+    return { success: false, error }
+  }
+}
+
+/**
+ * Sent when auto-renewal charge fails
+ */
+export async function sendAutoRenewalFailedEmail(
+  to: string,
+  username: string,
+  planName: string,
+  planPrice: number,
+  subscriptionId: string
+) {
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: 'Relaks <hello@hello.relaks.co>',
+      to,
+      subject: 'Your renewal payment failed',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #FFFBF5;">
+          <h1 style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; margin-bottom: 24px;">
+            Relaks
+          </h1>
+
+          <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 8px;">Your renewal payment failed</h2>
+
+          <p style="color: #4b5563; font-size: 16px; margin-bottom: 24px;">
+            Hey ${username}, we tried to renew your ${planName} subscription but the payment didn't go through.
+          </p>
+
+          <div style="background: #fef2f2; border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid #fecaca;">
+            <p style="color: #991b1b; font-size: 15px; margin: 0;">
+              ⚠️ Your saved card was declined. This could be due to insufficient funds, an expired card, or a temporary bank issue.
+            </p>
+          </div>
+
+          <div style="background: white; border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid #f3f4f6;">
+            <p style="color: #4b5563; font-size: 15px; margin: 0;">
+              Don't worry — you can still renew manually and keep the books coming:
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="https://relaks.co/rent/my-rentals" style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+              Renew Now (₦${planPrice.toLocaleString()})
+            </a>
+          </div>
+
+          <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 40px;">
+            If you have any issues, just reply to this email.<br>
+            The Relaks Team
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[sendAutoRenewalFailedEmail] Error:', error)
+      return { success: false, error }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('[sendAutoRenewalFailedEmail] Send error:', error)
+    return { success: false, error }
+  }
+}
+
+/**
+ * Sent when rental expires and collection is scheduled
+ */
+export async function sendCollectionScheduledEmail(
+  to: string,
+  username: string
+) {
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: 'Relaks <hello@hello.relaks.co>',
+      to,
+      subject: 'Time to say goodbye to your books 📚',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #FFFBF5;">
+          <h1 style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; margin-bottom: 24px;">
+            Relaks
+          </h1>
+
+          <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 8px;">Time to say goodbye to your books</h2>
+
+          <p style="color: #4b5563; font-size: 16px; margin-bottom: 24px;">
+            Hey ${username}, your rental period has ended. We hope you enjoyed the books!
+          </p>
+
+          <div style="background: white; border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid #f3f4f6;">
+            <p style="color: #4b5563; font-size: 15px; margin: 0 0 16px 0;">
+              📦 <strong>What happens next:</strong>
+            </p>
+            <p style="color: #6b7280; font-size: 14px; margin: 0;">
+              Our rider will reach out to schedule a convenient time to collect your books. Please have them ready!
+            </p>
+          </div>
+
+          <div style="background: linear-gradient(135deg, #faf5ff, #fdf2f8); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+            <p style="color: #4b5563; font-size: 15px; margin: 0;">
+              🔄 <strong>Want to keep reading?</strong> You can start a new rental anytime!
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="https://relaks.co/rent" style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+              Start a New Rental
+            </a>
+          </div>
+
+          <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 40px;">
+            Thanks for being part of the Relaks Reading Club!<br>
+            The Relaks Team
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[sendCollectionScheduledEmail] Error:', error)
+      return { success: false, error }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('[sendCollectionScheduledEmail] Send error:', error)
+    return { success: false, error }
+  }
+}
+
+// ============================================
 // RENTAL OPS ALERT EMAIL (Internal)
 // ============================================
 

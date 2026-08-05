@@ -13,6 +13,8 @@ import {
   ChevronRight,
   Clock,
   Filter,
+  PlayCircle,
+  PackageCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,8 +39,11 @@ interface OrderRow {
   delivery_address: string
   delivery_phone: string
   dispatched_at: string | null
+  picked_up_at: string | null
+  in_transit_at: string | null
   delivered_at: string | null
   returned_at: string | null
+  expires_at: string | null
   user: { id: string; username: string } | null
   plan: { id: string; name: string; books_per_cycle: number } | null
   books: Array<{ book: { id: string; title: string } | null }>
@@ -51,9 +56,29 @@ const STATUS_CONFIG: Record<string, { label: string; icon: React.ReactNode; colo
     color: 'bg-gray-100 text-gray-700',
   },
   active: {
-    label: 'Active',
-    icon: <Package className="h-4 w-4" />,
+    label: 'Paid',
+    icon: <CheckCircle2 className="h-4 w-4" />,
     color: 'bg-blue-100 text-blue-700',
+  },
+  processing: {
+    label: 'Processing',
+    icon: <PlayCircle className="h-4 w-4" />,
+    color: 'bg-yellow-100 text-yellow-700',
+  },
+  picked_up: {
+    label: 'Picked Up',
+    icon: <PackageCheck className="h-4 w-4" />,
+    color: 'bg-indigo-100 text-indigo-700',
+  },
+  in_transit: {
+    label: 'In Transit',
+    icon: <Truck className="h-4 w-4" />,
+    color: 'bg-purple-100 text-purple-700',
+  },
+  delivered: {
+    label: 'Delivered',
+    icon: <Package className="h-4 w-4" />,
+    color: 'bg-green-100 text-green-700',
   },
   awaiting_return: {
     label: 'Awaiting Return',
@@ -63,7 +88,7 @@ const STATUS_CONFIG: Record<string, { label: string; icon: React.ReactNode; colo
   completed: {
     label: 'Completed',
     icon: <CheckCircle2 className="h-4 w-4" />,
-    color: 'bg-green-100 text-green-700',
+    color: 'bg-emerald-100 text-emerald-700',
   },
   cancelled: {
     label: 'Cancelled',
@@ -101,8 +126,11 @@ export default function ClubAdminOrdersPage() {
           delivery_address,
           delivery_phone,
           dispatched_at,
+          picked_up_at,
+          in_transit_at,
           delivered_at,
           returned_at,
+          expires_at,
           user:users(id, username),
           plan:rental_plans(id, name, books_per_cycle),
           books:rental_subscription_books(
@@ -111,8 +139,12 @@ export default function ClubAdminOrdersPage() {
         `)
         .order('created_at', { ascending: false })
 
-      if (statusFilter === 'awaiting_dispatch') {
-        query = query.eq('status', 'active').is('dispatched_at', null)
+      if (statusFilter === 'needs_action') {
+        // Orders that need fulfillment action (paid but not delivered)
+        query = query.in('status', ['active', 'processing', 'picked_up', 'in_transit'])
+      } else if (statusFilter === 'awaiting_collection') {
+        // Orders ready for book collection
+        query = query.in('status', ['delivered', 'awaiting_return'])
       } else if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter)
       }
@@ -130,67 +162,24 @@ export default function ClubAdminOrdersPage() {
     }
   }
 
-  const handleMarkDispatched = async (orderId: string) => {
+  // Action handlers
+  const handleAction = async (orderId: string, action: string, successMessage: string) => {
     setActionLoading(orderId)
     try {
-      const response = await fetch(`/api/club-admin/orders/${orderId}/dispatch`, {
+      const response = await fetch(`/api/club-admin/orders/${orderId}/${action}`, {
         method: 'POST',
       })
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || 'Failed to mark as dispatched')
+        throw new Error(data.error || `Failed to ${action}`)
       }
 
-      toast.success('Order marked as dispatched')
+      toast.success(successMessage)
       loadOrders()
     } catch (error) {
-      console.error('Dispatch error:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to dispatch')
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  const handleMarkDelivered = async (orderId: string) => {
-    setActionLoading(orderId)
-    try {
-      const response = await fetch(`/api/club-admin/orders/${orderId}/deliver`, {
-        method: 'POST',
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to mark as delivered')
-      }
-
-      toast.success('Order marked as delivered')
-      loadOrders()
-    } catch (error) {
-      console.error('Deliver error:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to deliver')
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  const handleMarkReturned = async (orderId: string) => {
-    setActionLoading(orderId)
-    try {
-      const response = await fetch(`/api/club-admin/orders/${orderId}/return`, {
-        method: 'POST',
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to mark as returned')
-      }
-
-      toast.success('Order marked as returned')
-      loadOrders()
-    } catch (error) {
-      console.error('Return error:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to return')
+      console.error(`${action} error:`, error)
+      toast.error(error instanceof Error ? error.message : `Failed to ${action}`)
     } finally {
       setActionLoading(null)
     }
@@ -208,75 +197,128 @@ export default function ClubAdminOrdersPage() {
 
   const getOrderActions = (order: OrderRow) => {
     const actions: React.ReactNode[] = []
+    const isLoading = actionLoading === order.id
 
-    // Not dispatched yet
-    if (order.status === 'active' && !order.dispatched_at) {
-      actions.push(
-        <Button
-          key="dispatch"
-          size="sm"
-          onClick={() => handleMarkDispatched(order.id)}
-          disabled={actionLoading === order.id}
-          className="bg-blue-500 hover:bg-blue-600"
-        >
-          {actionLoading === order.id ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <>
-              <Truck className="h-4 w-4 mr-1" />
-              Dispatch
-            </>
-          )}
-        </Button>
-      )
-    }
+    // Status ladder actions
+    switch (order.status) {
+      case 'active':
+        // Paid → Start Processing
+        actions.push(
+          <Button
+            key="process"
+            size="sm"
+            onClick={() => handleAction(order.id, 'process', 'Order processing started')}
+            disabled={isLoading}
+            className="bg-yellow-500 hover:bg-yellow-600"
+          >
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+              <>
+                <PlayCircle className="h-4 w-4 mr-1" />
+                Start Processing
+              </>
+            )}
+          </Button>
+        )
+        break
 
-    // Dispatched but not delivered
-    if (order.status === 'active' && order.dispatched_at && !order.delivered_at) {
-      actions.push(
-        <Button
-          key="deliver"
-          size="sm"
-          onClick={() => handleMarkDelivered(order.id)}
-          disabled={actionLoading === order.id}
-          className="bg-green-500 hover:bg-green-600"
-        >
-          {actionLoading === order.id ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <>
-              <CheckCircle2 className="h-4 w-4 mr-1" />
-              Delivered
-            </>
-          )}
-        </Button>
-      )
-    }
+      case 'processing':
+        // Processing → Mark Picked Up
+        actions.push(
+          <Button
+            key="pickup"
+            size="sm"
+            onClick={() => handleAction(order.id, 'pickup', 'Books picked up')}
+            disabled={isLoading}
+            className="bg-indigo-500 hover:bg-indigo-600"
+          >
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+              <>
+                <PackageCheck className="h-4 w-4 mr-1" />
+                Mark Picked Up
+              </>
+            )}
+          </Button>
+        )
+        break
 
-    // Delivered but not returned (or awaiting_return status)
-    if (
-      (order.status === 'active' || order.status === 'awaiting_return') &&
-      order.delivered_at &&
-      !order.returned_at
-    ) {
-      actions.push(
-        <Button
-          key="return"
-          size="sm"
-          variant="outline"
-          onClick={() => handleMarkReturned(order.id)}
-          disabled={actionLoading === order.id}
-        >
-          {actionLoading === order.id ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <>
-              <RotateCcw className="h-4 w-4 mr-1" />
-              Returned
-            </>
-          )}
-        </Button>
-      )
+      case 'picked_up':
+        // Picked Up → In Transit (optional) or Deliver
+        actions.push(
+          <Button
+            key="transit"
+            size="sm"
+            variant="outline"
+            onClick={() => handleAction(order.id, 'transit', 'Order in transit')}
+            disabled={isLoading}
+          >
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+              <>
+                <Truck className="h-4 w-4 mr-1" />
+                In Transit
+              </>
+            )}
+          </Button>
+        )
+        actions.push(
+          <Button
+            key="deliver"
+            size="sm"
+            onClick={() => handleAction(order.id, 'deliver', 'Order delivered! Customer notified.')}
+            disabled={isLoading}
+            className="bg-green-500 hover:bg-green-600"
+          >
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+              <>
+                <CheckCircle2 className="h-4 w-4 mr-1" />
+                Delivered
+              </>
+            )}
+          </Button>
+        )
+        break
+
+      case 'in_transit':
+        // In Transit → Deliver
+        actions.push(
+          <Button
+            key="deliver"
+            size="sm"
+            onClick={() => handleAction(order.id, 'deliver', 'Order delivered! Customer notified.')}
+            disabled={isLoading}
+            className="bg-green-500 hover:bg-green-600"
+          >
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+              <>
+                <CheckCircle2 className="h-4 w-4 mr-1" />
+                Delivered
+              </>
+            )}
+          </Button>
+        )
+        break
+
+      case 'delivered':
+      case 'awaiting_return':
+        // Delivered/Awaiting Return → Mark Returned
+        if (!order.returned_at) {
+          actions.push(
+            <Button
+              key="return"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAction(order.id, 'return', 'Books returned, subscription completed')}
+              disabled={isLoading}
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+                <>
+                  <RotateCcw className="h-4 w-4 mr-1" />
+                  Returned
+                </>
+              )}
+            </Button>
+          )
+        }
+        break
     }
 
     return actions
@@ -303,15 +345,19 @@ export default function ClubAdminOrdersPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[220px]">
             <Filter className="h-4 w-4 mr-2" />
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Orders</SelectItem>
-            <SelectItem value="awaiting_dispatch">Awaiting Dispatch</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="awaiting_return">Awaiting Return</SelectItem>
+            <SelectItem value="needs_action">Needs Action</SelectItem>
+            <SelectItem value="active">Paid (New)</SelectItem>
+            <SelectItem value="processing">Processing</SelectItem>
+            <SelectItem value="picked_up">Picked Up</SelectItem>
+            <SelectItem value="in_transit">In Transit</SelectItem>
+            <SelectItem value="delivered">Delivered</SelectItem>
+            <SelectItem value="awaiting_collection">Awaiting Collection</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
@@ -362,17 +408,29 @@ export default function ClubAdminOrdersPage() {
                       </p>
 
                       {/* Status timeline */}
-                      <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
-                        {order.dispatched_at && (
+                      <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-gray-400">
+                        {order.picked_up_at && (
+                          <span className="flex items-center gap-1">
+                            <PackageCheck className="h-3 w-3" />
+                            Picked {format(new Date(order.picked_up_at), 'MMM d')}
+                          </span>
+                        )}
+                        {order.in_transit_at && (
                           <span className="flex items-center gap-1">
                             <Truck className="h-3 w-3" />
-                            Dispatched {format(new Date(order.dispatched_at), 'MMM d')}
+                            Transit {format(new Date(order.in_transit_at), 'MMM d')}
                           </span>
                         )}
                         {order.delivered_at && (
                           <span className="flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3" />
+                            <CheckCircle2 className="h-3 w-3 text-green-500" />
                             Delivered {format(new Date(order.delivered_at), 'MMM d')}
+                          </span>
+                        )}
+                        {order.expires_at && order.status === 'delivered' && (
+                          <span className="flex items-center gap-1 text-orange-500">
+                            <Clock className="h-3 w-3" />
+                            Expires {format(new Date(order.expires_at), 'MMM d')}
                           </span>
                         )}
                         {order.returned_at && (
@@ -385,7 +443,7 @@ export default function ClubAdminOrdersPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {getOrderActions(order)}
                       <Link href={`/club-admin/orders/${order.id}`}>
                         <Button variant="ghost" size="sm">

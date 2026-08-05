@@ -59,9 +59,12 @@ export async function POST(
       return NextResponse.json({ error: 'Must deliver before marking as returned' }, { status: 400 })
     }
 
-    // Must be active or awaiting_return
-    if (sub.status !== 'active' && sub.status !== 'awaiting_return') {
-      return NextResponse.json({ error: 'Can only return active or awaiting_return subscriptions' }, { status: 400 })
+    // Must be delivered or awaiting_return
+    if (!['delivered', 'awaiting_return'].includes(sub.status)) {
+      return NextResponse.json(
+        { error: 'Can only return delivered or awaiting_return subscriptions' },
+        { status: 400 }
+      )
     }
 
     // Get all subscription books that haven't been returned yet

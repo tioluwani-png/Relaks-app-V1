@@ -8,63 +8,77 @@ import { motion } from 'framer-motion'
 import {
   ArrowLeft,
   BookOpen,
-  Calendar,
   MapPin,
-  Clock,
-  CheckCircle,
   Loader2,
-  Package,
-  Truck,
-  RotateCcw,
+  Star,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
-import type { RentalSubscriptionWithDetails, RentalSubscriptionStatus } from '@/types/database'
+import { differenceInDays } from 'date-fns'
 
-const STATUS_CONFIG: Record<RentalSubscriptionStatus, {
-  label: string
-  color: string
-  bgColor: string
-  icon: React.ElementType
-}> = {
-  pending_payment: {
-    label: 'Pending Payment',
-    color: 'text-yellow-700',
-    bgColor: 'bg-yellow-100',
-    icon: Clock,
-  },
-  active: {
-    label: 'Active',
-    color: 'text-green-700',
-    bgColor: 'bg-green-100',
-    icon: CheckCircle,
-  },
-  awaiting_return: {
-    label: 'Awaiting Return',
-    color: 'text-orange-700',
-    bgColor: 'bg-orange-100',
-    icon: Package,
-  },
-  completed: {
-    label: 'Completed',
-    color: 'text-gray-700',
-    bgColor: 'bg-gray-100',
-    icon: CheckCircle,
-  },
-  cancelled: {
-    label: 'Cancelled',
-    color: 'text-red-700',
-    bgColor: 'bg-red-100',
-    icon: RotateCcw,
-  },
+import { StatusTracker } from '@/components/rental/status-tracker'
+import { CountdownRing } from '@/components/rental/countdown-ring'
+import { BookRating } from '@/components/rental/book-rating'
+import { AutoRenewToggle } from '@/components/rental/auto-renew-toggle'
+import { RenewButton } from '@/components/rental/renew-button'
+
+import type { RentalSubscriptionStatus } from '@/types/database'
+
+interface SubscriptionBook {
+  id: string
+  book_id: string
+  returned: boolean
+  book: {
+    id: string
+    title: string
+    author: string
+    cover_url: string | null
+  } | null
 }
+
+interface BookRatingData {
+  book_id: string
+  rating: number
+  review: string | null
+}
+
+interface Subscription {
+  id: string
+  status: RentalSubscriptionStatus
+  created_at: string
+  started_at: string | null
+  expires_at: string | null
+  delivery_lga: string
+  delivery_address: string
+  picked_up_at: string | null
+  in_transit_at: string | null
+  delivered_at: string | null
+  auto_renew: boolean
+  plan: {
+    id: string
+    name: string
+    books_per_cycle: number
+    duration_days: number
+    price_naira: number
+  } | null
+  books: SubscriptionBook[]
+  ratings?: BookRatingData[]
+}
+
+const ACTIVE_STATUSES: RentalSubscriptionStatus[] = [
+  'active',
+  'processing',
+  'picked_up',
+  'in_transit',
+  'delivered',
+]
 
 export default function MyRentalsPage() {
   const router = useRouter()
   const { user, isLoading: authLoading } = useAuth()
 
-  const [subscriptions, setSubscriptions] = useState<RentalSubscriptionWithDetails[]>([])
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -93,8 +107,8 @@ export default function MyRentalsPage() {
     }
   }, [user])
 
-  const activeSubscription = subscriptions.find(s => s.status === 'active')
-  const pastSubscriptions = subscriptions.filter(s => s.status !== 'active')
+  const currentSubscription = subscriptions.find(s => ACTIVE_STATUSES.includes(s.status))
+  const pastSubscriptions = subscriptions.filter(s => !ACTIVE_STATUSES.includes(s.status))
 
   if (authLoading || isLoading) {
     return (
@@ -118,7 +132,7 @@ export default function MyRentalsPage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-8">
         {subscriptions.length === 0 ? (
           /* Empty state */
           <motion.div
@@ -142,17 +156,8 @@ export default function MyRentalsPage() {
         ) : (
           <>
             {/* Current rental */}
-            {activeSubscription && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Truck className="w-5 h-5 text-purple-500" />
-                  Current Rental
-                </h2>
-                <SubscriptionCard subscription={activeSubscription} isCurrent />
-              </motion.div>
+            {currentSubscription && (
+              <CurrentRentalSection subscription={currentSubscription} />
             )}
 
             {/* Past rentals */}
@@ -160,12 +165,12 @@ export default function MyRentalsPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
+                transition={{ delay: 0.2 }}
               >
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">Past Rentals</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Past Rentals</h2>
                 <div className="space-y-4">
                   {pastSubscriptions.map((sub, index) => (
-                    <SubscriptionCard key={sub.id} subscription={sub} delay={index * 0.05} />
+                    <PastRentalCard key={sub.id} subscription={sub} delay={index * 0.05} />
                   ))}
                 </div>
               </motion.div>
@@ -177,40 +182,180 @@ export default function MyRentalsPage() {
   )
 }
 
-function SubscriptionCard({
+function CurrentRentalSection({ subscription }: { subscription: Subscription }) {
+  const [ratings, setRatings] = useState<Record<string, BookRatingData>>({})
+
+  useEffect(() => {
+    async function loadRatings() {
+      try {
+        const res = await fetch(`/api/rental/ratings?subscriptionId=${subscription.id}`)
+        if (res.ok) {
+          const data = await res.json()
+          const ratingsMap: Record<string, BookRatingData> = {}
+          for (const r of data.ratings || []) {
+            ratingsMap[r.book_id] = r
+          }
+          setRatings(ratingsMap)
+        }
+      } catch (error) {
+        console.error('Failed to load ratings:', error)
+      }
+    }
+
+    if (subscription.delivered_at) {
+      loadRatings()
+    }
+  }, [subscription.id, subscription.delivered_at])
+
+  const isDelivered = subscription.status === 'delivered' || subscription.status === 'awaiting_return'
+
+  // Check if can rate (3 days after delivery)
+  const canRate = subscription.delivered_at
+    ? differenceInDays(new Date(), new Date(subscription.delivered_at)) >= 3
+    : false
+
+  // Check if should show renew button (last 7 days, auto_renew off)
+  const showRenewButton = isDelivered &&
+    subscription.expires_at &&
+    !subscription.auto_renew &&
+    differenceInDays(new Date(subscription.expires_at), new Date()) <= 7
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
+      <h2 className="text-lg font-semibold text-gray-900">Current Rental</h2>
+
+      {/* Status Tracker Card */}
+      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="font-semibold text-gray-900">{subscription.plan?.name} Plan</h3>
+            <p className="text-sm text-gray-500">{subscription.delivery_lga}</p>
+          </div>
+        </div>
+
+        <StatusTracker
+          currentStatus={subscription.status}
+          pickedUpAt={subscription.picked_up_at}
+          inTransitAt={subscription.in_transit_at}
+          deliveredAt={subscription.delivered_at}
+          className="mt-4"
+        />
+      </div>
+
+      {/* Countdown + Books - only show when delivered */}
+      {isDelivered && subscription.delivered_at && subscription.expires_at && (
+        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <CountdownRing
+              deliveredAt={subscription.delivered_at}
+              expiresAt={subscription.expires_at}
+            />
+
+            <div className="flex-1 w-full">
+              <h4 className="font-medium text-gray-900 mb-3">Your Books</h4>
+              <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2">
+                {subscription.books?.map((item) => (
+                  <div key={item.id} className="shrink-0 w-14">
+                    <div className="aspect-[2/3] rounded-lg overflow-hidden bg-gray-100">
+                      {item.book?.cover_url ? (
+                        <Image
+                          src={item.book.cover_url}
+                          alt={item.book.title || 'Book'}
+                          width={56}
+                          height={84}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <BookOpen className="w-4 h-4 text-gray-300" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Book Ratings - only show when delivered */}
+      {isDelivered && subscription.books?.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="font-medium text-gray-900 px-1">Rate Your Books</h4>
+          {subscription.books.map((item) => (
+            item.book && (
+              <BookRating
+                key={item.id}
+                subscriptionId={subscription.id}
+                book={item.book}
+                existingRating={ratings[item.book.id] || null}
+                canRate={canRate}
+              />
+            )
+          ))}
+        </div>
+      )}
+
+      {/* Auto-renew toggle */}
+      {isDelivered && subscription.plan && (
+        <AutoRenewToggle
+          subscriptionId={subscription.id}
+          enabled={subscription.auto_renew}
+          planPrice={subscription.plan.price_naira}
+        />
+      )}
+
+      {/* Manual renew button */}
+      {showRenewButton && subscription.plan && (
+        <RenewButton
+          planId={subscription.plan.id}
+          booksPerCycle={subscription.plan.books_per_cycle}
+        />
+      )}
+    </motion.div>
+  )
+}
+
+function PastRentalCard({
   subscription,
-  isCurrent = false,
   delay = 0,
 }: {
-  subscription: RentalSubscriptionWithDetails
-  isCurrent?: boolean
+  subscription: Subscription
   delay?: number
 }) {
-  const statusConfig = STATUS_CONFIG[subscription.status]
-  const StatusIcon = statusConfig.icon
-
   const startedAt = subscription.started_at ? new Date(subscription.started_at) : null
-  const expiresAt = subscription.expires_at ? new Date(subscription.expires_at) : null
 
-  const daysRemaining = expiresAt
-    ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : null
+  const statusLabel = subscription.status === 'completed'
+    ? 'Completed'
+    : subscription.status === 'cancelled'
+      ? 'Cancelled'
+      : subscription.status === 'awaiting_return'
+        ? 'Awaiting Return'
+        : 'Past'
+
+  const statusColor = subscription.status === 'completed'
+    ? 'bg-green-100 text-green-700'
+    : subscription.status === 'cancelled'
+      ? 'bg-red-100 text-red-700'
+      : 'bg-gray-100 text-gray-700'
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className={cn(
-        'bg-white rounded-3xl p-5 shadow-sm border',
-        isCurrent ? 'border-purple-200 ring-1 ring-purple-100' : 'border-gray-100'
-      )}
+      className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="font-semibold text-gray-900">{subscription.plan?.name} Plan</h3>
-          <p className="text-sm text-gray-500">
+          <h3 className="font-medium text-gray-900">{subscription.plan?.name} Plan</h3>
+          <p className="text-xs text-gray-500">
             {startedAt?.toLocaleDateString('en-NG', {
               day: 'numeric',
               month: 'short',
@@ -218,54 +363,48 @@ function SubscriptionCard({
             })}
           </p>
         </div>
-        <div className={cn('flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium', statusConfig.bgColor, statusConfig.color)}>
-          <StatusIcon className="w-4 h-4" />
-          {statusConfig.label}
-        </div>
+        <span className={cn('px-2 py-1 rounded-full text-xs font-medium', statusColor)}>
+          {statusLabel}
+        </span>
       </div>
 
-      {/* Books */}
-      <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2 mb-4">
-        {subscription.books?.map((item) => (
-          <div key={item.id} className="shrink-0 w-12">
-            <div className="aspect-[2/3] rounded-lg overflow-hidden bg-gray-100">
-              {item.book?.cover_url ? (
-                <Image
-                  src={item.book.cover_url}
-                  alt={item.book.title || 'Book'}
-                  width={48}
-                  height={72}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <BookOpen className="w-4 h-4 text-gray-300" />
+      {/* Books with ratings */}
+      <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+        {subscription.books?.map((item) => {
+          const rating = subscription.ratings?.find(r => r.book_id === item.book_id)
+
+          return (
+            <div key={item.id} className="shrink-0 w-12 text-center">
+              <div className="aspect-[2/3] rounded-lg overflow-hidden bg-gray-100 mb-1">
+                {item.book?.cover_url ? (
+                  <Image
+                    src={item.book.cover_url}
+                    alt={item.book.title || 'Book'}
+                    width={48}
+                    height={72}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <BookOpen className="w-3 h-3 text-gray-300" />
+                  </div>
+                )}
+              </div>
+              {rating && (
+                <div className="flex items-center justify-center gap-0.5">
+                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                  <span className="text-xs text-gray-600">{rating.rating}</span>
                 </div>
               )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
-      {/* Info */}
-      <div className="space-y-2 text-sm">
-        <div className="flex items-center gap-2 text-gray-600">
-          <MapPin className="w-4 h-4 text-gray-400" />
-          {subscription.delivery_lga}
-        </div>
-
-        {isCurrent && daysRemaining !== null && (
-          <div className="flex items-center gap-2 text-gray-600">
-            <Calendar className="w-4 h-4 text-gray-400" />
-            {daysRemaining === 0 ? (
-              <span className="text-orange-600 font-medium">Due today</span>
-            ) : daysRemaining === 1 ? (
-              <span className="text-orange-600 font-medium">1 day remaining</span>
-            ) : (
-              <span>{daysRemaining} days remaining</span>
-            )}
-          </div>
-        )}
+      {/* Location */}
+      <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+        <MapPin className="w-3 h-3" />
+        {subscription.delivery_lga}
       </div>
     </motion.div>
   )
