@@ -95,19 +95,23 @@ export async function POST(
         return NextResponse.json({ error: updateBooksError.message }, { status: 500 })
       }
 
-      // Increment available_copies for each book
+      // Increment available_copies for each book (with ceiling guard)
       for (const book of books) {
         const { data: currentBook } = await adminSupabase
           .from('books')
-          .select('available_copies')
+          .select('available_copies, total_copies')
           .eq('id', book.book_id)
           .single()
 
         if (currentBook) {
-          const bookData = currentBook as { available_copies: number }
+          const bookData = currentBook as { available_copies: number; total_copies: number }
+          const newAvailable = Math.min(
+            (bookData.available_copies || 0) + 1,
+            bookData.total_copies || 1 // Cap at total_copies
+          )
           await adminSupabase
             .from('books')
-            .update({ available_copies: (bookData.available_copies || 0) + 1 } as never)
+            .update({ available_copies: newAvailable } as never)
             .eq('id', book.book_id)
         }
       }

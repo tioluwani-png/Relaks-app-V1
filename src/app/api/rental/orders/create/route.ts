@@ -17,6 +17,8 @@ interface BookRow {
   id: string
   title: string
   is_active: boolean
+  available_copies: number
+  manually_unavailable: boolean
 }
 
 export async function POST(request: NextRequest) {
@@ -77,10 +79,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 7. Validate all books exist and are active
+    // 7. Validate all books exist, are active, in stock, and not manually unavailable
     const { data: booksData, error: booksError } = await adminSupabase
       .from('books')
-      .select('id, title, is_active')
+      .select('id, title, is_active, available_copies, manually_unavailable')
       .in('id', bookIds)
 
     if (booksError) {
@@ -95,13 +97,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'One or more books not found' }, { status: 400 })
     }
 
+    // Check for inactive books
     const inactiveBooks = books.filter((b) => !b.is_active)
-
     if (inactiveBooks.length > 0) {
       return NextResponse.json(
         {
           error: 'Some books are unavailable',
           unavailable: inactiveBooks.map((b) => b.title),
+        },
+        { status: 400 }
+      )
+    }
+
+    // Check for out-of-stock books
+    const outOfStockBooks = books.filter((b) => (b.available_copies ?? 0) <= 0)
+    if (outOfStockBooks.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'Some books are currently out on loan',
+          unavailable: outOfStockBooks.map((b) => b.title),
+        },
+        { status: 400 }
+      )
+    }
+
+    // Check for manually unavailable books
+    const manuallyUnavailable = books.filter((b) => b.manually_unavailable)
+    if (manuallyUnavailable.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'Some books are temporarily unavailable',
+          unavailable: manuallyUnavailable.map((b) => b.title),
         },
         { status: 400 }
       )

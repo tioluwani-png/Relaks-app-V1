@@ -121,6 +121,10 @@ export const createBookSchema = z.object({
   isbn: z.string().max(20).optional().nullable(),
   page_count: z.number().int().positive().optional().nullable(),
   published_year: z.number().int().min(1000).max(new Date().getFullYear() + 1).optional().nullable(),
+  total_copies: z.number().int().min(0).optional(),
+  available_copies: z.number().int().min(0).optional(),
+  manually_unavailable: z.boolean().optional(),
+  is_active: z.boolean().optional(),
 })
 
 export const updateBookSchema = createBookSchema.partial()

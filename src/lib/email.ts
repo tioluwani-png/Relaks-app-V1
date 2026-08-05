@@ -1104,3 +1104,153 @@ View Order: ${orderUrl}
     return { success: false, error }
   }
 }
+
+// ============================================
+// STOCK FAILURE EMAILS
+// ============================================
+
+/**
+ * Sent to ops when a race condition causes stock failure after payment
+ */
+export async function sendStockFailureAlertEmail(
+  orderId: string,
+  paymentReference: string,
+  unavailableBooks: string[],
+  amountToRefund: number
+) {
+  const opsEmailsRaw = process.env.RENTAL_OPS_EMAILS
+
+  if (!opsEmailsRaw || opsEmailsRaw.trim() === '') {
+    console.warn('[sendStockFailureAlertEmail] RENTAL_OPS_EMAILS not set')
+    return { success: false, skipped: true }
+  }
+
+  const opsEmails = opsEmailsRaw
+    .split(',')
+    .map(e => e.trim())
+    .filter(e => e.length > 0 && e.includes('@'))
+
+  if (opsEmails.length === 0) {
+    return { success: false, skipped: true }
+  }
+
+  const bookList = unavailableBooks.map(t => `• ${t}`).join('<br>')
+
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: 'Relaks Alerts <alerts@hello.relaks.co>',
+      to: opsEmails,
+      subject: `⚠️ URGENT: Refund Required - Stock Failure`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 600px;">
+          <div style="background: #fef2f2; border: 2px solid #dc2626; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <h2 style="color: #dc2626; margin: 0 0 16px 0;">⚠️ Stock Failure - Refund Required</h2>
+            <p style="margin: 0; color: #7f1d1d;">
+              A customer paid for books that went out of stock between selection and payment.
+              <strong>Manual refund required.</strong>
+            </p>
+          </div>
+
+          <p><strong>Order ID:</strong> ${orderId}</p>
+          <p><strong>Payment Reference:</strong> ${paymentReference}</p>
+          <p><strong>Amount to Refund:</strong> ₦${amountToRefund.toLocaleString()}</p>
+
+          <p><strong>Unavailable Books:</strong></p>
+          <div style="background: #f3f4f6; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+            ${bookList}
+          </div>
+
+          <p style="color: #dc2626; font-weight: bold;">
+            Action: Process refund in Paystack dashboard using the reference above.
+          </p>
+
+          <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">
+            Customer has been notified with an apology email.
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[sendStockFailureAlertEmail] Error:', error)
+      return { success: false, error }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('[sendStockFailureAlertEmail] Send error:', error)
+    return { success: false, error }
+  }
+}
+
+/**
+ * Sent to customer when their order fails due to stock race condition
+ */
+export async function sendStockFailureCustomerEmail(
+  to: string,
+  username: string,
+  unavailableBooks: string[]
+) {
+  const bookList = unavailableBooks.map(t => `• ${t}`).join('<br>')
+
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject: "We're so sorry - your books are no longer available",
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #FFFBF5;">
+          <h1 style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; margin-bottom: 24px;">
+            Relaks
+          </h1>
+
+          <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 8px;">We're really sorry 💜</h2>
+
+          <p style="color: #4b5563; font-size: 16px; margin-bottom: 24px;">
+            Hey ${username}, we have some unfortunate news. While you were checking out, another reader grabbed the last copy of one of your books:
+          </p>
+
+          <div style="background: #fef2f2; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+            <p style="color: #7f1d1d; margin: 0;">
+              ${bookList}
+            </p>
+          </div>
+
+          <div style="background: white; border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid #f3f4f6;">
+            <p style="color: #059669; font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">
+              ✓ Your refund is being processed
+            </p>
+            <p style="color: #6b7280; font-size: 14px; margin: 0;">
+              You'll see the full amount back in your account within 3-5 business days.
+            </p>
+          </div>
+
+          <p style="color: #4b5563; font-size: 16px; margin-bottom: 24px;">
+            We know this is frustrating. To make it up to you, feel free to try again - we've got plenty of other great reads waiting for you!
+          </p>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="https://relaks.co/rent" style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+              Browse Books Again
+            </a>
+          </div>
+
+          <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 40px;">
+            Questions? Just reply to this email.<br>
+            The Relaks Team
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[sendStockFailureCustomerEmail] Error:', error)
+      return { success: false, error }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('[sendStockFailureCustomerEmail] Send error:', error)
+    return { success: false, error }
+  }
+}

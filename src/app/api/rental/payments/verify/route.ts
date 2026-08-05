@@ -9,7 +9,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { sendRentalConfirmationEmail, sendNewOrderAlertEmail } from '@/lib/email'
+import { sendRentalConfirmationEmail, sendNewOrderAlertEmail, sendStockFailureAlertEmail, sendStockFailureCustomerEmail } from '@/lib/email'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
 
@@ -215,32 +215,157 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 10. Decrement available_copies for each book
+    // 10. Atomic decrement of available_copies for each book
+    // The key is using .gt('available_copies', 0) to ensure we only update if stock exists
+    // and checking the result to see if the row was actually updated
     const { data: subscriptionBooksData } = await adminSupabase
       .from('rental_subscription_books')
       .select('book_id')
       .eq('subscription_id', subscriptionId)
 
     const subscriptionBooks = (subscriptionBooksData || []) as { book_id: string }[]
+    const failedBooks: string[] = []
+    const decrementedBooks: string[] = []
 
     if (subscriptionBooks.length > 0) {
       for (const { book_id } of subscriptionBooks) {
-        // Decrement available_copies, guarding against negative
-        const { data: bookData } = await adminSupabase
+        // First, get current stock
+        const { data: currentBook } = await adminSupabase
           .from('books')
-          .select('available_copies')
+          .select('id, title, available_copies')
           .eq('id', book_id)
           .single()
 
-        const book = bookData as { available_copies: number } | null
+        const book = currentBook as { id: string; title: string; available_copies: number } | null
 
-        if (book && book.available_copies > 0) {
+        if (!book || book.available_copies <= 0) {
+          // Already out of stock
+          failedBooks.push(book?.title || book_id)
+          continue
+        }
+
+        // Atomic update: only succeeds if available_copies > 0
+        // The WHERE clause makes this atomic - the row won't match if another request decremented first
+        const { data: updatedBook, error: updateError } = await adminSupabase
+          .from('books')
+          .update({ available_copies: book.available_copies - 1 } as never)
+          .eq('id', book_id)
+          .eq('available_copies', book.available_copies) // Optimistic lock - only update if value unchanged
+          .select('id')
+
+        const updated = updatedBook as { id: string }[] | null
+
+        if (updateError || !updated || updated.length === 0) {
+          // Race condition: stock changed between read and write, or went to 0
+          // Retry once with fresh read
+          const { data: retryBook } = await adminSupabase
+            .from('books')
+            .select('id, title, available_copies')
+            .eq('id', book_id)
+            .single()
+
+          const retry = retryBook as { id: string; title: string; available_copies: number } | null
+
+          if (!retry || retry.available_copies <= 0) {
+            failedBooks.push(retry?.title || book_id)
+          } else {
+            // Retry the decrement
+            const { data: retryUpdate } = await adminSupabase
+              .from('books')
+              .update({ available_copies: retry.available_copies - 1 } as never)
+              .eq('id', book_id)
+              .eq('available_copies', retry.available_copies)
+              .select('id')
+
+            if (!retryUpdate || (retryUpdate as { id: string }[]).length === 0) {
+              failedBooks.push(retry.title)
+            } else {
+              decrementedBooks.push(book_id)
+            }
+          }
+        } else {
+          decrementedBooks.push(book_id)
+        }
+      }
+    }
+
+    // 10b. Handle stock failure - someone else got the last copy
+    if (failedBooks.length > 0) {
+      console.error('[rental/payments/verify] Stock failure:', {
+        reference,
+        subscriptionId,
+        userId: user.id,
+        failedBooks,
+        decrementedBooks,
+      })
+
+      // Rollback: re-increment any books we successfully decremented
+      for (const book_id of decrementedBooks) {
+        const { data: bookToRollback } = await adminSupabase
+          .from('books')
+          .select('available_copies, total_copies')
+          .eq('id', book_id)
+          .single()
+
+        const rollbackBook = bookToRollback as { available_copies: number; total_copies: number } | null
+        if (rollbackBook && rollbackBook.available_copies < rollbackBook.total_copies) {
           await adminSupabase
             .from('books')
-            .update({ available_copies: book.available_copies - 1 } as never)
+            .update({ available_copies: rollbackBook.available_copies + 1 } as never)
             .eq('id', book_id)
         }
       }
+
+      // Mark subscription for refund
+      await adminSupabase
+        .from('rental_subscriptions')
+        .update({ status: 'cancelled' } as never)
+        .eq('id', subscriptionId)
+
+      // Update payment as needing refund
+      await adminSupabase
+        .from('rental_payments')
+        .update({ paystack_status: 'refund_required' } as never)
+        .eq('paystack_reference', reference)
+
+      // Send alert to ops
+      try {
+        await sendStockFailureAlertEmail(
+          subscriptionId,
+          reference,
+          failedBooks,
+          plan.price_naira
+        )
+      } catch (e) {
+        console.error('[rental/payments/verify] Stock alert email error:', e)
+      }
+
+      // Send apology to customer
+      try {
+        const { data: userProfileData } = await adminSupabase
+          .from('users')
+          .select('email, username, display_name')
+          .eq('id', user.id)
+          .single()
+        const userProfile = userProfileData as { email: string; username: string; display_name: string | null } | null
+
+        if (userProfile) {
+          await sendStockFailureCustomerEmail(
+            userProfile.email,
+            userProfile.display_name || userProfile.username,
+            failedBooks
+          )
+        }
+      } catch (e) {
+        console.error('[rental/payments/verify] Customer apology email error:', e)
+      }
+
+      return NextResponse.json({
+        success: false,
+        error: 'Some books are no longer available',
+        unavailableBooks: failedBooks,
+        refundPending: true,
+      }, { status: 409 })
     }
 
     // 11. Send emails (each wrapped in try/catch - never fail payment)

@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Loader2, Pencil, Trash2, Eye, EyeOff, Search, BookOpen, Upload, X } from 'lucide-react'
+import { Plus, Loader2, Pencil, Trash2, Eye, EyeOff, Search, BookOpen, Upload, X, Ban, Check, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -25,12 +26,16 @@ import { createClient } from '@/lib/supabase/client'
 import { uploadBookCover, validateImageFile, fileToDataUrl } from '@/lib/upload'
 import type { Book, BookGenre } from '@/types/database'
 import Image from 'next/image'
+import Link from 'next/link'
+import { cn } from '@/lib/utils'
 
-// Extended book type for rental system (until types are regenerated)
+// Extended book type for rental system
 type ExtendedBook = Book & {
-  total_copies?: number
-  available_copies?: number
+  total_copies: number
+  available_copies: number
+  manually_unavailable: boolean
   genre: BookGenre | null
+  on_loan_count?: number // Computed: total - available
 }
 
 const DEFAULT_FORM = {
@@ -43,7 +48,23 @@ const DEFAULT_FORM = {
   page_count: '',
   published_year: '',
   total_copies: '1',
-  available_copies: '1',
+}
+
+// Helper to get availability color
+function getAvailabilityColor(available: number, total: number): string {
+  if (total === 0) return 'text-gray-400'
+  const ratio = available / total
+  if (ratio === 1) return 'text-green-600'
+  if (ratio > 0) return 'text-amber-600'
+  return 'text-red-600'
+}
+
+function getAvailabilityBg(available: number, total: number): string {
+  if (total === 0) return 'bg-gray-100'
+  const ratio = available / total
+  if (ratio === 1) return 'bg-green-50'
+  if (ratio > 0) return 'bg-amber-50'
+  return 'bg-red-50'
 }
 
 export default function ClubAdminBooksPage() {
@@ -57,12 +78,16 @@ export default function ClubAdminBooksPage() {
   const [form, setForm] = useState(DEFAULT_FORM)
   const [searchQuery, setSearchQuery] = useState('')
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [togglingUnavailableId, setTogglingUnavailableId] = useState<string | null>(null)
 
   // Cover image upload state
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // For editing - track original total_copies to compute available delta
+  const [originalTotalCopies, setOriginalTotalCopies] = useState<number>(1)
 
   useEffect(() => {
     loadBooks()
@@ -80,7 +105,17 @@ export default function ClubAdminBooksPage() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      setBooks(data || [])
+
+      // Compute on_loan_count for each book
+      const booksWithLoanCount = (data || []).map(book => {
+        const b = book as ExtendedBook
+        return {
+          ...b,
+          on_loan_count: Math.max(0, (b.total_copies || 0) - (b.available_copies || 0))
+        }
+      })
+
+      setBooks(booksWithLoanCount)
     } catch (error) {
       console.error('Failed to load books:', error)
       toast.error('Failed to load books')
@@ -151,6 +186,20 @@ export default function ClubAdminBooksPage() {
         setIsUploading(false)
       }
 
+      const newTotalCopies = form.total_copies ? parseInt(form.total_copies) : 1
+
+      // For new books, available = total
+      // For edits, adjust available by the delta (e.g., if total goes from 3 to 5, add 2 to available)
+      let newAvailableCopies: number
+      if (editingId) {
+        const existingBook = books.find(b => b.id === editingId)
+        const currentAvailable = existingBook?.available_copies ?? originalTotalCopies
+        const delta = newTotalCopies - originalTotalCopies
+        newAvailableCopies = Math.max(0, Math.min(currentAvailable + delta, newTotalCopies))
+      } else {
+        newAvailableCopies = newTotalCopies
+      }
+
       const payload = {
         title: form.title.trim(),
         author: form.author.trim(),
@@ -160,8 +209,8 @@ export default function ClubAdminBooksPage() {
         isbn: form.isbn.trim() || null,
         page_count: form.page_count ? parseInt(form.page_count) : null,
         published_year: form.published_year ? parseInt(form.published_year) : null,
-        total_copies: form.total_copies ? parseInt(form.total_copies) : 1,
-        available_copies: form.available_copies ? parseInt(form.available_copies) : 1,
+        total_copies: newTotalCopies,
+        available_copies: newAvailableCopies,
       }
 
       const response = await fetch(
@@ -205,13 +254,42 @@ export default function ClubAdminBooksPage() {
       page_count: book.page_count?.toString() || '',
       published_year: book.published_year?.toString() || '',
       total_copies: book.total_copies?.toString() || '1',
-      available_copies: book.available_copies?.toString() || '1',
     })
+    // Track original total for computing available delta
+    setOriginalTotalCopies(book.total_copies || 1)
     // Reset file state when editing
     setCoverFile(null)
     setCoverPreview(null)
     setEditingId(book.id)
     setIsDialogOpen(true)
+  }
+
+  const handleToggleManuallyUnavailable = async (id: string, currentValue: boolean) => {
+    setTogglingUnavailableId(id)
+
+    try {
+      const response = await fetch(`/api/books/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manually_unavailable: !currentValue }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle availability')
+      }
+
+      setBooks(prev =>
+        prev.map(book =>
+          book.id === id ? { ...book, manually_unavailable: !currentValue } : book
+        )
+      )
+      toast.success(currentValue ? 'Book marked available' : 'Book marked unavailable')
+    } catch (error) {
+      console.error('Error toggling availability:', error)
+      toast.error('Failed to toggle availability')
+    } finally {
+      setTogglingUnavailableId(null)
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -318,38 +396,61 @@ export default function ClubAdminBooksPage() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {filteredBooks.map((book) => (
+          {filteredBooks.map((book) => {
+            const available = book.available_copies ?? 0
+            const total = book.total_copies ?? 0
+            const onLoan = book.on_loan_count ?? Math.max(0, total - available)
+
+            return (
             <Card
               key={book.id}
-              className={!book.is_active ? 'opacity-60' : ''}
+              className={cn(
+                !book.is_active && 'opacity-60',
+                book.manually_unavailable && 'border-red-200 bg-red-50/30'
+              )}
             >
               <CardContent className="flex items-center gap-4 p-4">
                 {/* Cover */}
-                <div className="shrink-0 w-16 h-24 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                <div className="shrink-0 w-16 h-24 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 relative">
                   {book.cover_url ? (
                     <Image
                       src={book.cover_url}
                       alt={book.title}
                       width={64}
                       height={96}
-                      className="w-full h-full object-cover"
+                      className={cn(
+                        "w-full h-full object-cover",
+                        book.manually_unavailable && "opacity-50"
+                      )}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400">
                       <BookOpen className="h-6 w-6" />
                     </div>
                   )}
+                  {book.manually_unavailable && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-red-500/20">
+                      <Ban className="w-6 h-6 text-red-600" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 dark:text-white truncate">
-                    {book.title}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                      {book.title}
+                    </h3>
+                    {book.manually_unavailable && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                        Unavailable
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {book.author}
                   </p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <div className="flex items-center gap-3 mt-2 flex-wrap">
                     {book.genre && (
                       <span
                         className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
@@ -358,49 +459,80 @@ export default function ClubAdminBooksPage() {
                         {book.genre.name}
                       </span>
                     )}
-                    <span className="text-xs text-gray-400">
-                      {book.available_copies ?? 0} / {book.total_copies ?? 0} available
+                    {/* Availability badge - color coded */}
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-xs font-medium",
+                      getAvailabilityBg(available, total),
+                      getAvailabilityColor(available, total)
+                    )}>
+                      {available} of {total} available
                     </span>
-                    <span className="text-xs text-gray-400">
-                      {book.save_count} saves
-                    </span>
+                    {/* On loan count with link */}
+                    {onLoan > 0 && (
+                      <Link
+                        href={`/club-admin/orders?bookId=${book.id}`}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
+                      >
+                        <Users className="w-3 h-3" />
+                        {onLoan} on loan
+                      </Link>
+                    )}
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleToggleActive(book.id, book.is_active)}
-                    disabled={togglingId === book.id}
-                  >
-                    {togglingId === book.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : book.is_active ? (
-                      <Eye className="h-4 w-4" />
-                    ) : (
-                      <EyeOff className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleEdit(book)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(book.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
+                <div className="flex items-center gap-3">
+                  {/* Manual availability toggle */}
+                  <div className="flex flex-col items-center gap-1">
+                    <Switch
+                      checked={!book.manually_unavailable}
+                      onCheckedChange={() => handleToggleManuallyUnavailable(book.id, book.manually_unavailable)}
+                      disabled={togglingUnavailableId === book.id}
+                      className="data-[state=checked]:bg-green-500"
+                    />
+                    <span className="text-xs text-gray-500">
+                      {book.manually_unavailable ? 'Blocked' : 'Rentable'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleToggleActive(book.id, book.is_active)}
+                      disabled={togglingId === book.id}
+                      title={book.is_active ? 'Hide from catalog' : 'Show in catalog'}
+                    >
+                      {togglingId === book.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : book.is_active ? (
+                        <Eye className="h-4 w-4" />
+                      ) : (
+                        <EyeOff className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEdit(book)}
+                      title="Edit book"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(book.id)}
+                      title="Delete book"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
-          ))}
+          )}
+          )}
         </div>
       )}
 
@@ -528,27 +660,21 @@ export default function ClubAdminBooksPage() {
                   )}
                 </div>
               </div>
-              <div>
-                <Label>Total Copies</Label>
+              <div className="sm:col-span-2">
+                <Label>How many copies do you have?</Label>
                 <Input
                   type="number"
                   value={form.total_copies}
                   onChange={(e) => setForm({ ...form, total_copies: e.target.value })}
                   placeholder="1"
-                  min="0"
+                  min="1"
                   disabled={isSaving}
                 />
-              </div>
-              <div>
-                <Label>Available Copies</Label>
-                <Input
-                  type="number"
-                  value={form.available_copies}
-                  onChange={(e) => setForm({ ...form, available_copies: e.target.value })}
-                  placeholder="1"
-                  min="0"
-                  disabled={isSaving}
-                />
+                {editingId && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Changing this will automatically adjust available copies
+                  </p>
+                )}
               </div>
               <div>
                 <Label>ISBN</Label>

@@ -9,11 +9,12 @@ import { BookFilters } from './book-filters'
 import { useBooks } from '@/hooks/use-books'
 import { useBookGenres } from '@/hooks/use-book-genres'
 import { FadeIn } from '@/components/shared/motion'
-import { Library, Loader2, ArrowLeft, ArrowRight, Check, X, BookOpen } from 'lucide-react'
+import { Library, Loader2, ArrowLeft, ArrowRight, Check, X, BookOpen, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDebounce } from '@/hooks/use-debounce'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 import type { RentalPlan } from '@/types/database'
 
 interface BookCatalogProps {
@@ -155,6 +156,19 @@ export function BookCatalog({ planId }: BookCatalogProps) {
   const isSelectionMode = !!plan
   const selectedBookDetails = books.filter(b => selectedBooks.includes(b.id))
 
+  // In selection mode, sort available books first
+  const sortedBooks = isSelectionMode
+    ? [...books].sort((a, b) => {
+        const aBook = a as { available_copies?: number; manually_unavailable?: boolean }
+        const bBook = b as { available_copies?: number; manually_unavailable?: boolean }
+        const aAvailable = (aBook.available_copies ?? 1) > 0 && !(aBook.manually_unavailable ?? false)
+        const bAvailable = (bBook.available_copies ?? 1) > 0 && !(bBook.manually_unavailable ?? false)
+        if (aAvailable && !bAvailable) return -1
+        if (!aAvailable && bAvailable) return 1
+        return 0
+      })
+    : books
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -238,7 +252,7 @@ export function BookCatalog({ planId }: BookCatalogProps) {
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {books.map((book, index) => {
+            {sortedBooks.map((book, index) => {
               const isSelected = selectedBooks.includes(book.id)
               const isDisabled = isSelectionMode && !isSelected && selectedBooks.length >= (plan?.books_per_cycle || 0)
 
@@ -365,6 +379,9 @@ interface SelectableBookCardProps {
     author: string
     cover_url: string | null
     genre?: { name: string; color: string } | null
+    available_copies?: number
+    total_copies?: number
+    manually_unavailable?: boolean
   }
   isSelected: boolean
   isDisabled: boolean
@@ -372,17 +389,36 @@ interface SelectableBookCardProps {
 }
 
 function SelectableBookCard({ book, isSelected, isDisabled, onToggle }: SelectableBookCardProps) {
+  const available = book.available_copies ?? 1
+  const isOutOfStock = available <= 0
+  const isManuallyUnavailable = book.manually_unavailable ?? false
+  const isUnavailable = isOutOfStock || isManuallyUnavailable
+
+  const handleClick = () => {
+    if (isUnavailable) {
+      toast("This one's out with another reader 💜", {
+        description: isManuallyUnavailable
+          ? 'This book is temporarily unavailable'
+          : 'Check back soon!',
+      })
+      return
+    }
+    onToggle()
+  }
+
   return (
     <motion.button
-      onClick={onToggle}
-      disabled={isDisabled}
-      whileTap={{ scale: 0.98 }}
+      onClick={handleClick}
+      disabled={isDisabled && !isUnavailable}
+      whileTap={!isUnavailable ? { scale: 0.98 } : undefined}
       className={cn(
         'relative bg-white dark:bg-gray-900 rounded-2xl overflow-hidden text-left transition-all w-full',
         isSelected
           ? 'ring-2 ring-purple-500 shadow-lg'
-          : 'border border-gray-100 dark:border-gray-800 hover:shadow-md',
-        isDisabled && 'opacity-50 cursor-not-allowed'
+          : 'border border-gray-100 dark:border-gray-800',
+        !isUnavailable && !isSelected && 'hover:shadow-md',
+        isDisabled && !isUnavailable && 'opacity-50 cursor-not-allowed',
+        isUnavailable && 'cursor-pointer'
       )}
     >
       {/* Cover */}
@@ -392,19 +428,37 @@ function SelectableBookCard({ book, isSelected, isDisabled, onToggle }: Selectab
             src={book.cover_url}
             alt={book.title}
             fill
-            className="object-cover"
+            className={cn(
+              "object-cover transition-all",
+              isUnavailable && "grayscale opacity-60"
+            )}
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20">
+          <div className={cn(
+            "absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20",
+            isUnavailable && "grayscale opacity-60"
+          )}>
             <span className="text-4xl font-bold text-purple-300 dark:text-purple-700">
               {book.title.charAt(0)}
             </span>
           </div>
         )}
 
+        {/* Unavailable overlay */}
+        {isUnavailable && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+            <div className="bg-black/70 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-white" />
+              <span className="text-xs font-medium text-white">
+                {isManuallyUnavailable ? 'Unavailable' : 'Out on loan'}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Genre badge */}
-        {book.genre && (
+        {book.genre && !isUnavailable && (
           <div
             className="absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-medium text-white"
             style={{ backgroundColor: book.genre.color }}
@@ -430,7 +484,10 @@ function SelectableBookCard({ book, isSelected, isDisabled, onToggle }: Selectab
 
       {/* Info */}
       <div className="p-3">
-        <h3 className="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2 leading-tight">
+        <h3 className={cn(
+          "font-semibold text-sm line-clamp-2 leading-tight",
+          isUnavailable ? "text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-white"
+        )}>
           {book.title}
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">

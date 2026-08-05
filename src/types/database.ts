@@ -748,6 +748,9 @@ export interface Database {
           save_count: number
           review_count: number
           is_active: boolean
+          total_copies: number
+          available_copies: number
+          manually_unavailable: boolean
           created_by: string | null
           created_at: string
           updated_at: string
@@ -766,6 +769,9 @@ export interface Database {
           save_count?: number
           review_count?: number
           is_active?: boolean
+          total_copies?: number
+          available_copies?: number
+          manually_unavailable?: boolean
           created_by?: string | null
           created_at?: string
           updated_at?: string
@@ -784,6 +790,9 @@ export interface Database {
           save_count?: number
           review_count?: number
           is_active?: boolean
+          total_copies?: number
+          available_copies?: number
+          manually_unavailable?: boolean
           created_by?: string | null
           created_at?: string
           updated_at?: string
