@@ -15,6 +15,7 @@ interface TeamMember {
 }
 
 const roleOptions: { value: UserRole; label: string; description: string }[] = [
+  { value: 'partner', label: 'Partner', description: 'Reading Club partner - access to /club-admin only' },
   { value: 'moderator', label: 'Moderator', description: 'Can review reports and delete posts' },
   { value: 'admin', label: 'Admin', description: 'Can ban users and upload references' },
   { value: 'super_admin', label: 'Super Admin', description: 'Full access including role management' },
@@ -27,7 +28,7 @@ export default function AdminTeamPage() {
 
   const [showAddForm, setShowAddForm] = useState(false)
   const [addEmail, setAddEmail] = useState('')
-  const [addRole, setAddRole] = useState<UserRole>('moderator')
+  const [addRole, setAddRole] = useState<UserRole>('partner')
   const [addError, setAddError] = useState<string | null>(null)
   const [isAdding, setIsAdding] = useState(false)
 
@@ -40,7 +41,7 @@ export default function AdminTeamPage() {
       const { data, error } = await supabase
         .from('users')
         .select('id, email, username, role, created_at')
-        .in('role', ['moderator', 'admin', 'super_admin'])
+        .in('role', ['partner', 'moderator', 'admin', 'super_admin'])
         .order('role')
 
       if (error) throw error
@@ -87,7 +88,7 @@ export default function AdminTeamPage() {
       loadTeam()
       setShowAddForm(false)
       setAddEmail('')
-      setAddRole('moderator')
+      setAddRole('partner')
       toast.success(`${typedUser.username} added as ${addRole.replace('_', ' ')}`)
     } catch (error) {
       console.error('Failed to add member:', error)

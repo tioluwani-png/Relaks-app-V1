@@ -5,14 +5,11 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   LayoutDashboard,
-  ImageIcon,
-  Flag,
-  Users,
-  Shield,
-  BadgeCheck,
-  FileText,
-  Library,
+  Package,
   BookOpen,
+  MessageSquare,
+  DollarSign,
+  Calculator,
   LogOut,
   Menu,
   X,
@@ -20,29 +17,29 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/types/database'
 
-interface AdminUser {
+interface ClubAdminUser {
   id: string
   email: string
   username: string
   role: UserRole
 }
 
-const ADMIN_ROLES: UserRole[] = ['moderator', 'admin', 'super_admin']
+const CLUB_ADMIN_ROLES: UserRole[] = ['partner', 'admin', 'super_admin']
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function ClubAdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const supabase = createClient()
 
-  const [user, setUser] = useState<AdminUser | null>(null)
+  const [user, setUser] = useState<ClubAdminUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
-    checkAdminAccess()
+    checkClubAdminAccess()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const checkAdminAccess = async () => {
+  const checkClubAdminAccess = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
 
@@ -55,14 +52,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         .from('users')
         .select('id, email, username, role')
         .eq('id', session.user.id)
-        .single() as { data: AdminUser | null; error: unknown }
+        .single() as { data: ClubAdminUser | null; error: unknown }
 
       if (error || !profile) {
         router.push('/')
         return
       }
 
-      if (!ADMIN_ROLES.includes(profile.role)) {
+      if (!CLUB_ADMIN_ROLES.includes(profile.role)) {
         router.push('/')
         return
       }
@@ -82,8 +79,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <div className="animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full" />
+      <div className="min-h-screen flex items-center justify-center bg-amber-50 dark:bg-gray-950">
+        <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full" />
       </div>
     )
   }
@@ -92,24 +89,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return null
   }
 
+  const isPartner = user.role === 'partner'
+  const isAdmin = user.role === 'admin' || user.role === 'super_admin'
+
   const navItems = [
-    { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, roles: ['moderator', 'admin', 'super_admin'] },
-    { href: '/admin/posts', label: 'Posts', icon: ImageIcon, roles: ['moderator', 'admin', 'super_admin'] },
-    { href: '/admin/reports', label: 'Reports', icon: Flag, roles: ['moderator', 'admin', 'super_admin'] },
-    { href: '/admin/editions', label: 'Editions', icon: Library, roles: ['admin', 'super_admin'] },
-    { href: '/admin/references', label: 'References', icon: ImageIcon, roles: ['admin', 'super_admin'] },
-    { href: '/admin/users', label: 'Users', icon: Users, roles: ['admin', 'super_admin'] },
-    { href: '/admin/blog', label: 'Blog', icon: FileText, roles: ['admin', 'super_admin'] },
-    { href: '/admin/verification', label: 'Verification', icon: BadgeCheck, roles: ['super_admin'] },
-    { href: '/admin/team', label: 'Team & Roles', icon: Shield, roles: ['super_admin'] },
+    { href: '/club-admin', label: 'Overview', icon: LayoutDashboard },
+    { href: '/club-admin/orders', label: 'Orders', icon: Package },
+    { href: '/club-admin/books', label: 'Books', icon: BookOpen },
+    { href: '/club-admin/requests', label: 'Book Requests', icon: MessageSquare },
+    { href: '/club-admin/finances', label: 'Finances', icon: DollarSign },
+    { href: '/club-admin/settlements', label: 'Settlements', icon: Calculator },
   ]
 
-  const accessibleNavItems = navItems.filter(item =>
-    item.roles.includes(user.role)
-  )
+  const getRoleBadgeColor = (role: UserRole) => {
+    switch (role) {
+      case 'partner':
+        return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+      case 'admin':
+        return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+      case 'super_admin':
+        return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+      default:
+        return 'bg-gray-100 text-gray-700'
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex">
+    <div className="min-h-screen bg-amber-50 dark:bg-gray-950 flex">
       {/* Mobile menu button */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -125,17 +131,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="p-6 border-b dark:border-gray-800">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
-            Relaks Admin
+          <h1 className="text-xl font-bold bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent">
+            Reading Club
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {user.role.replace('_', ' ').toUpperCase()}
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Partner Dashboard
           </p>
+          <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
+            {user.role.replace('_', ' ').toUpperCase()}
+          </span>
         </div>
 
         <nav className="p-4 space-y-1">
-          {accessibleNavItems.map((item) => {
-            const isActive = pathname === item.href
+          {navItems.map((item) => {
+            const isActive = pathname === item.href ||
+              (item.href !== '/club-admin' && pathname.startsWith(item.href))
             return (
               <Link
                 key={item.href}
@@ -143,7 +153,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition ${
                   isActive
-                    ? 'bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400'
+                    ? 'bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
               >
@@ -154,15 +164,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
-        {/* Link to Reading Club dashboard for admin/super_admin */}
-        {(user.role === 'admin' || user.role === 'super_admin') && (
+        {/* Link to main admin for Relaks staff */}
+        {isAdmin && (
           <div className="px-4 py-2 border-t dark:border-gray-800">
             <Link
-              href="/club-admin"
-              className="flex items-center gap-3 px-4 py-2 text-sm text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 transition"
+              href="/admin"
+              className="flex items-center gap-3 px-4 py-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition"
             >
-              <BookOpen size={16} />
-              Reading Club Dashboard
+              <LayoutDashboard size={16} />
+              Go to Relaks Admin
             </Link>
           </div>
         )}
@@ -170,7 +180,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* User info & logout */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t dark:border-gray-800 bg-white dark:bg-gray-900">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-pink-400 flex items-center justify-center text-white font-bold">
               {user.username.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">

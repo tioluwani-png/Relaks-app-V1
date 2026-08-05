@@ -6,8 +6,11 @@ import { NextResponse, type NextRequest } from 'next/server'
 // and their session may not survive the redirect. Verify endpoints handle auth separately.
 const PROTECTED_PATHS = ['/feed', '/discover', '/create', '/journal', '/profile', '/notifications', '/search', '/references', '/color', '/rent/checkout', '/rent/my-rentals', '/rent/success']
 
-// Routes that require admin role
+// Routes that require admin role (Relaks internal)
 const ADMIN_PATHS = ['/admin']
+
+// Routes that require club admin role (Reading Club partner dashboard)
+const CLUB_ADMIN_PATHS = ['/club-admin']
 
 // Auth pages (redirect to feed if already authenticated)
 const AUTH_PATHS = ['/login', '/signup']
@@ -54,8 +57,12 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith(path)
   )
 
+  const isClubAdminPath = CLUB_ADMIN_PATHS.some(path =>
+    pathname.startsWith(path)
+  )
+
   // Protected routes - redirect to login if not authenticated
-  if ((isProtectedPath || isAdminPath) && !user) {
+  if ((isProtectedPath || isAdminPath || isClubAdminPath) && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirect', pathname)
@@ -63,7 +70,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // For authenticated users on protected routes, check if banned
-  if (user && (isProtectedPath || isAdminPath)) {
+  if (user && (isProtectedPath || isAdminPath || isClubAdminPath)) {
     const { data: profile } = await supabase
       .from('users')
       .select('is_banned, role')
@@ -81,10 +88,23 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Admin routes - verify admin role
+    // Admin routes (Relaks internal) - verify admin role
+    // Partner is explicitly NOT allowed here
     if (isAdminPath) {
       const adminRoles = ['moderator', 'admin', 'super_admin']
       if (!userProfile || !adminRoles.includes(userProfile.role)) {
+        const url = request.nextUrl.clone()
+        // If partner, redirect to club-admin; otherwise to feed
+        url.pathname = userProfile?.role === 'partner' ? '/club-admin' : '/feed'
+        return NextResponse.redirect(url)
+      }
+    }
+
+    // Club admin routes (Reading Club dashboard) - verify club admin role
+    // Moderator is NOT allowed here (only partner, admin, super_admin)
+    if (isClubAdminPath) {
+      const clubAdminRoles = ['partner', 'admin', 'super_admin']
+      if (!userProfile || !clubAdminRoles.includes(userProfile.role)) {
         const url = request.nextUrl.clone()
         url.pathname = '/feed'
         return NextResponse.redirect(url)

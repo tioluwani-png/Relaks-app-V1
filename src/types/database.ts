@@ -11,7 +11,7 @@ export type Mood = 'great' | 'good' | 'okay' | 'bad' | 'terrible'
 export type PurchaseType = 'single' | 'bundle' | 'unlimited' | 'ai_pack'
 export type AIStyle = 'mandala' | 'floral' | 'animals' | 'abstract' | 'portrait' | 'landscape'
 export type AIComplexity = 'simple' | 'medium' | 'detailed'
-export type UserRole = 'user' | 'moderator' | 'admin' | 'super_admin'
+export type UserRole = 'user' | 'moderator' | 'admin' | 'super_admin' | 'partner'
 export type VerificationType = 'staff' | 'creator' | 'brand' | 'notable'
 
 export type BlogPostStatus = 'draft' | 'published' | 'archived'
