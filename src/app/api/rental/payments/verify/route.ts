@@ -9,7 +9,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { sendRentalConfirmationEmail } from '@/lib/email'
+import { sendRentalConfirmationEmail, sendNewOrderAlertEmail } from '@/lib/email'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
 
@@ -243,28 +243,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 11. Send confirmation email (wrapped in try/catch)
+    // 11. Send emails (each wrapped in try/catch - never fail payment)
+    // Fetch data needed for both emails
+    const { data: userProfileData } = await adminSupabase
+      .from('users')
+      .select('email, username, display_name')
+      .eq('id', user.id)
+      .single()
+
+    const userProfile = userProfileData as { email: string; username: string; display_name: string | null } | null
+
+    const { data: emailBooksData } = await adminSupabase
+      .from('rental_subscription_books')
+      .select(`
+        book:rental_books(id, title, author, cover_url)
+      `)
+      .eq('subscription_id', subscriptionId)
+
+    type BookWithBook = { book: { id: string; title: string; author: string; cover_url: string | null } | null }
+    const booksData = (emailBooksData || []) as BookWithBook[]
+
+    // 11a. Customer confirmation email
     try {
-      // Get user details
-      const { data: userProfileData } = await adminSupabase
-        .from('users')
-        .select('email, username, display_name')
-        .eq('id', user.id)
-        .single()
-
-      const userProfile = userProfileData as { email: string; username: string; display_name: string | null } | null
-
-      // Get books for the subscription
-      const { data: emailBooksData } = await adminSupabase
-        .from('rental_subscription_books')
-        .select(`
-          book:rental_books(id, title, author, cover_url)
-        `)
-        .eq('subscription_id', subscriptionId)
-
-      type BookWithBook = { book: { id: string; title: string; author: string; cover_url: string | null } | null }
-      const booksData = (emailBooksData || []) as BookWithBook[]
-
       if (userProfile && booksData.length > 0) {
         const books = booksData
           .map((b) => b.book)
@@ -282,8 +282,29 @@ export async function POST(request: NextRequest) {
         )
       }
     } catch (emailError) {
-      // Log but don't fail the payment
-      console.error('[rental/payments/verify] Email error:', emailError)
+      console.error('[rental/payments/verify] Customer email error:', emailError)
+    }
+
+    // 11b. Ops alert email
+    try {
+      const bookTitles = booksData
+        .map((b) => b.book?.title)
+        .filter((t): t is string => !!t)
+
+      await sendNewOrderAlertEmail(
+        subscriptionId,
+        userProfile?.display_name || userProfile?.username || 'Customer',
+        userProfile?.username || 'unknown',
+        subscription.delivery_phone,
+        subscription.delivery_address,
+        subscription.delivery_lga,
+        plan.name,
+        bookTitles,
+        plan.price_naira,
+        reference
+      )
+    } catch (opsEmailError) {
+      console.error('[rental/payments/verify] Ops email error:', opsEmailError)
     }
 
     // 12. Return success

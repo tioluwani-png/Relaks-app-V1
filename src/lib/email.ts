@@ -597,3 +597,126 @@ export async function sendRentalConfirmationEmail(
 export async function handleMilestone(email: string, milestone: string) {
   await updateMailchimpTags(email, [milestone])
 }
+
+// ============================================
+// RENTAL OPS ALERT EMAIL (Internal)
+// ============================================
+
+export async function sendNewOrderAlertEmail(
+  orderId: string,
+  customerName: string,
+  customerUsername: string,
+  customerPhone: string,
+  deliveryAddress: string,
+  deliveryLga: string,
+  planName: string,
+  bookTitles: string[],
+  amountPaid: number,
+  paymentReference: string
+) {
+  // Parse RENTAL_OPS_EMAILS - comma-separated list
+  const opsEmailsRaw = process.env.RENTAL_OPS_EMAILS
+
+  if (!opsEmailsRaw || opsEmailsRaw.trim() === '') {
+    console.warn('[sendNewOrderAlertEmail] RENTAL_OPS_EMAILS not set - skipping ops notification')
+    return { success: false, skipped: true }
+  }
+
+  const opsEmails = opsEmailsRaw
+    .split(',')
+    .map(e => e.trim())
+    .filter(e => e.length > 0 && e.includes('@'))
+
+  if (opsEmails.length === 0) {
+    console.warn('[sendNewOrderAlertEmail] No valid emails in RENTAL_OPS_EMAILS - skipping ops notification')
+    return { success: false, skipped: true }
+  }
+
+  const orderTime = new Date().toLocaleString('en-NG', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+
+  const bookList = bookTitles.map(t => `• ${t}`).join('\n')
+  const orderUrl = `https://relaks.co/club-admin/orders/${orderId}`
+
+  // Plain text body for easy WhatsApp copy-paste
+  const plainTextBody = `
+NEW RENTAL ORDER
+================
+
+Customer: ${customerName} (@${customerUsername})
+Phone: ${customerPhone}
+
+DELIVERY
+--------
+${deliveryAddress}
+${deliveryLga.toUpperCase()}
+
+PLAN: ${planName}
+Amount: ₦${amountPaid.toLocaleString()}
+
+BOOKS:
+${bookList}
+
+Order Time: ${orderTime}
+Ref: ${paymentReference}
+
+View Order: ${orderUrl}
+`.trim()
+
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: 'Relaks Orders <hello@hello.relaks.co>',
+      to: opsEmails,
+      subject: `📦 New order — ${planName} — ${customerName} (${deliveryLga})`,
+      text: plainTextBody,
+      html: `
+        <div style="font-family: monospace; font-size: 14px; line-height: 1.6; max-width: 500px; padding: 16px;">
+          <h2 style="margin: 0 0 16px 0; font-size: 18px;">📦 NEW RENTAL ORDER</h2>
+
+          <p style="margin: 0;"><strong>Customer:</strong> ${customerName} (@${customerUsername})</p>
+          <p style="margin: 0;"><strong>Phone:</strong> ${customerPhone}</p>
+
+          <hr style="border: none; border-top: 1px solid #ccc; margin: 16px 0;" />
+
+          <p style="margin: 0; font-size: 12px; color: #666;">DELIVERY</p>
+          <p style="margin: 4px 0; font-size: 16px;"><strong>${deliveryAddress}</strong></p>
+          <p style="margin: 0; font-size: 18px; font-weight: bold; color: #c05621;">${deliveryLga.toUpperCase()}</p>
+
+          <hr style="border: none; border-top: 1px solid #ccc; margin: 16px 0;" />
+
+          <p style="margin: 0;"><strong>Plan:</strong> ${planName}</p>
+          <p style="margin: 0;"><strong>Amount:</strong> ₦${amountPaid.toLocaleString()}</p>
+
+          <p style="margin: 16px 0 8px 0; font-size: 12px; color: #666;">BOOKS:</p>
+          <ul style="margin: 0; padding-left: 20px;">
+            ${bookTitles.map(t => `<li>${t}</li>`).join('')}
+          </ul>
+
+          <hr style="border: none; border-top: 1px solid #ccc; margin: 16px 0;" />
+
+          <p style="margin: 0; font-size: 12px; color: #666;">Order Time: ${orderTime}</p>
+          <p style="margin: 0; font-size: 12px; color: #666;">Ref: ${paymentReference}</p>
+
+          <p style="margin: 20px 0;">
+            <a href="${orderUrl}" style="background: #c05621; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              View Order
+            </a>
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[sendNewOrderAlertEmail] Error:', error)
+      return { success: false, error }
+    }
+
+    console.log('[sendNewOrderAlertEmail] Sent to:', opsEmails.join(', '))
+    return { success: true, data }
+  } catch (error) {
+    console.error('[sendNewOrderAlertEmail] Send error:', error)
+    return { success: false, error }
+  }
+}
