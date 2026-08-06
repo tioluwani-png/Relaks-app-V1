@@ -211,6 +211,21 @@ export default function RentPage() {
             Lagos only for now
           </div>
         </motion.div>
+
+        {/* Footer with terms link */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+          className="mt-12 text-center"
+        >
+          <Link
+            href="/rent/terms"
+            className="text-sm text-gray-500 hover:text-purple-600 transition-colors"
+          >
+            Reading Club Terms
+          </Link>
+        </motion.div>
       </div>
     </div>
   )

@@ -125,6 +125,7 @@ export const createBookSchema = z.object({
   available_copies: z.number().int().min(0).optional(),
   manually_unavailable: z.boolean().optional(),
   is_active: z.boolean().optional(),
+  replacement_value_naira: z.number().int().positive().optional().nullable(),
 })
 
 export const updateBookSchema = createBookSchema.partial()

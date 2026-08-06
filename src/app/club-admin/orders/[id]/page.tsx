@@ -41,6 +41,8 @@ interface OrderDetail {
   delivered_at: string | null
   returned_at: string | null
   auto_renew: boolean
+  terms_version: string | null
+  terms_accepted_at: string | null
   user: { id: string; username: string; email: string } | null
   plan: { id: string; name: string; books_per_cycle: number; duration_days: number; swap_frequency: string } | null
   books: Array<{
@@ -85,6 +87,8 @@ export default function OrderDetailPage() {
           delivered_at,
           returned_at,
           auto_renew,
+          terms_version,
+          terms_accepted_at,
           user:users(id, username, email),
           plan:rental_plans(id, name, books_per_cycle, duration_days, swap_frequency),
           books:rental_subscription_books(
@@ -548,6 +552,21 @@ Action: ${action}
               <div className="flex justify-between">
                 <span className="text-gray-500">Expires</span>
                 <span>{format(new Date(order.expires_at), 'MMM d, yyyy')}</span>
+              </div>
+            )}
+            {order.terms_version && (
+              <div className="pt-3 mt-3 border-t border-gray-100 dark:border-gray-800">
+                <div className="flex justify-between items-start">
+                  <span className="text-gray-500">Terms accepted</span>
+                  <div className="text-right">
+                    <span className="font-mono text-sm">{order.terms_version}</span>
+                    {order.terms_accepted_at && (
+                      <p className="text-xs text-gray-400">
+                        {format(new Date(order.terms_accepted_at), 'MMM d, yyyy h:mm a')}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>

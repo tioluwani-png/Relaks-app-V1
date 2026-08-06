@@ -5,10 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowLeft, BookOpen, Loader2, MapPin, Phone, Home, CreditCard } from 'lucide-react'
+import { ArrowLeft, BookOpen, Loader2, MapPin, Phone, Home, CreditCard, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -70,6 +71,7 @@ function CheckoutContent() {
   const [deliveryLga, setDeliveryLga] = useState('')
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [deliveryPhone, setDeliveryPhone] = useState('')
+  const [termsAccepted, setTermsAccepted] = useState(false)
 
   // Redirect if not logged in
   useEffect(() => {
@@ -171,6 +173,7 @@ function CheckoutContent() {
           deliveryLga,
           deliveryAddress,
           deliveryPhone,
+          termsAccepted: true, // Already validated by button disabled state
         }),
       })
 
@@ -421,15 +424,49 @@ function CheckoutContent() {
           </div>
         </motion.div>
 
-        {/* Pay Button */}
+        {/* Terms Consent */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
+          className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100"
+        >
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5">
+              <Checkbox
+                id="terms"
+                checked={termsAccepted}
+                onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                className="h-5 w-5"
+              />
+            </div>
+            <label htmlFor="terms" className="text-sm text-gray-700 leading-relaxed cursor-pointer">
+              <span className="flex items-center gap-2 font-medium text-gray-900 mb-1">
+                <FileText className="w-4 h-4 text-purple-500" />
+                I agree to the Reading Club terms
+              </span>
+              I&apos;ll take care of the books and return them at the end of my cycle.{' '}
+              <Link
+                href="/rent/terms"
+                target="_blank"
+                className="text-purple-600 hover:text-purple-700 underline underline-offset-2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Read the full terms
+              </Link>
+            </label>
+          </div>
+        </motion.div>
+
+        {/* Pay Button */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
         >
           <Button
             onClick={handlePayment}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !termsAccepted}
             className="w-full h-14 rounded-2xl text-lg font-semibold bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:opacity-90 disabled:opacity-50"
           >
             {isSubmitting ? (

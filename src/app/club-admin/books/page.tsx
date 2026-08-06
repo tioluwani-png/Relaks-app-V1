@@ -28,12 +28,14 @@ import type { Book, BookGenre } from '@/types/database'
 import Image from 'next/image'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { DEFAULT_REPLACEMENT_VALUE_NAIRA } from '@/lib/rental/config'
 
 // Extended book type for rental system
 type ExtendedBook = Book & {
   total_copies: number
   available_copies: number
   manually_unavailable: boolean
+  replacement_value_naira: number | null
   genre: BookGenre | null
   on_loan_count?: number // Computed: total - available
 }
@@ -48,6 +50,7 @@ const DEFAULT_FORM = {
   page_count: '',
   published_year: '',
   total_copies: '1',
+  replacement_value_naira: '',
 }
 
 // Helper to get availability color
@@ -211,6 +214,7 @@ export default function ClubAdminBooksPage() {
         published_year: form.published_year ? parseInt(form.published_year) : null,
         total_copies: newTotalCopies,
         available_copies: newAvailableCopies,
+        replacement_value_naira: form.replacement_value_naira ? parseInt(form.replacement_value_naira) : null,
       }
 
       const response = await fetch(
@@ -254,6 +258,7 @@ export default function ClubAdminBooksPage() {
       page_count: book.page_count?.toString() || '',
       published_year: book.published_year?.toString() || '',
       total_copies: book.total_copies?.toString() || '1',
+      replacement_value_naira: book.replacement_value_naira?.toString() || '',
     })
     // Track original total for computing available delta
     setOriginalTotalCopies(book.total_copies || 1)
@@ -704,6 +709,19 @@ export default function ClubAdminBooksPage() {
                   placeholder="Year"
                   disabled={isSaving}
                 />
+              </div>
+              <div className="sm:col-span-2">
+                <Label>Replacement Value (₦)</Label>
+                <Input
+                  type="number"
+                  value={form.replacement_value_naira}
+                  onChange={(e) => setForm({ ...form, replacement_value_naira: e.target.value })}
+                  placeholder={DEFAULT_REPLACEMENT_VALUE_NAIRA.toLocaleString()}
+                  disabled={isSaving}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Charged if lost or damaged. Leave blank to use the default (₦{DEFAULT_REPLACEMENT_VALUE_NAIRA.toLocaleString()})
+                </p>
               </div>
             </div>
             <div className="flex gap-3 pt-4">

@@ -751,6 +751,7 @@ export interface Database {
           total_copies: number
           available_copies: number
           manually_unavailable: boolean
+          replacement_value_naira: number | null
           created_by: string | null
           created_at: string
           updated_at: string
@@ -772,6 +773,7 @@ export interface Database {
           total_copies?: number
           available_copies?: number
           manually_unavailable?: boolean
+          replacement_value_naira?: number | null
           created_by?: string | null
           created_at?: string
           updated_at?: string
@@ -793,6 +795,7 @@ export interface Database {
           total_copies?: number
           available_copies?: number
           manually_unavailable?: boolean
+          replacement_value_naira?: number | null
           created_by?: string | null
           created_at?: string
           updated_at?: string
@@ -1282,6 +1285,8 @@ export interface Database {
           delivered_at: string | null
           returned_at: string | null
           auto_renew: boolean
+          terms_version: string | null
+          terms_accepted_at: string | null
           created_at: string
           updated_at: string
         }
@@ -1301,6 +1306,8 @@ export interface Database {
           delivered_at?: string | null
           returned_at?: string | null
           auto_renew?: boolean
+          terms_version?: string | null
+          terms_accepted_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1320,6 +1327,8 @@ export interface Database {
           delivered_at?: string | null
           returned_at?: string | null
           auto_renew?: boolean
+          terms_version?: string | null
+          terms_accepted_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -1639,4 +1648,87 @@ export type RentalBookRatingWithBook = RentalBookRating & {
 
 export type RentalSubscriptionWithRatings = RentalSubscriptionWithDetails & {
   ratings: RentalBookRatingWithBook[]
+}
+
+// ==========================================
+// Shop Types
+// ==========================================
+export type ShopProductType = 'book' | 'stationery' | 'combo' | 'other'
+export type ShopOrderStatus = 'pending_payment' | 'paid' | 'processing' | 'dispatched' | 'delivered' | 'cancelled'
+
+export interface ShopProduct {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  price_naira: number
+  compare_at_price_naira: number | null
+  product_type: ShopProductType
+  edition: string | null
+  images: string[]
+  stock_quantity: number
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ShopDeliveryZone {
+  id: string
+  name: string
+  lgas: string[]
+  fee_naira: number
+  is_active: boolean
+  created_at: string
+}
+
+export interface ShopOrder {
+  id: string
+  order_number: string
+  user_id: string | null
+  email: string
+  customer_name: string
+  phone: string
+  delivery_lga: string
+  delivery_zone_id: string | null
+  delivery_address: string
+  delivery_fee_naira: number
+  subtotal_naira: number
+  total_naira: number
+  status: ShopOrderStatus
+  dispatched_at: string | null
+  delivered_at: string | null
+  cancelled_at: string | null
+  created_at: string
+}
+
+export interface ShopOrderItem {
+  id: string
+  order_id: string
+  product_id: string | null
+  product_name: string
+  unit_price_naira: number
+  quantity: number
+  created_at: string
+}
+
+export interface ShopPayment {
+  id: string
+  order_id: string
+  amount_naira: number
+  paystack_reference: string
+  paystack_status: string
+  created_at: string
+}
+
+// Extended types
+export type ShopOrderWithItems = ShopOrder & {
+  items: ShopOrderItem[]
+  zone?: ShopDeliveryZone | null
+}
+
+export type ShopOrderWithDetails = ShopOrder & {
+  items: (ShopOrderItem & { product?: ShopProduct | null })[]
+  zone?: ShopDeliveryZone | null
+  payment?: ShopPayment | null
 }

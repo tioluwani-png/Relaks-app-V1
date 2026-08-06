@@ -2,6 +2,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { isVerifiedForRental } from '@/lib/rental/verification'
+import { TERMS_VERSION } from '@/lib/rental/config'
 import type { RentalPlan } from '@/types/database'
 
 const createOrderSchema = z.object({
@@ -10,6 +11,7 @@ const createOrderSchema = z.object({
   deliveryLga: z.string().min(1).max(100),
   deliveryAddress: z.string().min(5).max(500),
   deliveryPhone: z.string().min(10).max(20),
+  termsAccepted: z.literal(true, { message: 'You must accept the Reading Club terms to proceed' }),
 })
 
 // Type for book query result
@@ -157,7 +159,7 @@ export async function POST(request: NextRequest) {
         .eq('subscription_id', existingPendingTyped.id)
     }
 
-    // 9. Create subscription (pending_payment status)
+    // 9. Create subscription (pending_payment status) with terms acceptance
     const { data: subscriptionData, error: subError } = await adminSupabase
       .from('rental_subscriptions')
       .insert({
@@ -167,6 +169,8 @@ export async function POST(request: NextRequest) {
         delivery_lga: deliveryLga,
         delivery_address: deliveryAddress,
         delivery_phone: deliveryPhone,
+        terms_version: TERMS_VERSION,
+        terms_accepted_at: new Date().toISOString(),
       } as never)
       .select('id')
       .single()

@@ -836,6 +836,10 @@ export async function sendAutoRenewalSuccessEmail(
             Happy reading!<br>
             The Relaks Team
           </p>
+
+          <p style="color: #d1d5db; font-size: 11px; text-align: center; margin-top: 24px;">
+            Renewed under the <a href="https://relaks.co/rent/terms" style="color: #d1d5db;">Reading Club terms</a>
+          </p>
         </div>
       `,
     })

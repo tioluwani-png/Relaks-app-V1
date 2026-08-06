@@ -16,6 +16,10 @@ import {
   LogOut,
   Menu,
   X,
+  ShoppingBag,
+  Package,
+  Truck,
+  MapPin,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/types/database'
@@ -102,6 +106,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/blog', label: 'Blog', icon: FileText, roles: ['admin', 'super_admin'] },
     { href: '/admin/verification', label: 'Verification', icon: BadgeCheck, roles: ['super_admin'] },
     { href: '/admin/team', label: 'Team & Roles', icon: Shield, roles: ['super_admin'] },
+    // Shop (admin/super_admin only - NOT partner)
+    { href: '/admin/shop/products', label: 'Shop Products', icon: Package, roles: ['admin', 'super_admin'], section: 'shop' },
+    { href: '/admin/shop/orders', label: 'Shop Orders', icon: ShoppingBag, roles: ['admin', 'super_admin'], section: 'shop' },
+    { href: '/admin/shop/zones', label: 'Delivery Zones', icon: MapPin, roles: ['admin', 'super_admin'], section: 'shop' },
   ]
 
   const accessibleNavItems = navItems.filter(item =>
@@ -134,22 +142,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         <nav className="p-4 space-y-1">
-          {accessibleNavItems.map((item) => {
-            const isActive = pathname === item.href
+          {accessibleNavItems.map((item, index) => {
+            const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
+            const prevItem = accessibleNavItems[index - 1]
+            const showShopHeader = (item as { section?: string }).section === 'shop' && (prevItem as { section?: string })?.section !== 'shop'
+
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition ${
-                  isActive
-                    ? 'bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}
-              >
-                <item.icon size={20} />
-                <span className="font-medium">{item.label}</span>
-              </Link>
+              <div key={item.href}>
+                {showShopHeader && (
+                  <div className="pt-4 pb-2 px-4">
+                    <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                      Shop
+                    </p>
+                  </div>
+                )}
+                <Link
+                  href={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition ${
+                    isActive
+                      ? 'bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  <item.icon size={20} />
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              </div>
             )
           })}
         </nav>
