@@ -24,7 +24,7 @@ import type { ShopDeliveryZone } from '@/types/database'
 
 declare global {
   interface Window {
-    PaystackPop: {
+    PaystackPop?: {
       setup: (config: {
         key: string
         email: string

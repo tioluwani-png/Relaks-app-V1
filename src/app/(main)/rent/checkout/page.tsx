@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -73,6 +73,19 @@ function CheckoutContent() {
   const [deliveryPhone, setDeliveryPhone] = useState('')
   const [termsAccepted, setTermsAccepted] = useState(false)
 
+  // Load Paystack script dynamically
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.src = 'https://js.paystack.co/v2/inline.js'
+    script.async = true
+    document.body.appendChild(script)
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script)
+      }
+    }
+  }, [])
+
   // Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
@@ -143,7 +156,7 @@ function CheckoutContent() {
     return /^(\+234|0)[789][01]\d{8}$/.test(cleaned)
   }
 
-  const handlePayment = async () => {
+  const handlePayment = useCallback(async () => {
     // Validate form
     if (!deliveryLga) {
       toast.error('Please select your LGA')
@@ -159,6 +172,12 @@ function CheckoutContent() {
     }
 
     if (!plan || !user) return
+
+    // Guard: Check if Paystack is loaded
+    if (!window.PaystackPop) {
+      toast.error('Payment is still loading, please try again in a moment.')
+      return
+    }
 
     setIsSubmitting(true)
 
@@ -188,33 +207,8 @@ function CheckoutContent() {
       // 2. Generate reference
       const reference = `rental_${subscriptionId}_${Date.now()}`
 
-      // 3. Load Paystack inline
-      const PaystackPop = (window as unknown as { PaystackPop?: { setup: (config: PaystackConfig) => PaystackHandler } }).PaystackPop
-      if (!PaystackPop) {
-        throw new Error('Payment system not loaded. Please refresh the page.')
-      }
-
-      interface PaystackConfig {
-        key: string
-        email: string
-        amount: number
-        ref: string
-        currency: string
-        metadata: {
-          custom_fields: { display_name: string; variable_name: string; value: string }[]
-          user_id: string
-          subscription_id: string
-          type: string
-        }
-        callback: (response: { reference: string }) => void
-        onClose: () => void
-      }
-
-      interface PaystackHandler {
-        openIframe: () => void
-      }
-
-      const handler = PaystackPop.setup({
+      // 3. Open Paystack popup
+      const handler = window.PaystackPop.setup({
         key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
         email: user.email!,
         amount: planPrice * 100, // kobo
@@ -228,7 +222,7 @@ function CheckoutContent() {
           subscription_id: subscriptionId,
           type: 'rental',
         },
-        callback: async (response: { reference: string }) => {
+        callback: async (response) => {
           // Verify payment
           try {
             const verifyRes = await fetch('/api/rental/payments/verify', {
@@ -256,9 +250,9 @@ function CheckoutContent() {
         onClose: () => {
           // Reset loading state when payment popup is closed
           setIsSubmitting(false)
-          toast.error('Payment cancelled')
+          toast('Payment cancelled')
         },
-      } as PaystackConfig)
+      })
 
       handler.openIframe()
     } catch (error) {
@@ -266,7 +260,7 @@ function CheckoutContent() {
       toast.error(error instanceof Error ? error.message : 'Payment failed')
       setIsSubmitting(false)
     }
-  }
+  }, [deliveryLga, deliveryAddress, deliveryPhone, plan, user, selectedBooks, router])
 
   if (authLoading || isLoading) {
     return (
@@ -282,9 +276,6 @@ function CheckoutContent() {
 
   return (
     <div className="min-h-screen bg-[#FFFBF5] pb-8">
-      {/* Paystack script */}
-      <script src="https://js.paystack.co/v1/inline.js" async />
-
       {/* Header */}
       <div className="sticky top-0 z-40 bg-[#FFFBF5]/95 backdrop-blur-sm border-b border-gray-100">
         <div className="max-w-2xl mx-auto px-4 py-4">
