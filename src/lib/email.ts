@@ -1258,3 +1258,114 @@ export async function sendStockFailureCustomerEmail(
     return { success: false, error }
   }
 }
+
+// ============================================
+// PAYMENT VERIFICATION FAILURE ALERT (Critical)
+// ============================================
+
+/**
+ * Sent to ops when payment verification fails AFTER the customer may have been charged.
+ * This is a critical alert requiring manual investigation.
+ */
+export async function sendPaymentVerificationFailedAlert(
+  reference: string,
+  subscriptionId: string,
+  userId: string,
+  errorCode: string,
+  errorDetails: string
+) {
+  const opsEmailsRaw = process.env.RENTAL_OPS_EMAILS
+
+  if (!opsEmailsRaw || opsEmailsRaw.trim() === '') {
+    console.warn('[sendPaymentVerificationFailedAlert] RENTAL_OPS_EMAILS not set')
+    return { success: false, skipped: true }
+  }
+
+  const opsEmails = opsEmailsRaw
+    .split(',')
+    .map(e => e.trim())
+    .filter(e => e.length > 0 && e.includes('@'))
+
+  if (opsEmails.length === 0) {
+    return { success: false, skipped: true }
+  }
+
+  const timestamp = new Date().toISOString()
+  const orderUrl = `https://relaks.co/club-admin/orders/${subscriptionId}`
+
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: 'Relaks Alerts <alerts@hello.relaks.co>',
+      to: opsEmails,
+      subject: `🚨 CRITICAL: Payment Verification Failed - ${errorCode}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width: 600px;">
+          <div style="background: #fef2f2; border: 2px solid #dc2626; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <h2 style="color: #dc2626; margin: 0 0 16px 0;">🚨 Payment Verification Failed</h2>
+            <p style="margin: 0; color: #7f1d1d;">
+              A customer's payment could not be verified. <strong>They may have been charged.</strong>
+              Manual investigation required.
+            </p>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <tr>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;"><strong>Error Code:</strong></td>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; color: #dc2626; font-weight: bold;">${errorCode}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;"><strong>Reference:</strong></td>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; font-family: monospace;">${reference}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;"><strong>Subscription ID:</strong></td>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; font-family: monospace;">${subscriptionId}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;"><strong>User ID:</strong></td>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; font-family: monospace;">${userId}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;"><strong>Timestamp:</strong></td>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">${timestamp}</td>
+            </tr>
+          </table>
+
+          <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="margin: 0 0 8px 0; font-weight: bold;">Error Details:</p>
+            <p style="margin: 0; font-family: monospace; font-size: 14px; color: #374151;">${errorDetails}</p>
+          </div>
+
+          <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+            <p style="margin: 0; color: #92400e;">
+              <strong>Action Required:</strong><br>
+              1. Check Paystack dashboard for transaction with reference above<br>
+              2. If customer was charged, either manually activate subscription or issue refund<br>
+              3. Contact customer if needed
+            </p>
+          </div>
+
+          <p style="margin: 20px 0;">
+            <a href="${orderUrl}" style="background: #7c3aed; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              View Order
+            </a>
+            <a href="https://dashboard.paystack.com/#/transactions" style="background: #059669; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block; margin-left: 8px;">
+              Paystack Dashboard
+            </a>
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[sendPaymentVerificationFailedAlert] Error:', error)
+      return { success: false, error }
+    }
+
+    console.log('[sendPaymentVerificationFailedAlert] Alert sent to:', opsEmails.join(', '))
+    return { success: true, data }
+  } catch (error) {
+    console.error('[sendPaymentVerificationFailedAlert] Send error:', error)
+    return { success: false, error }
+  }
+}

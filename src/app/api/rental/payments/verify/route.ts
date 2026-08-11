@@ -9,9 +9,13 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { sendRentalConfirmationEmail, sendNewOrderAlertEmail, sendStockFailureAlertEmail, sendStockFailureCustomerEmail } from '@/lib/email'
+import { sendRentalConfirmationEmail, sendNewOrderAlertEmail, sendStockFailureAlertEmail, sendStockFailureCustomerEmail, sendPaymentVerificationFailedAlert } from '@/lib/email'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
+
+// Log secret key type at module load (without revealing the key)
+const secretKeyType = PAYSTACK_SECRET_KEY?.startsWith('sk_test_') ? 'TEST' : PAYSTACK_SECRET_KEY?.startsWith('sk_live_') ? 'LIVE' : 'UNKNOWN'
+console.log('[rental/payments/verify] Loaded with secret key type:', secretKeyType)
 
 const verifySchema = z.object({
   reference: z.string().min(10).max(100),
@@ -43,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       console.error('[rental/payments/verify] Auth error:', authError)
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized', code: 'AUTH_REQUIRED' }, { status: 401 })
     }
 
     // 2. Validate body
@@ -51,8 +55,9 @@ export async function POST(request: NextRequest) {
     const validation = verifySchema.safeParse(body)
 
     if (!validation.success) {
+      console.error('[rental/payments/verify] Validation error:', validation.error.flatten())
       return NextResponse.json(
-        { error: 'Invalid request', details: validation.error.flatten() },
+        { error: 'Invalid request', code: 'INVALID_REQUEST', details: validation.error.flatten() },
         { status: 400 }
       )
     }
@@ -72,7 +77,7 @@ export async function POST(request: NextRequest) {
     if (existingPayment) {
       console.log('[rental/payments/verify] Duplicate reference:', reference)
       return NextResponse.json(
-        { error: 'Payment already processed' },
+        { error: 'Payment already processed', code: 'DUPLICATE_REFERENCE' },
         { status: 400 }
       )
     }
@@ -96,7 +101,7 @@ export async function POST(request: NextRequest) {
         error: subError,
       })
       return NextResponse.json(
-        { error: 'Subscription not found or already processed' },
+        { error: 'Subscription not found or already processed', code: 'SUBSCRIPTION_NOT_FOUND' },
         { status: 404 }
       )
     }
@@ -134,8 +139,14 @@ export async function POST(request: NextRequest) {
 
     if (!paystackResponse.ok) {
       console.error('[rental/payments/verify] Paystack API error:', paystackResponse.status)
+      // Send ops alert - customer may have been charged but we can't verify
+      try {
+        await sendPaymentVerificationFailedAlert(reference, subscriptionId, user.id, 'PAYSTACK_API_ERROR', `Paystack returned ${paystackResponse.status}`)
+      } catch (e) {
+        console.error('[rental/payments/verify] Failed to send ops alert:', e)
+      }
       return NextResponse.json(
-        { error: 'Failed to verify payment with Paystack' },
+        { error: 'Failed to verify payment with Paystack', code: 'PAYSTACK_API_ERROR' },
         { status: 502 }
       )
     }
@@ -143,13 +154,21 @@ export async function POST(request: NextRequest) {
     const paystackData: PaystackVerifyResponse = await paystackResponse.json()
 
     // 7. Require success and correct amount
+    console.log('[rental/payments/verify] Paystack verification result:', {
+      reference,
+      paystackStatus: paystackData.status,
+      transactionStatus: paystackData.data?.status,
+      amount: paystackData.data?.amount,
+      expectedAmount: expectedAmountKobo,
+    })
+
     if (!paystackData.status || paystackData.data.status !== 'success') {
       console.log('[rental/payments/verify] Payment not successful:', {
         reference,
         status: paystackData.data?.status,
       })
       return NextResponse.json(
-        { error: 'Payment was not successful' },
+        { error: 'Payment was not successful', code: 'PAYMENT_NOT_SUCCESS', paystackStatus: paystackData.data?.status },
         { status: 400 }
       )
     }
@@ -160,9 +179,22 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         expected: expectedAmountKobo,
         received: paystackData.data.amount,
+        planPriceNaira: plan.price_naira,
       })
+      // Send ops alert - customer WAS charged but amount doesn't match
+      try {
+        await sendPaymentVerificationFailedAlert(
+          reference,
+          subscriptionId,
+          user.id,
+          'AMOUNT_MISMATCH',
+          `Expected ${expectedAmountKobo} kobo, got ${paystackData.data.amount} kobo`
+        )
+      } catch (e) {
+        console.error('[rental/payments/verify] Failed to send ops alert:', e)
+      }
       return NextResponse.json(
-        { error: 'Payment amount mismatch. Please contact support.' },
+        { error: 'Payment amount mismatch. Please contact support.', code: 'AMOUNT_MISMATCH' },
         { status: 400 }
       )
     }
@@ -187,8 +219,20 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, alreadyProcessed: true })
       }
       console.error('[rental/payments/verify] Payment insert error:', paymentError)
+      // Send ops alert - customer WAS charged but we failed to record it
+      try {
+        await sendPaymentVerificationFailedAlert(
+          reference,
+          subscriptionId,
+          user.id,
+          'DB_WRITE_FAILED',
+          `Payment insert failed: ${paymentError.message}`
+        )
+      } catch (e) {
+        console.error('[rental/payments/verify] Failed to send ops alert:', e)
+      }
       return NextResponse.json(
-        { error: 'Failed to record payment' },
+        { error: 'Failed to record payment', code: 'DB_WRITE_FAILED' },
         { status: 500 }
       )
     }
@@ -209,8 +253,20 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       console.error('[rental/payments/verify] Subscription update error:', updateError)
       // Payment recorded, but status update failed - manual intervention needed
+      // Send ops alert
+      try {
+        await sendPaymentVerificationFailedAlert(
+          reference,
+          subscriptionId,
+          user.id,
+          'STATUS_UPDATE_FAILED',
+          `Subscription status update failed: ${updateError.message}`
+        )
+      } catch (e) {
+        console.error('[rental/payments/verify] Failed to send ops alert:', e)
+      }
       return NextResponse.json(
-        { error: 'Payment recorded but status update failed. Contact support.' },
+        { error: 'Payment recorded but status update failed. Contact support.', code: 'STATUS_UPDATE_FAILED' },
         { status: 500 }
       )
     }
@@ -363,6 +419,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: false,
         error: 'Some books are no longer available',
+        code: 'STOCK_FAILURE',
         unavailableBooks: failedBooks,
         refundPending: true,
       }, { status: 409 })
@@ -446,7 +503,7 @@ export async function POST(request: NextRequest) {
       expiresAt: expiresAt.toISOString(),
     })
   } catch (error) {
-    console.error('[rental/payments/verify] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[rental/payments/verify] Unhandled error:', error)
+    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, { status: 500 })
   }
 }
