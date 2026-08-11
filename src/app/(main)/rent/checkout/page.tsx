@@ -180,9 +180,16 @@ function CheckoutContent() {
       return
     }
 
-    // Log public key type (without revealing full key)
+    // Guard: Check if Paystack public key is configured
     const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || ''
-    const keyType = publicKey.startsWith('pk_test_') ? 'TEST' : publicKey.startsWith('pk_live_') ? 'LIVE' : 'UNKNOWN'
+    if (!publicKey || !publicKey.startsWith('pk_')) {
+      console.error('[RENTAL_PAY] Paystack public key not configured. Tried to read: NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY')
+      console.error('[RENTAL_PAY] Value received:', publicKey ? `"${publicKey.substring(0, 10)}..."` : 'undefined/empty')
+      toast.error("Payment isn't configured — please contact support.")
+      return
+    }
+
+    const keyType = publicKey.startsWith('pk_test_') ? 'TEST' : 'LIVE'
     console.log('[RENTAL_PAY] Using Paystack public key type:', keyType)
 
     setIsSubmitting(true)
@@ -216,14 +223,14 @@ function CheckoutContent() {
 
       const { subscriptionId, planPrice } = createData
 
-      // 2. Generate reference
-      const reference = `rental_${subscriptionId}_${Date.now()}`
+      // 2. Generate reference (Paystack allows alphanumerics, hyphens, dots, equals only)
+      const reference = `rental-${subscriptionId}-${Date.now()}`
       console.log('[RENTAL_PAY] Generated reference:', reference)
       console.log('[RENTAL_PAY] Plan price (naira):', planPrice, '→ Amount (kobo):', planPrice * 100)
 
       // 3. Prepare Paystack config
       const paystackConfig = {
-        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
+        key: publicKey,
         email: user.email!,
         amount: planPrice * 100, // kobo
         ref: reference,

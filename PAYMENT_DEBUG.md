@@ -2,18 +2,40 @@
 
 ## Key/Environment Audit
 
-### Public Key (Client-Side)
-- **Variable**: `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`
-- **Used in**: `src/app/(main)/rent/checkout/page.tsx`
-- **Type detected at runtime**: Logged as `[RENTAL_PAY] Using Paystack public key type: TEST|LIVE`
+### Why Credits Work But Rental Shows "UNKNOWN"
 
-### Secret Key (Server-Side)
-- **Variable**: `PAYSTACK_SECRET_KEY`
-- **Used in**:
-  - `src/app/api/rental/payments/verify/route.ts` (rental)
-  - `src/lib/paystack.ts` (credits)
-  - `src/lib/payment-fulfillment.ts` (credits)
-- **Type detected at startup**: Logged as `[rental/payments/verify] Loaded with secret key type: TEST|LIVE`
+**Credits checkout** uses **server-side initialization**:
+- Calls `/api/payments/initialize` (server route)
+- Server reads `PAYSTACK_SECRET_KEY` (always available server-side)
+- Returns `authorization_url` → user redirected to Paystack hosted page
+- **Public key is NEVER used client-side**
+
+**Rental & Shop checkout** use **client-side inline popup**:
+- Read `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` directly in browser
+- If this env var isn't set in Vercel, it will be `undefined`
+- That's why it shows `UNKNOWN` even though credits works
+
+### Required Environment Variables
+
+| Variable | Where Used | Required For |
+|----------|------------|--------------|
+| `PAYSTACK_SECRET_KEY` | Server only | All payments (verify, initialize) |
+| `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | Browser (client) | Rental & Shop checkout inline popup |
+
+**In Vercel Dashboard:**
+1. Go to Project Settings → Environment Variables
+2. Ensure `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` is set for Production (and Preview if needed)
+3. Value should start with `pk_live_` or `pk_test_`
+4. **Redeploy** after adding/changing env vars
+
+### Hard Guard Behavior
+If the public key is missing or invalid, checkout will show:
+> "Payment isn't configured — please contact support."
+
+And log:
+```
+[RENTAL_PAY] Paystack public key not configured. Tried to read: NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
+```
 
 ### Key Mismatch Detection
 **CRITICAL**: Both keys MUST be from the same environment:
@@ -21,16 +43,6 @@
 - `pk_live_*` + `sk_live_*` = ✅ Valid (production)
 - `pk_test_*` + `sk_live_*` = ❌ **Will fail verification**
 - `pk_live_*` + `sk_test_*` = ❌ **Will fail verification**
-
-Check your `.env.local`:
-```bash
-# Both should be test OR both should be live
-NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=pk_test_... # or pk_live_
-PAYSTACK_SECRET_KEY=sk_test_...             # or sk_live_
-```
-
-### Credits Checkout Comparison
-The credits checkout uses the **same** `PAYSTACK_SECRET_KEY` via `src/lib/paystack.ts`. If credits work but rental doesn't, the issue is in the rental-specific code, not the keys.
 
 ---
 

@@ -153,6 +153,14 @@ export default function CheckoutPage() {
       return
     }
 
+    // Guard: Check if Paystack public key is configured
+    const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || ''
+    if (!publicKey || !publicKey.startsWith('pk_')) {
+      console.error('[SHOP_PAY] Paystack public key not configured. Tried to read: NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY')
+      toast.error("Payment isn't configured — please contact support.")
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -181,11 +189,11 @@ export default function CheckoutPage() {
 
       const { orderId, orderNumber, total: serverTotal } = createData
 
-      // 2. Initialize Paystack
-      const reference = `shop_${orderId}_${Date.now()}`
+      // 2. Initialize Paystack (reference uses hyphens - Paystack allows alphanumerics, -, ., =)
+      const reference = `shop-${orderId}-${Date.now()}`
 
       const handler = window.PaystackPop.setup({
-        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY!,
+        key: publicKey,
         email: email.trim().toLowerCase(),
         amount: serverTotal * 100, // kobo
         currency: 'NGN',

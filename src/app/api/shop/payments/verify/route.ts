@@ -56,7 +56,8 @@ export async function POST(request: NextRequest) {
     const { reference, orderId } = validation.data
 
     // Validate reference format (must be shop payment)
-    if (!reference.startsWith('shop_')) {
+    // Accept both old (shop_) and new (shop-) formats
+    if (!reference.startsWith('shop-') && !reference.startsWith('shop_')) {
       return NextResponse.json(
         { error: 'Invalid payment reference format' },
         { status: 400 }
