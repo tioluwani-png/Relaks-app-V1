@@ -1,5 +1,33 @@
 # Rental Payment Debugging Guide
 
+## Content Security Policy (CSP)
+
+### Why the iframe was blocked
+The security headers in `next.config.ts` restricted which domains could be framed. Paystack loads its script from `js.paystack.co` but opens the payment iframe from `checkout.paystack.com`.
+
+**Error in console:**
+```
+Refused to frame 'https://checkout.paystack.com/' because it violates
+Content Security Policy directive: "frame-src 'self' https://js.paystack.co"
+```
+
+### Which payment flows are affected
+| Flow | Method | Affected by frame-src? |
+|------|--------|------------------------|
+| Credits | Server redirect (`window.location.href`) | ❌ No - full page navigation |
+| Rental | Inline popup (`PaystackPop.openIframe()`) | ✅ Yes |
+| Shop | Inline popup (`PaystackPop.openIframe()`) | ✅ Yes |
+
+### Fixed CSP domains
+```javascript
+"frame-src 'self' https://js.paystack.co https://checkout.paystack.com",
+"script-src '...' https://js.paystack.co https://checkout.paystack.com",
+"connect-src '...' https://api.paystack.co https://checkout.paystack.com",
+"img-src '...' https://checkout.paystack.com",
+```
+
+---
+
 ## Key/Environment Audit
 
 ### Why Credits Work But Rental Shows "UNKNOWN"
