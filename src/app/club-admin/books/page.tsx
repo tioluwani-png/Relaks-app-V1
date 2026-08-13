@@ -53,6 +53,25 @@ const DEFAULT_FORM = {
   replacement_value_naira: '',
 }
 
+// Helper to parse numbers with commas/spaces (e.g., "15,000" → 15000)
+function parseNumericInput(value: string): number | null {
+  if (!value.trim()) return null
+  // Remove commas, spaces, and currency symbols
+  const cleaned = value.replace(/[,\s₦]/g, '')
+  const num = parseInt(cleaned, 10)
+  return isNaN(num) ? null : num
+}
+
+// Validate numeric string (returns error message or null if valid)
+function validateNumericInput(value: string, fieldName: string): string | null {
+  if (!value.trim()) return null // Empty is OK for optional fields
+  const cleaned = value.replace(/[,\s₦]/g, '')
+  if (!/^\d+$/.test(cleaned)) {
+    return `${fieldName} must be a valid number (e.g., 15000 or 15,000)`
+  }
+  return null
+}
+
 // Helper to get availability color
 function getAvailabilityColor(available: number, total: number): string {
   if (total === 0) return 'text-gray-400'
@@ -169,6 +188,18 @@ export default function ClubAdminBooksPage() {
       return
     }
 
+    // Validate numeric fields
+    const replacementError = validateNumericInput(form.replacement_value_naira, 'Replacement value')
+    if (replacementError) {
+      toast.error(replacementError)
+      return
+    }
+    const copiesError = validateNumericInput(form.total_copies, 'Number of copies')
+    if (copiesError) {
+      toast.error(copiesError)
+      return
+    }
+
     setIsSaving(true)
 
     try {
@@ -180,8 +211,15 @@ export default function ClubAdminBooksPage() {
         try {
           coverUrl = await uploadBookCover(coverFile, editingId || undefined)
         } catch (uploadError) {
-          console.error('Cover upload failed:', uploadError)
-          toast.error('Failed to upload cover image')
+          const errorMsg = uploadError instanceof Error ? uploadError.message : 'Unknown error'
+          console.error('[BOOKS_ADMIN] Cover upload failed:', errorMsg)
+
+          // Check for permission-related errors
+          if (errorMsg.includes('permission') || errorMsg.includes('policy') || errorMsg.includes('403')) {
+            toast.error('You don\'t have permission to upload book covers — contact an admin')
+          } else {
+            toast.error(`Failed to upload cover image: ${errorMsg}`)
+          }
           setIsUploading(false)
           setIsSaving(false)
           return
@@ -189,7 +227,7 @@ export default function ClubAdminBooksPage() {
         setIsUploading(false)
       }
 
-      const newTotalCopies = form.total_copies ? parseInt(form.total_copies) : 1
+      const newTotalCopies = parseNumericInput(form.total_copies) ?? 1
 
       // For new books, available = total
       // For edits, adjust available by the delta (e.g., if total goes from 3 to 5, add 2 to available)
@@ -210,11 +248,11 @@ export default function ClubAdminBooksPage() {
         description: form.description.trim() || null,
         cover_url: coverUrl,
         isbn: form.isbn.trim() || null,
-        page_count: form.page_count ? parseInt(form.page_count) : null,
-        published_year: form.published_year ? parseInt(form.published_year) : null,
+        page_count: parseNumericInput(form.page_count),
+        published_year: parseNumericInput(form.published_year),
         total_copies: newTotalCopies,
         available_copies: newAvailableCopies,
-        replacement_value_naira: form.replacement_value_naira ? parseInt(form.replacement_value_naira) : null,
+        replacement_value_naira: parseNumericInput(form.replacement_value_naira),
       }
 
       const response = await fetch(
@@ -229,7 +267,17 @@ export default function ClubAdminBooksPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to save book')
+        const errorMessage = data.error || 'Failed to save book'
+        console.error('[BOOKS_ADMIN] Save failed:', { status: response.status, error: errorMessage })
+
+        // Show user-friendly error for permission issues
+        if (response.status === 403) {
+          throw new Error(errorMessage) // Already user-friendly from API
+        } else if (response.status === 401) {
+          throw new Error('You need to log in to add books')
+        } else {
+          throw new Error(errorMessage)
+        }
       }
 
       toast.success(editingId ? 'Book updated!' : 'Book created!')
@@ -240,8 +288,9 @@ export default function ClubAdminBooksPage() {
       setIsDialogOpen(false)
       loadBooks()
     } catch (error) {
-      console.error('Error saving book:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to save book')
+      const errorMsg = error instanceof Error ? error.message : 'Failed to save book'
+      console.error('[BOOKS_ADMIN] Error saving book:', errorMsg)
+      toast.error(errorMsg)
     } finally {
       setIsSaving(false)
     }

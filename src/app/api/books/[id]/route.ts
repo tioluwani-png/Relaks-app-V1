@@ -102,8 +102,8 @@ export async function PATCH(
       .single()
 
     const profileData = profile as { role: string } | null
-    if (!profileData || !['admin', 'super_admin'].includes(profileData.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!profileData || !['admin', 'super_admin', 'partner'].includes(profileData.role)) {
+      return NextResponse.json({ error: 'You don\'t have permission to update books — contact an admin' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -158,7 +158,7 @@ export async function DELETE(
 
     const profileData = profile as { role: string } | null
     if (!profileData || !['admin', 'super_admin'].includes(profileData.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ error: 'Only admins can delete books — partners can deactivate instead' }, { status: 403 })
     }
 
     // Soft delete by setting is_active to false

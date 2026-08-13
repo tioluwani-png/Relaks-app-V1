@@ -144,8 +144,8 @@ export async function POST(request: NextRequest) {
       .single()
 
     const profileData = profile as { role: string } | null
-    if (!profileData || !['admin', 'super_admin'].includes(profileData.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!profileData || !['admin', 'super_admin', 'partner'].includes(profileData.role)) {
+      return NextResponse.json({ error: 'You don\'t have permission to add books — contact an admin' }, { status: 403 })
     }
 
     const body = await request.json()
