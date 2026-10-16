@@ -128,11 +128,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-40
-        w-64 bg-white dark:bg-gray-900 shadow-lg transform transition-transform duration-200
+        fixed lg:static left-0 top-0 z-40
+        w-64 h-[100dvh] flex flex-col
+        bg-white dark:bg-gray-900 shadow-lg transform transition-transform duration-200
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        <div className="p-6 border-b dark:border-gray-800">
+        {/* Header - shrink-0 */}
+        <div className="shrink-0 p-6 border-b dark:border-gray-800">
           <h1 className="text-xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
             Relaks Admin
           </h1>
@@ -141,7 +143,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </p>
         </div>
 
-        <nav className="p-4 space-y-1">
+        {/* Nav - scrollable */}
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 pb-6 space-y-1 touch-pan-y">
           {accessibleNavItems.map((item, index) => {
             const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
             const prevItem = accessibleNavItems[index - 1]
@@ -171,23 +174,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </div>
             )
           })}
+
+          {/* Link to Reading Club dashboard for admin/super_admin */}
+          {(user.role === 'admin' || user.role === 'super_admin') && (
+            <div className="pt-4 border-t dark:border-gray-800">
+              <Link
+                href="/club-admin"
+                className="flex items-center gap-3 px-4 py-2 text-sm text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 transition"
+              >
+                <BookOpen size={16} />
+                Reading Club Dashboard
+              </Link>
+            </div>
+          )}
         </nav>
 
-        {/* Link to Reading Club dashboard for admin/super_admin */}
-        {(user.role === 'admin' || user.role === 'super_admin') && (
-          <div className="px-4 py-2 border-t dark:border-gray-800">
-            <Link
-              href="/club-admin"
-              className="flex items-center gap-3 px-4 py-2 text-sm text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 transition"
-            >
-              <BookOpen size={16} />
-              Reading Club Dashboard
-            </Link>
-          </div>
-        )}
-
-        {/* User info & logout */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t dark:border-gray-800 bg-white dark:bg-gray-900">
+        {/* Footer - shrink-0, not absolute */}
+        <div className="shrink-0 p-4 border-t dark:border-gray-800 bg-white dark:bg-gray-900">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold">
               {user.username.charAt(0).toUpperCase()}
