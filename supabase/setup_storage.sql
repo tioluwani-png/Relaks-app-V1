@@ -24,6 +24,14 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('ai-generations', 'ai-generations', false)
 ON CONFLICT (id) DO NOTHING;
 
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('book-covers', 'book-covers', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('shop-products', 'shop-products', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
 -- ============================================
 -- STORAGE POLICIES
 -- ============================================
@@ -96,4 +104,62 @@ CREATE POLICY "Authenticated users can upload AI generations"
   WITH CHECK (
     bucket_id = 'ai-generations'
     AND auth.role() = 'authenticated'
+  );
+
+-- Book covers bucket policies
+CREATE POLICY "Anyone can view book covers"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'book-covers');
+
+CREATE POLICY "Admins can upload book covers"
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'book-covers'
+    AND auth.role() = 'authenticated'
+    AND EXISTS (
+      SELECT 1 FROM public.users
+      WHERE id = auth.uid()
+      AND role IN ('admin', 'super_admin', 'partner')
+    )
+  );
+
+CREATE POLICY "Admins can delete book covers"
+  ON storage.objects FOR DELETE
+  USING (
+    bucket_id = 'book-covers'
+    AND auth.role() = 'authenticated'
+    AND EXISTS (
+      SELECT 1 FROM public.users
+      WHERE id = auth.uid()
+      AND role IN ('admin', 'super_admin', 'partner')
+    )
+  );
+
+-- Shop products bucket policies
+CREATE POLICY "Anyone can view shop product images"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'shop-products');
+
+CREATE POLICY "Admins can upload shop product images"
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'shop-products'
+    AND auth.role() = 'authenticated'
+    AND EXISTS (
+      SELECT 1 FROM public.users
+      WHERE id = auth.uid()
+      AND role IN ('admin', 'super_admin')
+    )
+  );
+
+CREATE POLICY "Admins can delete shop product images"
+  ON storage.objects FOR DELETE
+  USING (
+    bucket_id = 'shop-products'
+    AND auth.role() = 'authenticated'
+    AND EXISTS (
+      SELECT 1 FROM public.users
+      WHERE id = auth.uid()
+      AND role IN ('admin', 'super_admin')
+    )
   );

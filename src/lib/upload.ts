@@ -216,3 +216,24 @@ export function fileToDataUrl(file: File): Promise<string> {
     reader.readAsDataURL(file)
   })
 }
+
+export async function uploadShopProductImage(file: File): Promise<string> {
+  // Validate file before uploading
+  const validation = await validateImageFile(file)
+  if (!validation.valid) {
+    throw new Error(validation.error)
+  }
+
+  const extension = getSafeExtension(file.type)
+  const timestamp = Date.now()
+  const randomId = Math.random().toString(36).substring(2, 9)
+  const filename = `shop/${timestamp}-${randomId}.${extension}`
+
+  // Compress for shop products - good quality but reasonable size for mobile
+  const compressed = await compressImage(file, {
+    maxSizeMB: 1,
+    maxWidthOrHeight: 1600,
+  })
+
+  return uploadToSupabase(compressed, 'shop-products', filename)
+}

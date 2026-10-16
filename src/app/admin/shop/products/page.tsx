@@ -24,6 +24,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import { uploadShopProductImage } from '@/lib/upload'
 import { PRODUCT_TYPES } from '@/lib/shop/config'
 import type { ShopProduct, ShopProductType } from '@/types/database'
 import { cn } from '@/lib/utils'
@@ -107,39 +108,20 @@ export default function AdminShopProductsPage() {
 
     try {
       for (const file of Array.from(files)) {
-        // Validate file
-        if (!file.type.startsWith('image/')) {
-          toast.error('Please upload an image file')
-          continue
+        try {
+          // Use the upload utility which handles validation, compression, and upload
+          const publicUrl = await uploadShopProductImage(file)
+          setImages((prev) => [...prev, publicUrl])
+        } catch (uploadErr) {
+          const errorMessage = uploadErr instanceof Error ? uploadErr.message : 'Unknown error'
+          console.error('Upload error:', uploadErr)
+          toast.error(`Upload failed: ${errorMessage}`)
         }
-        if (file.size > 10 * 1024 * 1024) {
-          toast.error('Image must be under 10MB')
-          continue
-        }
-
-        // Upload to Supabase storage
-        const ext = file.name.split('.').pop()
-        const fileName = `shop/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-
-        const { error: uploadError } = await supabase.storage
-          .from('shop-products')
-          .upload(fileName, file)
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError)
-          toast.error('Failed to upload image')
-          continue
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('shop-products')
-          .getPublicUrl(fileName)
-
-        setImages((prev) => [...prev, publicUrl])
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       console.error('Upload error:', error)
-      toast.error('Failed to upload image')
+      toast.error(`Upload failed: ${errorMessage}`)
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) {
@@ -514,7 +496,7 @@ export default function AdminShopProductsPage() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
                     multiple
                     onChange={handleImageUpload}
                     className="hidden"
