@@ -35,8 +35,19 @@ const navItems = [
   },
 ]
 
+// Paths where bottom nav should be hidden (focused flows)
+const HIDDEN_PATHS = [
+  '/shop/cart',
+  '/shop/checkout',
+  '/rent/checkout',
+]
+
 export function BottomNav() {
   const pathname = usePathname()
+
+  // Hide on cart/checkout flows
+  const shouldHide = HIDDEN_PATHS.some(path => pathname.startsWith(path))
+  if (shouldHide) return null
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-white/10 shadow-[0_-2px_20px_rgba(0,0,0,0.04)]">

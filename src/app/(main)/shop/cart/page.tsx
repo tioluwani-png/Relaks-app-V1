@@ -49,7 +49,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFBF5] pb-40">
+    <div className="min-h-screen bg-[#FFFBF5] pb-[calc(10rem+env(safe-area-inset-bottom))]">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-[#FFFBF5]/95 backdrop-blur-sm border-b border-gray-100">
         <div className="max-w-2xl mx-auto px-4 py-4">
@@ -140,7 +140,7 @@ export default function CartPage() {
       </div>
 
       {/* Fixed bottom bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 safe-area-pb">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <span className="text-gray-600">Subtotal</span>
