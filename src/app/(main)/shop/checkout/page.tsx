@@ -22,23 +22,6 @@ import { createClient } from '@/lib/supabase/client'
 import { LAGOS_LGAS } from '@/lib/shop/config'
 import type { ShopDeliveryZone } from '@/types/database'
 
-declare global {
-  interface Window {
-    PaystackPop?: {
-      setup: (config: {
-        key: string
-        email: string
-        amount: number
-        currency: string
-        ref: string
-        metadata: Record<string, unknown>
-        callback: (response: { reference: string }) => void
-        onClose: () => void
-      }) => { openIframe: () => void }
-    }
-  }
-}
-
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, subtotal, clearCart } = useCart()
@@ -100,17 +83,6 @@ export default function CheckoutPage() {
     }
   }
 
-  // Load Paystack script
-  useEffect(() => {
-    const script = document.createElement('script')
-    script.src = 'https://js.paystack.co/v2/inline.js'
-    script.async = true
-    document.body.appendChild(script)
-    return () => {
-      document.body.removeChild(script)
-    }
-  }, [])
-
   // Redirect if cart is empty
   useEffect(() => {
     if (items.length === 0) {
@@ -148,18 +120,6 @@ export default function CheckoutPage() {
 
   const handlePayment = useCallback(async () => {
     if (!validateForm()) return
-    if (!window.PaystackPop) {
-      toast.error('Payment system loading, please wait...')
-      return
-    }
-
-    // Guard: Check if Paystack public key is configured
-    const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || ''
-    if (!publicKey || !publicKey.startsWith('pk_')) {
-      console.error('[SHOP_PAY] Paystack public key not configured. Tried to read: NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY')
-      toast.error("Payment isn't configured — please contact support.")
-      return
-    }
 
     setIsSubmitting(true)
 
@@ -187,62 +147,32 @@ export default function CheckoutPage() {
         throw new Error(createData.error || 'Failed to create order')
       }
 
-      const { orderId, orderNumber, total: serverTotal } = createData
+      const { orderId } = createData
 
-      // 2. Initialize Paystack (reference uses hyphens - Paystack allows alphanumerics, -, ., =)
-      const reference = `shop-${orderId}-${Date.now()}`
-
-      const handler = window.PaystackPop.setup({
-        key: publicKey,
-        email: email.trim().toLowerCase(),
-        amount: serverTotal * 100, // kobo
-        currency: 'NGN',
-        ref: reference,
-        metadata: {
-          order_id: orderId,
-          order_number: orderNumber,
-          type: 'shop',
-        },
-        callback: async (response) => {
-          // 3. Verify payment
-          try {
-            const verifyRes = await fetch('/api/shop/payments/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                reference: response.reference,
-                orderId,
-              }),
-            })
-
-            const verifyData = await verifyRes.json()
-
-            if (!verifyRes.ok) {
-              throw new Error(verifyData.error || 'Payment verification failed')
-            }
-
-            // Success!
-            clearCart()
-            router.push(`/shop/success?order=${orderNumber}`)
-          } catch (error) {
-            console.error('Payment verification error:', error)
-            toast.error('Payment verification failed. Please contact support.')
-            setIsSubmitting(false)
-          }
-        },
-        onClose: () => {
-          setIsSubmitting(false)
-          toast('Payment cancelled')
-        },
+      // 2. Initialize payment server-side and get Paystack URL
+      const initRes = await fetch('/api/shop/payments/initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
       })
 
-      handler.openIframe()
+      const initData = await initRes.json()
+
+      if (!initRes.ok) {
+        throw new Error(initData.error || 'Failed to initialize payment')
+      }
+
+      // 3. Clear cart before redirect (it will be verified on callback)
+      clearCart()
+
+      // 4. Redirect to Paystack checkout
+      window.location.href = initData.authorization_url
     } catch (error) {
       console.error('Checkout error:', error)
       toast.error(error instanceof Error ? error.message : 'Checkout failed')
       setIsSubmitting(false)
     }
-  }, [items, customerName, email, phone, deliveryLga, deliveryAddress, selectedZone, clearCart, router])
+  }, [items, customerName, email, phone, deliveryLga, deliveryAddress, selectedZone, clearCart])
 
   if (items.length === 0) {
     return (

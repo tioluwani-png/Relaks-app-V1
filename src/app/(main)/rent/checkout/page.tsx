@@ -73,19 +73,6 @@ function CheckoutContent() {
   const [deliveryPhone, setDeliveryPhone] = useState('')
   const [termsAccepted, setTermsAccepted] = useState(false)
 
-  // Load Paystack script dynamically
-  useEffect(() => {
-    const script = document.createElement('script')
-    script.src = 'https://js.paystack.co/v2/inline.js'
-    script.async = true
-    document.body.appendChild(script)
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script)
-      }
-    }
-  }, [])
-
   // Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
@@ -173,25 +160,6 @@ function CheckoutContent() {
 
     if (!plan || !user) return
 
-    // Guard: Check if Paystack is loaded
-    if (!window.PaystackPop) {
-      console.warn('[RENTAL_PAY] PaystackPop not loaded yet')
-      toast.error('Payment is still loading, please try again in a moment.')
-      return
-    }
-
-    // Guard: Check if Paystack public key is configured
-    const publicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || ''
-    if (!publicKey || !publicKey.startsWith('pk_')) {
-      console.error('[RENTAL_PAY] Paystack public key not configured. Tried to read: NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY')
-      console.error('[RENTAL_PAY] Value received:', publicKey ? `"${publicKey.substring(0, 10)}..."` : 'undefined/empty')
-      toast.error("Payment isn't configured — please contact support.")
-      return
-    }
-
-    const keyType = publicKey.startsWith('pk_test_') ? 'TEST' : 'LIVE'
-    console.log('[RENTAL_PAY] Using Paystack public key type:', keyType)
-
     setIsSubmitting(true)
 
     try {
@@ -202,9 +170,8 @@ function CheckoutContent() {
         deliveryLga,
         deliveryAddress,
         deliveryPhone,
-        termsAccepted: true, // Already validated by button disabled state
+        termsAccepted: true,
       }
-      console.log('[RENTAL_PAY] Creating order with payload:', createPayload)
 
       const createRes = await fetch('/api/rental/orders/create', {
         method: 'POST',
@@ -213,110 +180,34 @@ function CheckoutContent() {
       })
 
       const createData = await createRes.json()
-      console.log('[RENTAL_PAY] Order create response:', { status: createRes.status, data: createData })
 
       if (!createRes.ok) {
-        const errorMsg = createData.error || 'Failed to create order'
-        console.error('[RENTAL_PAY] Order creation failed:', createData)
-        throw new Error(errorMsg)
+        throw new Error(createData.error || 'Failed to create order')
       }
 
-      const { subscriptionId, planPrice } = createData
+      const { subscriptionId } = createData
 
-      // 2. Generate reference (Paystack allows alphanumerics, hyphens, dots, equals only)
-      const reference = `rental-${subscriptionId}-${Date.now()}`
-      console.log('[RENTAL_PAY] Generated reference:', reference)
-      console.log('[RENTAL_PAY] Plan price (naira):', planPrice, '→ Amount (kobo):', planPrice * 100)
-
-      // 3. Prepare Paystack config
-      const paystackConfig = {
-        key: publicKey,
-        email: user.email!,
-        amount: planPrice * 100, // kobo
-        ref: reference,
-        currency: 'NGN',
-        metadata: {
-          custom_fields: [
-            { display_name: 'Plan', variable_name: 'plan', value: plan.name },
-          ],
-          user_id: user.id,
-          subscription_id: subscriptionId,
-          type: 'rental',
-        },
-      }
-      console.log('[RENTAL_PAY] Paystack config:', {
-        ...paystackConfig,
-        key: `${keyType}_***`,
-        email: user.email,
+      // 2. Initialize payment server-side and get Paystack URL
+      const initRes = await fetch('/api/rental/payments/initialize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscriptionId }),
       })
 
-      // 4. Open Paystack popup
-      const handler = window.PaystackPop.setup({
-        ...paystackConfig,
-        callback: async (response) => {
-          console.log('[RENTAL_PAY] Paystack callback received:', response)
+      const initData = await initRes.json()
 
-          // Verify payment
-          const verifyPayload = {
-            reference: response.reference,
-            subscriptionId,
-          }
-          console.log('[RENTAL_PAY] Verifying payment with:', verifyPayload)
-
-          try {
-            const verifyRes = await fetch('/api/rental/payments/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(verifyPayload),
-            })
-
-            const verifyData = await verifyRes.json()
-            console.log('[RENTAL_PAY] Verify response:', { status: verifyRes.status, data: verifyData })
-
-            if (verifyRes.ok) {
-              console.log('[RENTAL_PAY] Payment verified successfully!')
-              router.push(`/rent/success?subscription=${subscriptionId}`)
-            } else {
-              // Stage-specific error for verify failure
-              const errorCode = verifyData.code || 'UNKNOWN'
-              console.error('[RENTAL_PAY] Verification failed:', { code: errorCode, error: verifyData.error, full: verifyData })
-
-              if (errorCode === 'AMOUNT_MISMATCH' || errorCode === 'PAYSTACK_VERIFY_FAILED') {
-                toast.error("Payment received but we couldn't confirm your order — we're on it.")
-              } else {
-                toast.error(verifyData.error || 'Payment verification failed')
-              }
-              setIsSubmitting(false)
-            }
-          } catch (err) {
-            // Network or parse error during verification - customer may have been charged!
-            console.error('[RENTAL_PAY] Verify network error:', err)
-            console.error('[RENTAL_PAY] CRITICAL: Customer may have been charged. Reference:', response.reference)
-            toast.error("Payment received but we couldn't confirm your order — we're on it. Contact support if needed.")
-            setIsSubmitting(false)
-          }
-        },
-        onClose: () => {
-          console.log('[RENTAL_PAY] Paystack popup closed by user')
-          setIsSubmitting(false)
-          toast("Payment wasn't completed.")
-        },
-      })
-
-      try {
-        console.log('[RENTAL_PAY] Opening Paystack iframe...')
-        handler.openIframe()
-      } catch (iframeErr) {
-        console.error('[RENTAL_PAY] Failed to open Paystack popup:', iframeErr)
-        toast.error("Couldn't open payment. Please retry.")
-        setIsSubmitting(false)
+      if (!initRes.ok) {
+        throw new Error(initData.error || 'Failed to initialize payment')
       }
+
+      // 3. Redirect to Paystack checkout
+      window.location.href = initData.authorization_url
     } catch (error) {
       console.error('[RENTAL_PAY] Payment flow error:', error)
       toast.error(error instanceof Error ? error.message : 'Payment failed')
       setIsSubmitting(false)
     }
-  }, [deliveryLga, deliveryAddress, deliveryPhone, plan, user, selectedBooks, router])
+  }, [deliveryLga, deliveryAddress, deliveryPhone, plan, user, selectedBooks])
 
   if (authLoading || isLoading) {
     return (

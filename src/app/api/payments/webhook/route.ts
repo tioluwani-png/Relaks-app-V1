@@ -34,17 +34,65 @@ export async function POST(request: NextRequest) {
 
     const { data } = event
     const { reference, metadata, amount } = data
-    const { user_id, type, page_id, order_id } = metadata
+    const { user_id, type, page_id, order_id, subscription_id } = metadata
 
-    // 3. Validate metadata exists
-    if (!user_id || !type) {
-      console.error('[webhook] Missing metadata:', { reference, metadata })
+    // 3. Validate metadata exists (user_id not required for shop - allows guest checkout)
+    if (!type) {
+      console.error('[webhook] Missing type in metadata:', { reference, metadata })
       return NextResponse.json({ error: 'Invalid metadata' }, { status: 400 })
     }
 
     const supabase = await createAdminClient()
 
-    // Handle rental payments
+    // Handle shop payments (backup - primary verification is in callback)
+    if (type === 'shop' && order_id) {
+      // Check if already processed
+      const { data: existingPayment } = await supabase
+        .from('shop_payments')
+        .select('id')
+        .eq('paystack_reference', reference)
+        .single()
+
+      if (existingPayment) {
+        console.log('[webhook] Shop payment already processed:', { order_id, reference })
+        return NextResponse.json({ received: true })
+      }
+
+      // Update order status to paid (if still pending)
+      const { data: updated } = await supabase
+        .from('shop_orders')
+        .update({ status: 'paid' } as never)
+        .eq('id', order_id)
+        .eq('status', 'pending_payment')
+        .select('id')
+        .maybeSingle()
+
+      if (updated) {
+        // Record payment
+        await supabase.from('shop_payments').insert({
+          order_id,
+          amount_naira: amount / 100,
+          paystack_reference: reference,
+          paystack_status: 'success',
+        } as never)
+
+        console.log('[webhook] Shop order fulfilled:', { reference, order_id, amount })
+      } else {
+        console.log('[webhook] Shop order already processed or not found:', { order_id, reference })
+      }
+
+      return NextResponse.json({ received: true })
+    }
+
+    // Handle rental payments (subscription-based)
+    if (type === 'rental' && subscription_id) {
+      // Rental verification is handled by callback page calling /api/rental/payments/verify
+      // This is just a backup - log and acknowledge
+      console.log('[webhook] Rental payment received:', { subscription_id, reference, amount })
+      return NextResponse.json({ received: true })
+    }
+
+    // Handle legacy rental payments with order_id
     if (type === 'rental' && order_id) {
       const result = await grantRentalPurchase(supabase, order_id, reference, user_id)
 
@@ -60,6 +108,12 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({ received: true })
+    }
+
+    // Credits require user_id
+    if (!user_id) {
+      console.error('[webhook] Missing user_id for credits:', { reference, metadata })
+      return NextResponse.json({ error: 'Invalid metadata' }, { status: 400 })
     }
 
     // 4. Verify amount matches expected price for credits
