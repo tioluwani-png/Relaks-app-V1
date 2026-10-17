@@ -37,34 +37,58 @@ export const ORDER_STATUS_COLORS: Record<ShopOrderStatus, string> = {
   cancelled: 'bg-red-100 text-red-800',
 }
 
-// Distributors outside Lagos
-// TODO: Replace placeholder numbers with real distributor contacts
-export const DISTRIBUTORS = [
-  {
-    city: 'Kano',
-    name: 'TBD Distributor',
-    phone: '2348000000001', // TODO: Real number
-    whatsappMessage: 'Hi, I want to buy Relaks products in Kano',
-  },
-  {
-    city: 'Abuja',
-    name: 'TBD Distributor',
-    phone: '2348000000002', // TODO: Real number
-    whatsappMessage: 'Hi, I want to buy Relaks products in Abuja',
-  },
-  {
-    city: 'Port Harcourt',
-    name: 'TBD Distributor',
-    phone: '2348000000003', // TODO: Real number
-    whatsappMessage: 'Hi, I want to buy Relaks products in Port Harcourt',
-  },
-  {
-    city: 'Ibadan',
-    name: 'TBD Distributor',
-    phone: '2348000000004', // TODO: Real number
-    whatsappMessage: 'Hi, I want to buy Relaks products in Ibadan',
-  },
-] as const
+// Distributor type (loaded from database)
+export interface Distributor {
+  id: string
+  city: string
+  name: string
+  whatsapp_number: string
+  is_active: boolean
+  sort_order: number
+}
+
+/**
+ * Normalize a Nigerian phone number to international format (234XXXXXXXXXX)
+ * Accepts: 0903..., +234903..., 234903..., with or without spaces/dashes
+ * Returns null if invalid
+ */
+export function normalizeNigerianPhone(input: string): string | null {
+  // Remove all non-digit characters except leading +
+  const cleaned = input.replace(/[^\d+]/g, '')
+
+  // Remove leading + if present
+  const digits = cleaned.replace(/^\+/, '')
+
+  // Handle different formats
+  let normalized: string
+
+  if (digits.startsWith('234') && digits.length === 13) {
+    // Already in 234XXXXXXXXXX format
+    normalized = digits
+  } else if (digits.startsWith('0') && digits.length === 11) {
+    // Nigerian local format 0XXXXXXXXXX -> 234XXXXXXXXXX
+    normalized = '234' + digits.slice(1)
+  } else if (digits.length === 10 && /^[789]/.test(digits)) {
+    // Just the number without prefix (e.g., 9033662304)
+    normalized = '234' + digits
+  } else {
+    return null
+  }
+
+  // Validate it's a Nigerian mobile number (starts with 234 + 7/8/9 + 0/1)
+  if (!/^234[789][01]\d{8}$/.test(normalized)) {
+    return null
+  }
+
+  return normalized
+}
+
+/**
+ * Generate WhatsApp message for a distributor
+ */
+export function getDistributorWhatsAppMessage(name: string, city: string): string {
+  return `Hi ${name}, I found you on relaks.co and I'd like to order Relaks products in ${city}.`
+}
 
 // Generate WhatsApp link
 export function getWhatsAppLink(phone: string, message: string): string {

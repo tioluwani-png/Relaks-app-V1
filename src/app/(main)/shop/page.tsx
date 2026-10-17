@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { useCart } from '@/lib/shop/cart-context'
-import { DISTRIBUTORS, getWhatsAppLink, PRODUCT_TYPES } from '@/lib/shop/config'
+import { getWhatsAppLink, getDistributorWhatsAppMessage, PRODUCT_TYPES } from '@/lib/shop/config'
+import type { Distributor } from '@/lib/shop/config'
 import type { ShopProduct, ShopProductType } from '@/types/database'
 
 const TYPE_LABELS: Record<ShopProductType | 'all', string> = {
@@ -22,6 +23,7 @@ const TYPE_LABELS: Record<ShopProductType | 'all', string> = {
 
 export default function ShopPage() {
   const [products, setProducts] = useState<ShopProduct[]>([])
+  const [distributors, setDistributors] = useState<Distributor[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState<ShopProductType | 'all'>('all')
@@ -29,7 +31,20 @@ export default function ShopPage() {
 
   useEffect(() => {
     loadProducts()
+    loadDistributors()
   }, [selectedType])
+
+  const loadDistributors = async () => {
+    try {
+      const res = await fetch('/api/shop/distributors')
+      if (res.ok) {
+        const data = await res.json()
+        setDistributors(data)
+      }
+    } catch (error) {
+      console.error('Failed to load distributors:', error)
+    }
+  }
 
   const loadProducts = async () => {
     setIsLoading(true)
@@ -140,35 +155,36 @@ export default function ShopPage() {
           </div>
         )}
 
-        {/* Distributors Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mt-12 bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 rounded-3xl p-6 border border-purple-100"
-        >
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Outside Lagos?</h2>
-          <p className="text-gray-600 text-sm mb-4">
-            Buy from our distributors in your city:
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {DISTRIBUTORS.map((d) => (
-              <a
-                key={d.city}
-                href={getWhatsAppLink(d.phone, d.whatsappMessage)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-3 bg-white rounded-xl hover:shadow-md transition-shadow"
-              >
-                <MessageCircle className="w-4 h-4 text-green-600" />
-                <div className="min-w-0">
-                  <p className="font-medium text-gray-900 text-sm">{d.city}</p>
-                  <p className="text-xs text-gray-500 truncate">{d.name}</p>
-                </div>
-              </a>
-            ))}
-          </div>
-        </motion.div>
+        {/* Distributors Section - only show if there are active distributors */}
+        {distributors.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mt-12 bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 rounded-3xl p-6 border border-purple-100"
+          >
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Outside Lagos?</h2>
+            <p className="text-gray-600 text-sm mb-4">
+              Buy from our distributors in your city:
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {distributors.map((d) => (
+                <a
+                  key={d.id}
+                  href={getWhatsAppLink(d.whatsapp_number, getDistributorWhatsAppMessage(d.name, d.city))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-3 bg-white rounded-xl hover:shadow-md transition-shadow"
+                >
+                  <MessageCircle className="w-4 h-4 text-green-600" />
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 text-sm">{d.city} · {d.name}</p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </motion.div>
+        )}
       </div>
     </div>
   )
