@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Loader2, MapPin, Package, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Loader2, MapPin, Package, AlertCircle, Tag, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -38,10 +38,23 @@ export default function CheckoutPage() {
   const [deliveryLga, setDeliveryLga] = useState('')
   const [deliveryAddress, setDeliveryAddress] = useState('')
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    id: string
+    code: string
+    discount: number
+    description: string
+  } | null>(null)
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false)
+  const [couponError, setCouponError] = useState('')
+  const [showCouponField, setShowCouponField] = useState(false)
+
   // Computed
   const selectedZone = zones.find((z) => z.lgas.includes(deliveryLga))
   const deliveryFee = selectedZone?.fee_naira || 0
-  const total = subtotal + deliveryFee
+  const discount = appliedCoupon?.discount || 0
+  const total = subtotal - discount + deliveryFee
 
   // Load zones and prefill user info
   useEffect(() => {
@@ -118,6 +131,49 @@ export default function CheckoutPage() {
     return true
   }
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return
+
+    setIsValidatingCoupon(true)
+    setCouponError('')
+
+    try {
+      const res = await fetch('/api/shop/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: couponCode.trim(),
+          subtotal,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (data.valid) {
+        setAppliedCoupon({
+          id: data.coupon.id,
+          code: data.coupon.code,
+          discount: data.discount,
+          description: data.description,
+        })
+        toast.success(`Coupon applied: ${data.description}`)
+        setShowCouponField(false)
+      } else {
+        setCouponError(data.error || 'Invalid coupon')
+      }
+    } catch {
+      setCouponError('Failed to validate coupon')
+    } finally {
+      setIsValidatingCoupon(false)
+    }
+  }
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null)
+    setCouponCode('')
+    setCouponError('')
+  }
+
   const handlePayment = useCallback(async () => {
     if (!validateForm()) return
 
@@ -138,6 +194,7 @@ export default function CheckoutPage() {
           phone: phone.trim(),
           deliveryLga,
           deliveryAddress: deliveryAddress.trim(),
+          couponCode: appliedCoupon?.code || undefined,
         }),
       })
 
@@ -172,7 +229,7 @@ export default function CheckoutPage() {
       toast.error(error instanceof Error ? error.message : 'Checkout failed')
       setIsSubmitting(false)
     }
-  }, [items, customerName, email, phone, deliveryLga, deliveryAddress, selectedZone, clearCart])
+  }, [items, customerName, email, phone, deliveryLga, deliveryAddress, selectedZone, appliedCoupon, clearCart])
 
   if (items.length === 0) {
     return (
@@ -236,11 +293,73 @@ export default function CheckoutPage() {
             ))}
           </div>
 
+          {/* Coupon Section */}
+          <div className="border-t border-gray-100 mt-4 pt-4">
+            {!showCouponField && !appliedCoupon ? (
+              <button
+                onClick={() => setShowCouponField(true)}
+                className="text-purple-600 text-sm font-medium hover:text-purple-700"
+                disabled={isSubmitting}
+              >
+                Have a coupon code?
+              </button>
+            ) : appliedCoupon ? (
+              <div className="flex items-center justify-between bg-green-50 rounded-xl px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-green-600" />
+                  <span className="text-green-700 font-medium">{appliedCoupon.code}</span>
+                  <span className="text-green-600 text-sm">{appliedCoupon.description}</span>
+                </div>
+                <button
+                  onClick={handleRemoveCoupon}
+                  className="text-gray-400 hover:text-gray-600"
+                  disabled={isSubmitting}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    placeholder="Enter code"
+                    className="flex-1 h-10 uppercase font-mono"
+                    disabled={isValidatingCoupon || isSubmitting}
+                    onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                  />
+                  <Button
+                    onClick={handleApplyCoupon}
+                    disabled={!couponCode.trim() || isValidatingCoupon || isSubmitting}
+                    variant="outline"
+                    className="h-10"
+                  >
+                    {isValidatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
+                  </Button>
+                </div>
+                {couponError && (
+                  <p className="text-red-500 text-sm">{couponError}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Totals */}
           <div className="border-t border-gray-100 mt-4 pt-4 space-y-2">
             <div className="flex justify-between text-gray-600">
               <span>Subtotal</span>
               <span>₦{subtotal.toLocaleString()}</span>
             </div>
+            {appliedCoupon && (
+              <div className="flex justify-between text-green-600">
+                <span className="flex items-center gap-1">
+                  <Tag className="w-4 h-4" />
+                  Discount
+                </span>
+                <span>−₦{appliedCoupon.discount.toLocaleString()}</span>
+              </div>
+            )}
             <div className="flex justify-between text-gray-600">
               <span className="flex items-center gap-1">
                 <MapPin className="w-4 h-4" />

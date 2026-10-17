@@ -205,7 +205,30 @@ export async function POST(request: NextRequest) {
       console.error('[shop/payments/verify] Status update error:', statusError)
     }
 
-    // 9. Send confirmation email to customer
+    // 9. Increment coupon usage atomically (only if coupon was used)
+    if (order.coupon_id && order.discount_naira > 0) {
+      try {
+        const { data: incrementResult, error: incrementError } = await adminSupabase
+          .rpc('increment_coupon_usage', {
+            p_coupon_id: order.coupon_id,
+            p_discount_amount: order.discount_naira,
+          })
+
+        if (incrementError) {
+          // Log but don't fail - the payment is valid
+          console.error('[shop/payments/verify] Coupon increment error:', incrementError)
+        } else if (incrementResult === 0) {
+          // Coupon max uses was reached between order creation and payment
+          // This is rare and acceptable - order is still valid
+          console.warn('[shop/payments/verify] Coupon max uses reached during checkout:', order.coupon_code)
+        }
+      } catch (couponError) {
+        // Non-blocking - payment is still valid
+        console.error('[shop/payments/verify] Coupon increment failed:', couponError)
+      }
+    }
+
+    // 10. Send confirmation email to customer
     try {
       await sendShopOrderConfirmationEmail(
         order.email,
@@ -213,6 +236,8 @@ export async function POST(request: NextRequest) {
         order.order_number,
         items,
         order.subtotal_naira,
+        order.discount_naira,
+        order.coupon_code,
         order.delivery_fee_naira,
         order.total_naira,
         order.delivery_address,
@@ -222,7 +247,7 @@ export async function POST(request: NextRequest) {
       console.error('[shop/payments/verify] Confirmation email error:', emailError)
     }
 
-    // 10. Send ops alert
+    // 11. Send ops alert
     try {
       await sendShopNewOrderAlertEmail(
         orderId,
@@ -234,6 +259,8 @@ export async function POST(request: NextRequest) {
         order.delivery_lga,
         items,
         order.subtotal_naira,
+        order.discount_naira,
+        order.coupon_code,
         order.delivery_fee_naira,
         order.total_naira,
         reference,

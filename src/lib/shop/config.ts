@@ -125,3 +125,85 @@ export function generateOrderNumber(): string {
   const random = Math.random().toString(36).substring(2, 5).toUpperCase()
   return `RLK-${timestamp.slice(-4)}${random}`
 }
+
+// ==========================================
+// Coupon Configuration
+// ==========================================
+
+export type CouponStatus = 'scheduled' | 'active' | 'expired' | 'used_up' | 'inactive'
+
+export const COUPON_STATUS_LABELS: Record<CouponStatus, string> = {
+  scheduled: 'Scheduled',
+  active: 'Active',
+  expired: 'Expired',
+  used_up: 'Used Up',
+  inactive: 'Off',
+}
+
+export const COUPON_STATUS_COLORS: Record<CouponStatus, string> = {
+  scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  expired: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400',
+  used_up: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+  inactive: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+}
+
+/**
+ * Determine the current status of a coupon
+ */
+export function getCouponStatus(coupon: {
+  is_active: boolean
+  starts_at: string
+  expires_at: string
+  max_uses: number | null
+  times_used: number
+}): CouponStatus {
+  if (!coupon.is_active) return 'inactive'
+
+  const now = new Date()
+  const startsAt = new Date(coupon.starts_at)
+  const expiresAt = new Date(coupon.expires_at)
+
+  if (now < startsAt) return 'scheduled'
+  if (now >= expiresAt) return 'expired'
+  if (coupon.max_uses !== null && coupon.times_used >= coupon.max_uses) return 'used_up'
+
+  return 'active'
+}
+
+/**
+ * Quick duration presets for coupon expiry
+ */
+export const COUPON_DURATION_PRESETS = [
+  { label: '24 hours', hours: 24 },
+  { label: '48 hours', hours: 48 },
+  { label: '7 days', hours: 168 },
+] as const
+
+/**
+ * Calculate discount amount for a coupon and subtotal
+ */
+export function calculateCouponDiscount(
+  discountType: 'percentage' | 'fixed',
+  discountValue: number,
+  subtotal: number
+): number {
+  if (discountType === 'percentage') {
+    return Math.floor(subtotal * (discountValue / 100))
+  }
+  // Fixed amount - cap at subtotal to prevent negative
+  return Math.min(discountValue, subtotal)
+}
+
+/**
+ * Format coupon discount for display
+ */
+export function formatCouponDiscount(
+  discountType: 'percentage' | 'fixed',
+  discountValue: number
+): string {
+  if (discountType === 'percentage') {
+    return `${discountValue}% off`
+  }
+  return `₦${discountValue.toLocaleString()} off`
+}

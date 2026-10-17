@@ -1,8 +1,8 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { generateOrderNumber } from '@/lib/shop/config'
-import type { ShopProduct, ShopDeliveryZone } from '@/types/database'
+import { generateOrderNumber, calculateCouponDiscount } from '@/lib/shop/config'
+import type { ShopProduct, ShopDeliveryZone, ShopCoupon } from '@/types/database'
 
 const cartItemSchema = z.object({
   productId: z.string().uuid(),
@@ -16,6 +16,7 @@ const createOrderSchema = z.object({
   phone: z.string().min(10).max(20),
   deliveryLga: z.string().min(1).max(100),
   deliveryAddress: z.string().min(5).max(500),
+  couponCode: z.string().max(50).optional().transform((s) => s?.toUpperCase().trim()),
 })
 
 export async function POST(request: NextRequest) {
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { items, customerName, email, phone, deliveryLga, deliveryAddress } = validation.data
+    const { items, customerName, email, phone, deliveryLga, deliveryAddress, couponCode } = validation.data
 
     // Use admin client for writes
     const adminSupabase = await createAdminClient()
@@ -118,9 +119,46 @@ export async function POST(request: NextRequest) {
     }
 
     const deliveryFee = zone.fee_naira
-    const total = subtotal + deliveryFee
 
-    // 4. Create order
+    // 4. Validate and apply coupon if provided (server-side - never trust client)
+    let couponId: string | null = null
+    let appliedCouponCode: string | null = null
+    let discount = 0
+
+    if (couponCode) {
+      const { data: couponData } = await adminSupabase
+        .from('shop_coupons')
+        .select('*')
+        .eq('code', couponCode)
+        .single()
+
+      if (couponData) {
+        const coupon = couponData as ShopCoupon
+        const now = new Date()
+        const startsAt = new Date(coupon.starts_at)
+        const expiresAt = new Date(coupon.expires_at)
+
+        // Re-validate coupon server-side (never trust client)
+        const isValid =
+          coupon.is_active &&
+          now >= startsAt &&
+          now < expiresAt &&
+          (coupon.max_uses === null || coupon.times_used < coupon.max_uses) &&
+          (coupon.min_order_amount === null || subtotal >= coupon.min_order_amount)
+
+        if (isValid) {
+          couponId = coupon.id
+          appliedCouponCode = coupon.code
+          discount = calculateCouponDiscount(coupon.discount_type, coupon.discount_value, subtotal)
+        }
+        // If not valid, silently ignore - don't block order creation
+        // The client may have an outdated coupon state
+      }
+    }
+
+    const total = subtotal - discount + deliveryFee
+
+    // 5. Create order
     const orderNumber = generateOrderNumber()
 
     const { data: order, error: orderError } = await adminSupabase
@@ -136,6 +174,9 @@ export async function POST(request: NextRequest) {
         delivery_address: deliveryAddress,
         delivery_fee_naira: deliveryFee,
         subtotal_naira: subtotal,
+        coupon_id: couponId,
+        coupon_code: appliedCouponCode,
+        discount_naira: discount,
         total_naira: total,
         status: 'pending_payment',
       } as never)
@@ -149,7 +190,7 @@ export async function POST(request: NextRequest) {
 
     const orderId = (order as { id: string; order_number: string }).id
 
-    // 5. Create order items
+    // 6. Create order items
     const itemsToInsert = orderItems.map((item) => ({
       order_id: orderId,
       product_id: item.productId,
@@ -175,6 +216,8 @@ export async function POST(request: NextRequest) {
       orderId,
       orderNumber: (order as { order_number: string }).order_number,
       subtotal,
+      discount,
+      couponCode: appliedCouponCode,
       deliveryFee,
       total,
     })

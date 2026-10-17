@@ -21,6 +21,8 @@ export async function sendShopOrderConfirmationEmail(
   orderNumber: string,
   items: ShopOrderItem[],
   subtotal: number,
+  discount: number,
+  couponCode: string | null,
   deliveryFee: number,
   total: number,
   deliveryAddress: string,
@@ -65,6 +67,12 @@ export async function sendShopOrderConfirmationEmail(
                 <td style="padding: 12px 0; color: #6b7280;">Subtotal</td>
                 <td style="padding: 12px 0; text-align: right; color: #6b7280;">₦${subtotal.toLocaleString()}</td>
               </tr>
+              ${discount > 0 ? `
+              <tr>
+                <td style="padding: 12px 0; color: #16a34a;">Discount${couponCode ? ` (${couponCode})` : ''}</td>
+                <td style="padding: 12px 0; text-align: right; color: #16a34a;">−₦${discount.toLocaleString()}</td>
+              </tr>
+              ` : ''}
               <tr>
                 <td style="padding: 12px 0; color: #6b7280;">Delivery</td>
                 <td style="padding: 12px 0; text-align: right; color: #6b7280;">₦${deliveryFee.toLocaleString()}</td>
@@ -125,6 +133,8 @@ export async function sendShopNewOrderAlertEmail(
   deliveryLga: string,
   items: ShopOrderItem[],
   subtotal: number,
+  discount: number,
+  couponCode: string | null,
   deliveryFee: number,
   total: number,
   paymentReference: string,
@@ -183,7 +193,7 @@ ${deliveryLga.toUpperCase()}, LAGOS
 ITEMS:
 ${itemsList}
 
-Subtotal: ₦${subtotal.toLocaleString()}
+Subtotal: ₦${subtotal.toLocaleString()}${discount > 0 ? `\nDiscount${couponCode ? ` (${couponCode})` : ''}: -₦${discount.toLocaleString()}` : ''}
 Delivery: ₦${deliveryFee.toLocaleString()}
 TOTAL: ₦${total.toLocaleString()}
 
@@ -227,6 +237,7 @@ View Order: ${orderUrl}
           <hr style="border: none; border-top: 1px solid #ccc; margin: 16px 0;" />
 
           <p style="margin: 0;">Subtotal: ₦${subtotal.toLocaleString()}</p>
+          ${discount > 0 ? `<p style="margin: 0; color: #16a34a;">Discount${couponCode ? ` (${couponCode})` : ''}: -₦${discount.toLocaleString()}</p>` : ''}
           <p style="margin: 0;">Delivery: ₦${deliveryFee.toLocaleString()}</p>
           <p style="margin: 8px 0 0 0; font-size: 18px;"><strong>Total: ₦${total.toLocaleString()}</strong></p>
 

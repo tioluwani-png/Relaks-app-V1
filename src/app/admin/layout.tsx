@@ -21,6 +21,7 @@ import {
   Truck,
   MapPin,
   UserCheck,
+  Tag,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/types/database'
@@ -110,6 +111,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     // Shop (admin/super_admin only - NOT partner)
     { href: '/admin/shop/products', label: 'Shop Products', icon: Package, roles: ['admin', 'super_admin'], section: 'shop' },
     { href: '/admin/shop/orders', label: 'Shop Orders', icon: ShoppingBag, roles: ['admin', 'super_admin'], section: 'shop' },
+    { href: '/admin/shop/coupons', label: 'Coupons', icon: Tag, roles: ['admin', 'super_admin'], section: 'shop' },
     { href: '/admin/shop/zones', label: 'Delivery Zones', icon: MapPin, roles: ['admin', 'super_admin'], section: 'shop' },
     { href: '/admin/shop/distributors', label: 'Distributors', icon: UserCheck, roles: ['admin', 'super_admin'], section: 'shop' },
   ]

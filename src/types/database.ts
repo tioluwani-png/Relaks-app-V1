@@ -1696,10 +1696,33 @@ export interface ShopOrder {
   subtotal_naira: number
   total_naira: number
   status: ShopOrderStatus
+  coupon_id: string | null
+  coupon_code: string | null
+  discount_naira: number
   dispatched_at: string | null
   delivered_at: string | null
   cancelled_at: string | null
   created_at: string
+}
+
+// Coupon types
+export type CouponDiscountType = 'percentage' | 'fixed'
+
+export interface ShopCoupon {
+  id: string
+  code: string
+  discount_type: CouponDiscountType
+  discount_value: number
+  starts_at: string
+  expires_at: string
+  max_uses: number | null
+  times_used: number
+  min_order_amount: number | null
+  is_active: boolean
+  internal_note: string | null
+  total_discount_given: number
+  created_at: string
+  updated_at: string
 }
 
 export interface ShopOrderItem {

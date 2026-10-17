@@ -15,6 +15,7 @@ import {
   Phone,
   Mail,
   PlayCircle,
+  Tag,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -144,6 +145,9 @@ export default function AdminShopOrderDetailPage() {
     if (!order) return
 
     const itemsList = order.items.map((i) => `• ${i.product_name} ×${i.quantity}`).join('\n')
+    const discountLine = order.coupon_code && order.discount_naira > 0
+      ? `Discount (${order.coupon_code}): -₦${order.discount_naira.toLocaleString()}\n`
+      : ''
 
     const brief = `
 SHOP ORDER #${order.order_number}
@@ -161,6 +165,8 @@ ${order.delivery_lga}, Lagos
 ITEMS:
 ${itemsList}
 
+Subtotal: ₦${order.subtotal_naira.toLocaleString()}
+${discountLine}Delivery: ₦${order.delivery_fee_naira.toLocaleString()}
 Total: ₦${order.total_naira.toLocaleString()}
 ========================
 `.trim()
@@ -332,6 +338,15 @@ Total: ₦${order.total_naira.toLocaleString()}
                 <span>Subtotal</span>
                 <span>₦{order.subtotal_naira.toLocaleString()}</span>
               </div>
+              {order.coupon_code && order.discount_naira > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span className="flex items-center gap-1">
+                    <Tag className="w-4 h-4" />
+                    Discount ({order.coupon_code})
+                  </span>
+                  <span>−₦{order.discount_naira.toLocaleString()}</span>
+                </div>
+              )}
               <div className="flex justify-between text-gray-600">
                 <span>Delivery</span>
                 <span>₦{order.delivery_fee_naira.toLocaleString()}</span>
