@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { sendShopOrderConfirmationEmail, sendShopNewOrderAlertEmail } from '@/lib/shop/emails'
+import { createWalletTransaction } from '@/lib/wallet'
 import type { ShopOrder, ShopOrderItem, ShopProduct, ShopProductVariant } from '@/types/database'
 
 const verifySchema = z.object({
@@ -235,6 +236,23 @@ export async function POST(request: NextRequest) {
 
     if (statusError) {
       console.error('[shop/payments/verify] Status update error:', statusError)
+    }
+
+    // 8.5. Create wallet transaction (idempotent via unique paystack_reference)
+    const walletResult = await createWalletTransaction(adminSupabase, {
+      wallet: 'shop',
+      type: 'sale',
+      amount: order.total_naira,
+      direction: 'credit',
+      sourceType: 'shop_order',
+      sourceId: orderId,
+      paystackReference: reference,
+      note: `Order #${order.order_number}`,
+    })
+
+    if (!walletResult.success) {
+      console.error('[shop/payments/verify] Wallet entry error:', walletResult.error)
+      // Don't fail payment - just log
     }
 
     // 9. Increment coupon usage atomically (only if coupon was used)

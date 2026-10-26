@@ -10,6 +10,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { sendRentalConfirmationEmail, sendNewOrderAlertEmail, sendStockFailureAlertEmail, sendStockFailureCustomerEmail, sendPaymentVerificationFailedAlert } from '@/lib/email'
+import { createWalletTransaction } from '@/lib/wallet'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
 
@@ -269,6 +270,23 @@ export async function POST(request: NextRequest) {
         { error: 'Payment recorded but status update failed. Contact support.', code: 'STATUS_UPDATE_FAILED' },
         { status: 500 }
       )
+    }
+
+    // 9.5. Create wallet transaction (idempotent via unique paystack_reference)
+    const walletResult = await createWalletTransaction(adminSupabase, {
+      wallet: 'reading_club',
+      type: 'sale',
+      amount: plan.price_naira,
+      direction: 'credit',
+      sourceType: 'rental',
+      sourceId: subscriptionId,
+      paystackReference: reference,
+      note: `${plan.name} rental - ${subscriptionId.slice(0, 8)}`,
+    })
+
+    if (!walletResult.success) {
+      console.error('[rental/payments/verify] Wallet entry error:', walletResult.error)
+      // Don't fail payment - just log
     }
 
     // 10. Atomic decrement of available_copies for each book

@@ -1814,3 +1814,62 @@ export type ShopProductWithVariants = ShopProduct & {
   options: ShopProductOptionWithValues[]
   variants: ShopProductVariant[]
 }
+
+// ==========================================
+// Wallet Types
+// ==========================================
+export type WalletType = 'shop' | 'reading_club'
+export type WalletTransactionType = 'sale' | 'reversal' | 'payout' | 'expense' | 'adjustment'
+export type WalletTransactionStatus = 'pending' | 'available' | 'cancelled'
+export type WalletSourceType = 'shop_order' | 'rental' | 'manual'
+
+export interface WalletTransaction {
+  id: string
+  wallet: WalletType
+  type: WalletTransactionType
+  amount_naira: number
+  direction: 'credit' | 'debit'
+  status: WalletTransactionStatus
+  source_type: WalletSourceType | null
+  source_id: string | null
+  paystack_reference: string | null
+  note: string | null
+  category: string | null
+  created_by: string | null
+  confirmed_by: string | null
+  confirmed_at: string | null
+  created_at: string
+}
+
+export interface WalletSetting {
+  id: string
+  setting_key: string
+  setting_value: Record<string, unknown>
+  updated_by: string | null
+  updated_at: string
+}
+
+export interface WalletBalance {
+  pending: number
+  available: number
+}
+
+export interface WalletSummary {
+  pending: number
+  available: number
+  transactions: WalletTransaction[]
+}
+
+export interface ReadingClubSplitSetting {
+  relaks_percent: number
+  partner_percent: number
+}
+
+export interface MonthlySummary {
+  month: string
+  revenue: number
+  expenses: number
+  netProfit: number
+  relaksShare: number
+  partnerShare: number
+}

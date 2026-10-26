@@ -10,6 +10,7 @@ import {
   MessageSquare,
   DollarSign,
   Calculator,
+  Wallet,
   LogOut,
   Menu,
   X,
@@ -97,6 +98,7 @@ export default function ClubAdminLayout({ children }: { children: React.ReactNod
     { href: '/club-admin/orders', label: 'Orders', icon: Package },
     { href: '/club-admin/books', label: 'Books', icon: BookOpen },
     { href: '/club-admin/requests', label: 'Book Requests', icon: MessageSquare },
+    { href: '/club-admin/wallet', label: 'Wallet', icon: Wallet },
     { href: '/club-admin/finances', label: 'Finances', icon: DollarSign },
     { href: '/club-admin/settlements', label: 'Settlements', icon: Calculator },
   ]
