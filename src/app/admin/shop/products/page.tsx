@@ -201,113 +201,69 @@ export default function AdminShopProductsPage() {
       return
     }
 
-    // Validate variants if has_variants is true
-    if (form.has_variants && variants.length === 0) {
-      toast.error('Please add at least one variant')
-      return
+    // Validate options if has_variants is true
+    if (form.has_variants) {
+      const validOptions = options.filter((o) => o.name.trim() && o.values.length > 0)
+      if (validOptions.length === 0) {
+        toast.error('Please add at least one option with values')
+        return
+      }
+      if (variants.length === 0) {
+        toast.error('Please add at least one variant')
+        return
+      }
     }
 
     setIsSaving(true)
 
     try {
+      // Build payload for API
       const payload = {
+        id: editingId || undefined,
         name: form.name.trim(),
         slug: form.slug.trim(),
-        description: form.description.trim() || null,
+        description: form.description.trim() || undefined,
         price_naira: parseInt(form.price_naira),
         compare_at_price_naira: form.compare_at_price_naira ? parseInt(form.compare_at_price_naira) : null,
         product_type: form.product_type,
-        edition: form.edition.trim() || null,
+        edition: form.edition.trim() || undefined,
         images,
         stock_quantity: form.has_variants ? 0 : (parseInt(form.stock_quantity) || 0),
         sort_order: parseInt(form.sort_order) || 0,
         has_variants: form.has_variants,
-      }
-
-      let productId = editingId
-
-      if (editingId) {
-        const { error } = await supabase
-          .from('shop_products')
-          .update(payload as never)
-          .eq('id', editingId)
-
-        if (error) throw error
-      } else {
-        const { data, error } = await supabase
-          .from('shop_products')
-          .insert(payload as never)
-          .select('id')
-          .single()
-
-        if (error) throw error
-        productId = (data as { id: string }).id
-      }
-
-      // Save options and variants if has_variants is true
-      if (form.has_variants && productId) {
-        // Delete existing options and variants (cascade will handle values and variants)
-        if (editingId) {
-          await supabase.from('shop_product_options').delete().eq('product_id', productId)
-          await supabase.from('shop_product_variants').delete().eq('product_id', productId)
-        }
-
-        // Insert options and values
-        for (let optIdx = 0; optIdx < options.length; optIdx++) {
-          const opt = options[optIdx]
-          if (!opt.name.trim() || opt.values.length === 0) continue
-
-          const { data: optData, error: optError } = await supabase
-            .from('shop_product_options')
-            .insert({
-              product_id: productId,
-              name: opt.name.trim(),
-              sort_order: optIdx,
-            } as never)
-            .select('id')
-            .single()
-
-          if (optError) throw optError
-
-          const optionId = (optData as { id: string }).id
-
-          // Insert option values
-          const valuesToInsert = opt.values
-            .filter((v) => v.value.trim())
-            .map((v, vIdx) => ({
-              option_id: optionId,
-              value: v.value.trim(),
-              sort_order: vIdx,
+        options: form.has_variants
+          ? options
+              .filter((o) => o.name.trim() && o.values.length > 0)
+              .map((o) => ({
+                name: o.name.trim(),
+                values: o.values.filter((v) => v.value.trim()).map((v) => ({ value: v.value.trim() })),
+              }))
+          : undefined,
+        variants: form.has_variants
+          ? variants.map((v) => ({
+              optionValues: v.optionValues,
+              sku: v.sku.trim() || undefined,
+              price_naira: v.price_naira || undefined,
+              stock_quantity: v.stock_quantity,
+              image_url: v.image_url || undefined,
+              is_active: v.is_active,
             }))
+          : undefined,
+      }
 
-          if (valuesToInsert.length > 0) {
-            const { error: valError } = await supabase
-              .from('shop_product_option_values')
-              .insert(valuesToInsert as never)
+      // Call server API for atomic save
+      const res = await fetch('/api/admin/shop/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
 
-            if (valError) throw valError
-          }
-        }
+      const result = await res.json()
 
-        // Insert variants
-        const variantsToInsert = variants.map((v, idx) => ({
-          product_id: productId,
-          option_values: v.optionValues,
-          sku: v.sku.trim() || null,
-          price_naira: v.price_naira ? parseInt(v.price_naira) : null,
-          stock_quantity: parseInt(v.stock_quantity) || 0,
-          image_url: v.image_url || null,
-          is_active: v.is_active,
-          sort_order: idx,
-        }))
-
-        if (variantsToInsert.length > 0) {
-          const { error: varError } = await supabase
-            .from('shop_product_variants')
-            .insert(variantsToInsert as never)
-
-          if (varError) throw varError
-        }
+      if (!res.ok) {
+        console.error('Save error:', result)
+        toast.error(result.error || 'Failed to save product')
+        return
       }
 
       toast.success(editingId ? 'Product updated!' : 'Product created!')
@@ -320,7 +276,8 @@ export default function AdminShopProductsPage() {
       loadProducts()
     } catch (error) {
       console.error('Save error:', error)
-      toast.error('Failed to save product')
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Failed to save product: ${message}`)
     } finally {
       setIsSaving(false)
     }
@@ -839,7 +796,7 @@ export default function AdminShopProductsPage() {
                       <Input
                         value={option.name}
                         onChange={(e) => handleOptionNameChange(optIdx, e.target.value)}
-                        placeholder="Option name (e.g., Edition, Color)"
+                        placeholder="Option name (e.g. Colour, Edition)"
                         className="flex-1"
                         disabled={isSaving}
                       />
@@ -879,7 +836,7 @@ export default function AdminShopProductsPage() {
                       <Input
                         value={newOptionValue[optIdx] || ''}
                         onChange={(e) => setNewOptionValue({ ...newOptionValue, [optIdx]: e.target.value })}
-                        placeholder="Add value (e.g., Lavender)"
+                        placeholder="Add a choice (e.g. Lavender)"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault()
