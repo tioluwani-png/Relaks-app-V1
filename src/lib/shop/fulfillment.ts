@@ -276,8 +276,10 @@ export async function fulfillShopOrder(
       note: `Order #${order.order_number}`,
     })
 
+    let walletError: string | undefined
     if (!walletResult.success) {
-      console.error(`${logPrefix} Wallet entry error:`, walletResult.error)
+      walletError = walletResult.error
+      console.error(`${logPrefix} Wallet entry error:`, walletError)
     }
 
     // 10. Increment coupon usage atomically (if coupon was used)
@@ -335,7 +337,8 @@ export async function fulfillShopOrder(
         order.delivery_fee_naira,
         order.total_naira,
         reference,
-        stockFailures.length > 0 ? stockFailures : undefined
+        stockFailures.length > 0 ? stockFailures : undefined,
+        walletError
       )
     } catch (emailError) {
       console.error(`${logPrefix} Ops alert error:`, emailError)

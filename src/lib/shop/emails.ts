@@ -153,7 +153,8 @@ export async function sendShopNewOrderAlertEmail(
   deliveryFee: number,
   total: number,
   paymentReference: string,
-  stockWarnings?: string[]
+  stockWarnings?: string[],
+  walletError?: string
 ) {
   const opsEmailsRaw = process.env.SHOP_OPS_EMAILS
 
@@ -194,6 +195,18 @@ export async function sendShopNewOrderAlertEmail(
     `
     : ''
 
+  const walletWarningHtml = walletError
+    ? `
+      <div style="background: #fefce8; border: 2px solid #ca8a04; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+        <strong style="color: #ca8a04;">💰 Wallet Entry Failed:</strong>
+        <p style="margin: 8px 0 0 0; color: #713f12;">
+          ${walletError}<br>
+          Payment received but wallet ledger not updated. Manual entry needed.
+        </p>
+      </div>
+    `
+    : ''
+
   const plainText = `
 NEW SHOP ORDER
 ==============
@@ -217,7 +230,7 @@ TOTAL: ₦${total.toLocaleString()}
 
 Order Time: ${orderTime}
 Payment Ref: ${paymentReference}
-${stockWarnings?.length ? `\n⚠️ STOCK WARNING: Check ${stockWarnings.join(', ')}` : ''}
+${stockWarnings?.length ? `\n⚠️ STOCK WARNING: Check ${stockWarnings.join(', ')}` : ''}${walletError ? `\n💰 WALLET ERROR: ${walletError}` : ''}
 
 View Order: ${orderUrl}
 `.trim()
@@ -233,6 +246,7 @@ View Order: ${orderUrl}
           <h2 style="margin: 0 0 16px 0; font-size: 18px;">🛍️ NEW SHOP ORDER</h2>
 
           ${stockWarningHtml}
+          ${walletWarningHtml}
 
           <p style="margin: 0;"><strong>Order:</strong> #${orderNumber}</p>
           <p style="margin: 0;"><strong>Customer:</strong> ${customerName}</p>

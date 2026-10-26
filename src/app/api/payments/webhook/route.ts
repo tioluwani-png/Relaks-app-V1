@@ -8,6 +8,7 @@ import {
 } from '@/lib/payment-fulfillment'
 import { sendPurchaseEmail, handleFirstPurchase } from '@/lib/email'
 import { fulfillShopOrder } from '@/lib/shop/fulfillment'
+import { fulfillRentalFromWebhook } from '@/lib/rental/fulfillment'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
 
@@ -68,10 +69,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle rental payments (subscription-based)
+    // Create wallet entry here - the verify route handles everything else
     if (type === 'rental' && subscription_id) {
-      // Rental verification is handled by callback page calling /api/rental/payments/verify
-      // This is just a backup - log and acknowledge
-      console.log('[webhook] Rental payment received:', { subscription_id, reference, amount })
+      const result = await fulfillRentalFromWebhook(
+        supabase,
+        subscription_id,
+        reference,
+        amount / 100 // Convert kobo to Naira
+      )
+
+      if (result.walletError) {
+        console.error('[webhook] Rental wallet entry failed:', {
+          subscription_id,
+          reference,
+          error: result.walletError,
+        })
+      } else if (result.alreadyProcessed) {
+        console.log('[webhook] Rental already processed:', { subscription_id, reference })
+      } else if (result.success) {
+        console.log('[webhook] Rental wallet entry created:', { subscription_id, reference, amount })
+      }
+
       return NextResponse.json({ received: true })
     }
 
