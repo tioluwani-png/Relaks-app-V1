@@ -381,12 +381,21 @@ export default function ReadingClubWalletPage() {
                   ₦{monthlySummary.netProfit.toLocaleString()}
                 </p>
               </div>
-              <div>
-                <p className="text-xs text-gray-500">Split ({split.relaks_percent}/{split.partner_percent})</p>
-                <div className="text-sm">
-                  <span className="text-purple-600">Relaks: ₦{monthlySummary.relaksShare.toLocaleString()}</span>
-                  <span className="mx-1 text-gray-300">|</span>
-                  <span className="text-orange-600">Partner: ₦{monthlySummary.partnerShare.toLocaleString()}</span>
+              <div className="col-span-2 sm:col-span-4 pt-2 border-t">
+                <p className="text-xs text-gray-500 mb-2">Profit Split ({split.relaks_percent}% / {split.partner_percent}%)</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-3">
+                    <p className="text-xs text-purple-600 dark:text-purple-400">Relaks Share</p>
+                    <p className="text-lg font-semibold text-purple-700 dark:text-purple-300">
+                      ₦{monthlySummary.relaksShare.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="bg-orange-50 dark:bg-orange-950/30 rounded-lg p-3">
+                    <p className="text-xs text-orange-600 dark:text-orange-400">Eni&apos;s Book Club Share</p>
+                    <p className="text-lg font-semibold text-orange-700 dark:text-orange-300">
+                      ₦{monthlySummary.partnerShare.toLocaleString()}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
