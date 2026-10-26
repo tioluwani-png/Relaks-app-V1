@@ -2,7 +2,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { generateOrderNumber, calculateCouponDiscount } from '@/lib/shop/config'
-import type { ShopProduct, ShopDeliveryZone, ShopCoupon, ShopProductVariant } from '@/types/database'
+import type { ShopProduct, ShopDeliveryZone, ShopDeliveryArea, ShopCoupon, ShopProductVariant } from '@/types/database'
 
 const cartItemSchema = z.object({
   productId: z.string().uuid(),
@@ -148,27 +148,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 2. Find delivery zone for LGA
-    const { data: zones, error: zonesError } = await adminSupabase
-      .from('shop_delivery_zones')
-      .select('*')
-      .eq('is_active', true)
+    // 2. Find delivery area and zone
+    const { data: areaData, error: areaError } = await adminSupabase
+      .from('shop_delivery_areas')
+      .select('*, zone:shop_delivery_zones(*)')
+      .eq('name', deliveryLga)
+      .single()
 
-    if (zonesError) {
-      console.error('[shop/orders/create] Zones query error:', zonesError)
-      return NextResponse.json({ error: 'Failed to get delivery zones' }, { status: 500 })
-    }
-
-    const zone = (zones as ShopDeliveryZone[] || []).find((z) =>
-      z.lgas.includes(deliveryLga)
-    )
-
-    if (!zone) {
+    if (areaError || !areaData) {
+      console.error('[shop/orders/create] Area query error:', areaError)
       return NextResponse.json(
         { error: `Delivery not available for ${deliveryLga}. We currently only deliver within Lagos.` },
         { status: 400 }
       )
     }
+
+    const area = areaData as unknown as ShopDeliveryArea & { zone: ShopDeliveryZone | null }
+
+    if (!area.zone || !area.zone.is_active || area.zone.is_archived) {
+      return NextResponse.json(
+        { error: `Delivery not available for ${deliveryLga}. Please contact us on WhatsApp.` },
+        { status: 400 }
+      )
+    }
+
+    const zone = area.zone
 
     // 3. Calculate totals server-side (never trust client)
     let subtotal = 0
@@ -261,6 +265,8 @@ export async function POST(request: NextRequest) {
         discount_naira: discount,
         total_naira: total,
         status: 'pending_payment',
+        estimated_min_days: zone.min_days,
+        estimated_max_days: zone.max_days,
       } as never)
       .select('id, order_number')
       .single()

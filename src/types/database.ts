@@ -1708,10 +1708,23 @@ export interface ShopProductVariant {
 export interface ShopDeliveryZone {
   id: string
   name: string
-  lgas: string[]
+  lgas: string[] // Deprecated - use shop_delivery_areas
   fee_naira: number
+  min_days: number
+  max_days: number
   is_active: boolean
+  is_archived: boolean
+  sort_order: number
   created_at: string
+}
+
+export interface ShopDeliveryArea {
+  id: string
+  name: string
+  zone_id: string | null
+  is_custom: boolean
+  created_at: string
+  zone?: ShopDeliveryZone | null
 }
 
 export interface ShopOrder {
@@ -1731,6 +1744,8 @@ export interface ShopOrder {
   coupon_id: string | null
   coupon_code: string | null
   discount_naira: number
+  estimated_min_days: number | null
+  estimated_max_days: number | null
   dispatched_at: string | null
   delivered_at: string | null
   cancelled_at: string | null

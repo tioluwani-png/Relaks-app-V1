@@ -310,6 +310,17 @@ Total: ₦${order.total_naira.toLocaleString()}
                       Zone: {order.zone.name} — ₦{order.zone.fee_naira.toLocaleString()}
                     </p>
                   )}
+                  {order.estimated_min_days !== null && order.estimated_max_days !== null && (
+                    <p className="text-xs text-purple-600 font-medium mt-1">
+                      🚚 Est. delivery: {
+                        order.estimated_min_days === 0 && order.estimated_max_days === 0
+                          ? 'Same day'
+                          : order.estimated_min_days === order.estimated_max_days
+                            ? `${order.estimated_min_days} working day${order.estimated_min_days !== 1 ? 's' : ''}`
+                            : `${order.estimated_min_days}-${order.estimated_max_days} working days`
+                      }
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

@@ -275,7 +275,9 @@ export async function POST(request: NextRequest) {
         order.delivery_fee_naira,
         order.total_naira,
         order.delivery_address,
-        order.delivery_lga
+        order.delivery_lga,
+        order.estimated_min_days,
+        order.estimated_max_days
       )
     } catch (emailError) {
       console.error('[shop/payments/verify] Confirmation email error:', emailError)
@@ -307,6 +309,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       orderNumber: order.order_number,
+      estimatedMinDays: order.estimated_min_days,
+      estimatedMaxDays: order.estimated_max_days,
       stockWarnings: stockFailures.length > 0 ? stockFailures : undefined,
     })
   } catch (error) {

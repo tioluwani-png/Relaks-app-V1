@@ -15,6 +15,13 @@ function getResend(): Resend {
 /**
  * Send order confirmation to customer
  */
+function formatDeliveryEstimate(minDays: number | null, maxDays: number | null): string | null {
+  if (minDays === null || maxDays === null) return null
+  if (minDays === 0 && maxDays === 0) return 'Same day delivery'
+  if (minDays === maxDays) return `${minDays} working day${minDays !== 1 ? 's' : ''}`
+  return `${minDays}-${maxDays} working days`
+}
+
 export async function sendShopOrderConfirmationEmail(
   to: string,
   customerName: string,
@@ -26,8 +33,11 @@ export async function sendShopOrderConfirmationEmail(
   deliveryFee: number,
   total: number,
   deliveryAddress: string,
-  deliveryLga: string
+  deliveryLga: string,
+  estimatedMinDays?: number | null,
+  estimatedMaxDays?: number | null
 ) {
+  const deliveryEstimate = formatDeliveryEstimate(estimatedMinDays ?? null, estimatedMaxDays ?? null)
   const itemsHtml = items
     .map(
       (item) => `
@@ -92,6 +102,11 @@ export async function sendShopOrderConfirmationEmail(
             <p style="color: #6b7280; font-size: 14px; margin-top: 4px;">
               ${deliveryLga}, Lagos
             </p>
+            ${deliveryEstimate ? `
+            <p style="color: #9333ea; font-size: 14px; font-weight: 600; margin-top: 12px;">
+              🚚 Estimated delivery: ${deliveryEstimate}
+            </p>
+            ` : ''}
           </div>
 
           <div style="background: linear-gradient(135deg, #faf5ff, #fdf2f8); border-radius: 16px; padding: 20px; margin-bottom: 24px;">

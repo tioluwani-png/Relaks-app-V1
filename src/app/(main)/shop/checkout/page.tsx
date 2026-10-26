@@ -19,8 +19,13 @@ import {
 import { toast } from 'sonner'
 import { useCart, getEffectivePrice, getVariantLabel, getCartItemKey } from '@/lib/shop/cart-context'
 import { createClient } from '@/lib/supabase/client'
-import { LAGOS_LGAS } from '@/lib/shop/config'
-import type { ShopDeliveryZone } from '@/types/database'
+import type { ShopDeliveryZone, ShopDeliveryArea } from '@/types/database'
+
+function formatDeliveryTime(minDays: number, maxDays: number): string {
+  if (minDays === 0 && maxDays === 0) return 'Same day delivery'
+  if (minDays === maxDays) return `Arrives in ${minDays} working day${minDays !== 1 ? 's' : ''}`
+  return `Arrives in ${minDays}-${maxDays} working days`
+}
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -28,8 +33,11 @@ export default function CheckoutPage() {
   const supabase = createClient()
 
   const [zones, setZones] = useState<ShopDeliveryZone[]>([])
+  const [areas, setAreas] = useState<ShopDeliveryArea[]>([])
   const [isLoadingZones, setIsLoadingZones] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [areaSearch, setAreaSearch] = useState('')
+  const [isAreaDropdownOpen, setIsAreaDropdownOpen] = useState(false)
 
   // Form state
   const [customerName, setCustomerName] = useState('')
@@ -51,10 +59,16 @@ export default function CheckoutPage() {
   const [showCouponField, setShowCouponField] = useState(false)
 
   // Computed
-  const selectedZone = zones.find((z) => z.lgas.includes(deliveryLga))
+  const selectedArea = areas.find((a) => a.name === deliveryLga)
+  const selectedZone = selectedArea ? zones.find((z) => z.id === selectedArea.zone_id) : null
   const deliveryFee = selectedZone?.fee_naira || 0
   const discount = appliedCoupon?.discount || 0
   const total = subtotal - discount + deliveryFee
+
+  // Filter areas for search
+  const filteredAreas = areaSearch.trim()
+    ? areas.filter((a) => a.name.toLowerCase().includes(areaSearch.toLowerCase()))
+    : areas
 
   // Load zones and prefill user info
   useEffect(() => {
@@ -68,7 +82,12 @@ export default function CheckoutPage() {
       const res = await fetch('/api/shop/zones')
       if (!res.ok) throw new Error('Failed to load zones')
       const data = await res.json()
-      setZones(data)
+      setZones(data.zones || [])
+      // Sort areas alphabetically
+      const sortedAreas = (data.areas || []).sort((a: ShopDeliveryArea, b: ShopDeliveryArea) =>
+        a.name.localeCompare(b.name)
+      )
+      setAreas(sortedAreas)
     } catch (error) {
       console.error('Failed to load zones:', error)
       toast.error('Failed to load delivery zones')
@@ -117,15 +136,15 @@ export default function CheckoutPage() {
       return false
     }
     if (!deliveryLga) {
-      toast.error('Please select your LGA')
+      toast.error('Please select your area')
       return false
     }
     if (!deliveryAddress.trim() || deliveryAddress.length < 10) {
       toast.error('Please enter your full delivery address')
       return false
     }
-    if (!selectedZone) {
-      toast.error('Delivery not available for selected LGA')
+    if (!selectedArea || !selectedZone) {
+      toast.error('Delivery not available for selected area')
       return false
     }
     return true
@@ -230,7 +249,7 @@ export default function CheckoutPage() {
       toast.error(error instanceof Error ? error.message : 'Checkout failed')
       setIsSubmitting(false)
     }
-  }, [items, customerName, email, phone, deliveryLga, deliveryAddress, selectedZone, appliedCoupon, clearCart])
+  }, [items, customerName, email, phone, deliveryLga, deliveryAddress, selectedArea, selectedZone, appliedCoupon, clearCart])
 
   if (items.length === 0) {
     return (
@@ -452,39 +471,75 @@ export default function CheckoutPage() {
           ) : (
             <div className="space-y-4">
               <div>
-                <Label>LGA (Lagos only)</Label>
-                <Select
-                  value={deliveryLga}
-                  onValueChange={setDeliveryLga}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="mt-1 h-12 rounded-xl">
-                    <SelectValue placeholder="Select your LGA" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LAGOS_LGAS.map((lga) => {
-                      const zone = zones.find((z) => z.lgas.includes(lga))
-                      return (
-                        <SelectItem key={lga} value={lga}>
-                          {lga}
-                          {zone && (
-                            <span className="text-gray-500 ml-2">
-                              — ₦{zone.fee_naira.toLocaleString()}
-                            </span>
-                          )}
-                        </SelectItem>
-                      )
-                    })}
-                  </SelectContent>
-                </Select>
+                <Label>Area (Lagos only)</Label>
+                <div className="relative mt-1">
+                  <Input
+                    value={deliveryLga || areaSearch}
+                    onChange={(e) => {
+                      setAreaSearch(e.target.value)
+                      setDeliveryLga('')
+                      setIsAreaDropdownOpen(true)
+                    }}
+                    onFocus={() => setIsAreaDropdownOpen(true)}
+                    placeholder="Search your area..."
+                    className="h-12 rounded-xl"
+                    disabled={isSubmitting}
+                  />
+                  {isAreaDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                      {filteredAreas.length === 0 ? (
+                        <p className="px-4 py-3 text-gray-500 text-sm">No areas found</p>
+                      ) : (
+                        filteredAreas.map((area) => {
+                          const zone = zones.find((z) => z.id === area.zone_id)
+                          return (
+                            <button
+                              key={area.id}
+                              type="button"
+                              onClick={() => {
+                                setDeliveryLga(area.name)
+                                setAreaSearch('')
+                                setIsAreaDropdownOpen(false)
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between"
+                            >
+                              <span className="text-gray-900">{area.name}</span>
+                              {zone && (
+                                <span className="text-gray-500 text-sm">
+                                  ₦{zone.fee_naira.toLocaleString()}
+                                </span>
+                              )}
+                            </button>
+                          )
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  Can&apos;t find your area?{' '}
+                  <a
+                    href="https://wa.me/2349063366498?text=Hi%20Relaks!%20I%20want%20to%20place%20an%20order%20but%20my%20area%20isn%27t%20listed."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-purple-600 hover:underline"
+                  >
+                    Chat with us on WhatsApp
+                  </a>
+                </p>
               </div>
 
               {selectedZone && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-purple-50 rounded-xl text-purple-700 text-sm">
-                  <MapPin className="w-4 h-4" />
-                  <span>
-                    {selectedZone.name} — ₦{selectedZone.fee_naira.toLocaleString()} delivery
-                  </span>
+                <div className="px-4 py-3 bg-purple-50 rounded-xl text-purple-700 text-sm space-y-1">
+                  <div className="flex items-center gap-2 font-medium">
+                    <MapPin className="w-4 h-4" />
+                    <span>{selectedZone.name}</span>
+                    <span>·</span>
+                    <span>₦{selectedZone.fee_naira.toLocaleString()} delivery</span>
+                  </div>
+                  <p className="text-purple-600 ml-6">
+                    {formatDeliveryTime(selectedZone.min_days, selectedZone.max_days)}
+                  </p>
                 </div>
               )}
 

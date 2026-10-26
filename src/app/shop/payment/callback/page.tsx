@@ -11,6 +11,7 @@ function ShopPaymentCallbackContent() {
   const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading')
   const [message, setMessage] = useState('')
   const [orderNumber, setOrderNumber] = useState<string | null>(null)
+  const [deliveryEstimate, setDeliveryEstimate] = useState<string | null>(null)
 
   const reference = searchParams.get('reference')
   const trxref = searchParams.get('trxref')
@@ -41,6 +42,18 @@ function ShopPaymentCallbackContent() {
           setStatus('success')
           setMessage('Your order has been placed successfully!')
           setOrderNumber(data.orderNumber)
+          // Format delivery estimate
+          if (data.estimatedMinDays !== null && data.estimatedMaxDays !== null) {
+            const min = data.estimatedMinDays
+            const max = data.estimatedMaxDays
+            if (min === 0 && max === 0) {
+              setDeliveryEstimate('Same day delivery')
+            } else if (min === max) {
+              setDeliveryEstimate(`Delivery in ${min} working day${min !== 1 ? 's' : ''}`)
+            } else {
+              setDeliveryEstimate(`Delivery in ${min}-${max} working days`)
+            }
+          }
         } else {
           setStatus('failed')
           setMessage(data.error || 'Payment verification failed')
@@ -99,6 +112,11 @@ function ShopPaymentCallbackContent() {
               {orderNumber && (
                 <p className="text-sm text-gray-500 mt-2">
                   Order #{orderNumber}
+                </p>
+              )}
+              {deliveryEstimate && (
+                <p className="text-sm text-purple-600 font-medium mt-2">
+                  📦 {deliveryEstimate}
                 </p>
               )}
             </div>
