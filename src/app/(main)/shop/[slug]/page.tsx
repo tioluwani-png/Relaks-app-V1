@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -8,8 +8,19 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, ShoppingBag, Minus, Plus, Loader2, Package, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { useCart } from '@/lib/shop/cart-context'
-import type { ShopProduct } from '@/types/database'
+import { useCart, getEffectivePrice, getEffectiveStock } from '@/lib/shop/cart-context'
+import type {
+  ShopProduct,
+  ShopProductVariant,
+  ShopProductOptionWithValues,
+  ShopProductWithVariants,
+} from '@/types/database'
+import { cn } from '@/lib/utils'
+
+// Type guard to check if product has variants data
+function isProductWithVariants(product: ShopProduct): product is ShopProductWithVariants {
+  return product.has_variants && 'options' in product && 'variants' in product
+}
 
 export default function ProductDetailPage() {
   const params = useParams()
@@ -17,11 +28,48 @@ export default function ProductDetailPage() {
   const slug = params.slug as string
   const { addItem, getItemQuantity, itemCount } = useCart()
 
-  const [product, setProduct] = useState<ShopProduct | null>(null)
+  const [product, setProduct] = useState<ShopProduct | ShopProductWithVariants | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
   const [selectedImage, setSelectedImage] = useState(0)
   const [addedToCart, setAddedToCart] = useState(false)
+
+  // For variant products: track selected options
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({})
+
+  // Find matching variant based on selected options
+  const selectedVariant = useMemo(() => {
+    if (!product || !isProductWithVariants(product)) return null
+    if (Object.keys(selectedOptions).length !== product.options.length) return null
+
+    return product.variants.find((v) => {
+      return Object.entries(selectedOptions).every(
+        ([optName, optValue]) => v.option_values[optName] === optValue
+      )
+    }) ?? null
+  }, [product, selectedOptions])
+
+  // Check if a specific option value is available (has in-stock variants)
+  const isOptionValueAvailable = useMemo(() => {
+    if (!product || !isProductWithVariants(product)) return () => true
+
+    return (optionName: string, optionValue: string): boolean => {
+      // Find all variants that match this option value and current other selections
+      const otherSelections = { ...selectedOptions }
+      delete otherSelections[optionName]
+
+      return product.variants.some((v) => {
+        // Must match this option value
+        if (v.option_values[optionName] !== optionValue) return false
+        // Must match all other selected options
+        for (const [name, value] of Object.entries(otherSelections)) {
+          if (v.option_values[name] !== value) return false
+        }
+        // Must be in stock and active
+        return v.is_active && v.stock_quantity > 0
+      })
+    }
+  }, [product, selectedOptions])
 
   useEffect(() => {
     loadProduct()
@@ -41,6 +89,7 @@ export default function ProductDetailPage() {
 
       const data = await res.json()
       setProduct(data)
+      setSelectedOptions({}) // Reset selections when product loads
     } catch (error) {
       console.error('Failed to load product:', error)
       toast.error('Failed to load product')
@@ -51,13 +100,34 @@ export default function ProductDetailPage() {
   }
 
   const handleAddToCart = () => {
-    if (!product || product.stock_quantity <= 0) return
+    if (!product) return
 
-    addItem(product, quantity)
+    // For variant products
+    if (isProductWithVariants(product)) {
+      if (!selectedVariant) {
+        toast.error('Please select all options')
+        return
+      }
+      if (selectedVariant.stock_quantity <= 0) {
+        toast.error('This variant is sold out')
+        return
+      }
+      addItem(product, selectedVariant, quantity)
+      const variantLabel = Object.values(selectedVariant.option_values).join(' / ')
+      toast.success(`Added ${quantity}× "${product.name}" (${variantLabel}) to cart`)
+    } else {
+      // Non-variant product
+      if (product.stock_quantity <= 0) return
+      addItem(product, null, quantity)
+      toast.success(`Added ${quantity}× "${product.name}" to cart`)
+    }
+
     setAddedToCart(true)
-    toast.success(`Added ${quantity}× "${product.name}" to cart`)
-
     setTimeout(() => setAddedToCart(false), 2000)
+  }
+
+  const handleSelectOption = (optionName: string, value: string) => {
+    setSelectedOptions((prev) => ({ ...prev, [optionName]: value }))
   }
 
   if (isLoading) {
@@ -72,11 +142,42 @@ export default function ProductDetailPage() {
     return null
   }
 
-  const isSoldOut = product.stock_quantity <= 0
-  const hasDiscount = product.compare_at_price_naira && product.compare_at_price_naira > product.price_naira
-  const inCartQty = getItemQuantity(product.id)
-  const maxAddable = Math.max(0, product.stock_quantity - inCartQty)
-  const images = product.images?.length ? product.images : []
+  const hasVariants = isProductWithVariants(product)
+
+  // Calculate effective values based on variant selection
+  const effectiveStock = hasVariants
+    ? (selectedVariant?.stock_quantity ?? 0)
+    : product.stock_quantity
+
+  const effectivePrice = hasVariants
+    ? (selectedVariant?.price_naira ?? product.price_naira)
+    : product.price_naira
+
+  // For variant products, isSoldOut is based on total available variants or selected variant
+  const isSoldOut = hasVariants
+    ? (selectedVariant ? selectedVariant.stock_quantity <= 0 : product.variants.every((v) => v.stock_quantity <= 0 || !v.is_active))
+    : product.stock_quantity <= 0
+
+  const hasDiscount = !hasVariants && product.compare_at_price_naira && product.compare_at_price_naira > product.price_naira
+
+  const inCartQty = getItemQuantity(product.id, selectedVariant?.id ?? null)
+  const maxAddable = Math.max(0, effectiveStock - inCartQty)
+
+  // Images: use variant image if available, otherwise product images
+  const variantImage = selectedVariant?.image_url
+  const images = variantImage
+    ? [variantImage, ...(product.images?.filter((img) => img !== variantImage) || [])]
+    : (product.images?.length ? product.images : [])
+
+  // For variant products, check if all options are selected
+  const allOptionsSelected = hasVariants
+    ? Object.keys(selectedOptions).length === product.options.length
+    : true
+
+  // Check if Add to Cart should be disabled
+  const addToCartDisabled = hasVariants
+    ? !selectedVariant || selectedVariant.stock_quantity <= 0 || maxAddable === 0
+    : isSoldOut || maxAddable === 0
 
   return (
     <div className="min-h-screen bg-[#FFFBF5] pb-32">
@@ -183,7 +284,7 @@ export default function ProductDetailPage() {
             {/* Price */}
             <div className="flex items-baseline gap-3">
               <span className="text-3xl font-bold text-gray-900">
-                ₦{product.price_naira.toLocaleString()}
+                ₦{effectivePrice.toLocaleString()}
               </span>
               {hasDiscount && (
                 <span className="text-lg text-gray-400 line-through">
@@ -199,15 +300,47 @@ export default function ProductDetailPage() {
               </p>
             )}
 
+            {/* Option Selectors (for variant products) */}
+            {hasVariants && product.options.map((option) => (
+              <div key={option.id} className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">{option.name}</label>
+                <div className="flex flex-wrap gap-2">
+                  {option.values.map((val) => {
+                    const isSelected = selectedOptions[option.name] === val.value
+                    const isAvailable = isOptionValueAvailable(option.name, val.value)
+
+                    return (
+                      <button
+                        key={val.id}
+                        type="button"
+                        onClick={() => handleSelectOption(option.name, val.value)}
+                        disabled={!isAvailable}
+                        className={cn(
+                          'px-4 py-2 rounded-xl text-sm font-medium transition-all border-2',
+                          isSelected
+                            ? 'border-purple-500 bg-purple-50 text-purple-700'
+                            : isAvailable
+                            ? 'border-gray-200 bg-white text-gray-700 hover:border-purple-300'
+                            : 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed line-through'
+                        )}
+                      >
+                        {val.value}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+
             {/* Stock */}
-            {!isSoldOut && product.stock_quantity <= 5 && (
+            {!isSoldOut && effectiveStock > 0 && effectiveStock <= 5 && (
               <p className="text-amber-600 text-sm font-medium">
-                Only {product.stock_quantity} left in stock
+                Only {effectiveStock} left in stock
               </p>
             )}
 
             {/* Quantity selector */}
-            {!isSoldOut && (
+            {!isSoldOut && (!hasVariants || selectedVariant) && maxAddable > 0 && (
               <div className="space-y-2">
                 <label className="text-sm text-gray-600">Quantity</label>
                 <div className="flex items-center gap-3">
@@ -236,7 +369,7 @@ export default function ProductDetailPage() {
             {/* Add to Cart */}
             <Button
               onClick={handleAddToCart}
-              disabled={isSoldOut || maxAddable === 0}
+              disabled={addToCartDisabled}
               className="w-full h-14 text-lg rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:opacity-90 disabled:opacity-50"
             >
               {addedToCart ? (
@@ -244,13 +377,15 @@ export default function ProductDetailPage() {
                   <Check className="w-5 h-5 mr-2" />
                   Added!
                 </>
-              ) : isSoldOut ? (
+              ) : hasVariants && !allOptionsSelected ? (
+                'Select options'
+              ) : isSoldOut || (selectedVariant && selectedVariant.stock_quantity <= 0) ? (
                 'Sold out'
               ) : maxAddable === 0 ? (
                 'Max quantity in cart'
               ) : (
                 <>
-                  Add to Cart — ₦{(product.price_naira * quantity).toLocaleString()}
+                  Add to Cart — ₦{(effectivePrice * quantity).toLocaleString()}
                 </>
               )}
             </Button>

@@ -26,8 +26,31 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { uploadShopProductImage } from '@/lib/upload'
 import { PRODUCT_TYPES } from '@/lib/shop/config'
-import type { ShopProduct, ShopProductType } from '@/types/database'
+import type {
+  ShopProduct,
+  ShopProductType,
+  ShopProductOption,
+  ShopProductOptionValue,
+  ShopProductVariant,
+} from '@/types/database'
 import { cn } from '@/lib/utils'
+
+// Types for variant editing
+interface OptionDraft {
+  id?: string
+  name: string
+  values: { id?: string; value: string }[]
+}
+
+interface VariantDraft {
+  id?: string
+  optionValues: Record<string, string>
+  sku: string
+  price_naira: string
+  stock_quantity: string
+  image_url: string
+  is_active: boolean
+}
 
 const DEFAULT_FORM = {
   name: '',
@@ -39,6 +62,38 @@ const DEFAULT_FORM = {
   edition: '',
   stock_quantity: '1',
   sort_order: '0',
+  has_variants: false,
+}
+
+// Generate variant combinations from options
+function generateVariantCombinations(options: OptionDraft[]): Record<string, string>[] {
+  if (options.length === 0 || options.every(o => o.values.length === 0)) {
+    return []
+  }
+
+  const validOptions = options.filter(o => o.name && o.values.length > 0)
+  if (validOptions.length === 0) return []
+
+  let combinations: Record<string, string>[] = [{}]
+
+  for (const option of validOptions) {
+    const newCombinations: Record<string, string>[] = []
+    for (const combo of combinations) {
+      for (const val of option.values) {
+        if (val.value.trim()) {
+          newCombinations.push({ ...combo, [option.name]: val.value })
+        }
+      }
+    }
+    combinations = newCombinations
+  }
+
+  return combinations
+}
+
+// Get variant label from option values
+function getVariantLabel(optionValues: Record<string, string>): string {
+  return Object.values(optionValues).join(' / ')
 }
 
 export default function AdminShopProductsPage() {
@@ -56,6 +111,11 @@ export default function AdminShopProductsPage() {
   const [images, setImages] = useState<string[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Variants state
+  const [options, setOptions] = useState<OptionDraft[]>([])
+  const [variants, setVariants] = useState<VariantDraft[]>([])
+  const [newOptionValue, setNewOptionValue] = useState<Record<number, string>>({})
 
   useEffect(() => {
     loadProducts()
@@ -141,6 +201,12 @@ export default function AdminShopProductsPage() {
       return
     }
 
+    // Validate variants if has_variants is true
+    if (form.has_variants && variants.length === 0) {
+      toast.error('Please add at least one variant')
+      return
+    }
+
     setIsSaving(true)
 
     try {
@@ -153,9 +219,12 @@ export default function AdminShopProductsPage() {
         product_type: form.product_type,
         edition: form.edition.trim() || null,
         images,
-        stock_quantity: parseInt(form.stock_quantity) || 0,
+        stock_quantity: form.has_variants ? 0 : (parseInt(form.stock_quantity) || 0),
         sort_order: parseInt(form.sort_order) || 0,
+        has_variants: form.has_variants,
       }
+
+      let productId = editingId
 
       if (editingId) {
         const { error } = await supabase
@@ -164,15 +233,88 @@ export default function AdminShopProductsPage() {
           .eq('id', editingId)
 
         if (error) throw error
-        toast.success('Product updated!')
       } else {
-        const { error } = await supabase.from('shop_products').insert(payload as never)
+        const { data, error } = await supabase
+          .from('shop_products')
+          .insert(payload as never)
+          .select('id')
+          .single()
+
         if (error) throw error
-        toast.success('Product created!')
+        productId = (data as { id: string }).id
       }
 
+      // Save options and variants if has_variants is true
+      if (form.has_variants && productId) {
+        // Delete existing options and variants (cascade will handle values and variants)
+        if (editingId) {
+          await supabase.from('shop_product_options').delete().eq('product_id', productId)
+          await supabase.from('shop_product_variants').delete().eq('product_id', productId)
+        }
+
+        // Insert options and values
+        for (let optIdx = 0; optIdx < options.length; optIdx++) {
+          const opt = options[optIdx]
+          if (!opt.name.trim() || opt.values.length === 0) continue
+
+          const { data: optData, error: optError } = await supabase
+            .from('shop_product_options')
+            .insert({
+              product_id: productId,
+              name: opt.name.trim(),
+              sort_order: optIdx,
+            } as never)
+            .select('id')
+            .single()
+
+          if (optError) throw optError
+
+          const optionId = (optData as { id: string }).id
+
+          // Insert option values
+          const valuesToInsert = opt.values
+            .filter((v) => v.value.trim())
+            .map((v, vIdx) => ({
+              option_id: optionId,
+              value: v.value.trim(),
+              sort_order: vIdx,
+            }))
+
+          if (valuesToInsert.length > 0) {
+            const { error: valError } = await supabase
+              .from('shop_product_option_values')
+              .insert(valuesToInsert as never)
+
+            if (valError) throw valError
+          }
+        }
+
+        // Insert variants
+        const variantsToInsert = variants.map((v, idx) => ({
+          product_id: productId,
+          option_values: v.optionValues,
+          sku: v.sku.trim() || null,
+          price_naira: v.price_naira ? parseInt(v.price_naira) : null,
+          stock_quantity: parseInt(v.stock_quantity) || 0,
+          image_url: v.image_url || null,
+          is_active: v.is_active,
+          sort_order: idx,
+        }))
+
+        if (variantsToInsert.length > 0) {
+          const { error: varError } = await supabase
+            .from('shop_product_variants')
+            .insert(variantsToInsert as never)
+
+          if (varError) throw varError
+        }
+      }
+
+      toast.success(editingId ? 'Product updated!' : 'Product created!')
       setForm(DEFAULT_FORM)
       setImages([])
+      setOptions([])
+      setVariants([])
       setEditingId(null)
       setIsDialogOpen(false)
       loadProducts()
@@ -184,7 +326,7 @@ export default function AdminShopProductsPage() {
     }
   }
 
-  const handleEdit = (product: ShopProduct) => {
+  const handleEdit = async (product: ShopProduct) => {
     setForm({
       name: product.name,
       slug: product.slug,
@@ -195,9 +337,68 @@ export default function AdminShopProductsPage() {
       edition: product.edition || '',
       stock_quantity: product.stock_quantity.toString(),
       sort_order: product.sort_order.toString(),
+      has_variants: product.has_variants,
     })
     setImages(product.images || [])
     setEditingId(product.id)
+
+    // Load options and variants if product has variants
+    if (product.has_variants) {
+      try {
+        // Load options
+        const { data: optionsData } = await supabase
+          .from('shop_product_options')
+          .select('*')
+          .eq('product_id', product.id)
+          .order('sort_order')
+
+        const loadedOptions: OptionDraft[] = []
+        const optionIds = (optionsData || []).map((o: ShopProductOption) => o.id)
+
+        if (optionIds.length > 0) {
+          // Load option values
+          const { data: valuesData } = await supabase
+            .from('shop_product_option_values')
+            .select('*')
+            .in('option_id', optionIds)
+            .order('sort_order')
+
+          for (const opt of (optionsData || []) as ShopProductOption[]) {
+            const optValues = ((valuesData || []) as ShopProductOptionValue[])
+              .filter((v) => v.option_id === opt.id)
+              .map((v) => ({ id: v.id, value: v.value }))
+            loadedOptions.push({ id: opt.id, name: opt.name, values: optValues })
+          }
+        }
+        setOptions(loadedOptions)
+
+        // Load variants
+        const { data: variantsData } = await supabase
+          .from('shop_product_variants')
+          .select('*')
+          .eq('product_id', product.id)
+          .order('sort_order')
+
+        const loadedVariants: VariantDraft[] = ((variantsData || []) as ShopProductVariant[]).map((v) => ({
+          id: v.id,
+          optionValues: v.option_values,
+          sku: v.sku || '',
+          price_naira: v.price_naira?.toString() || '',
+          stock_quantity: v.stock_quantity.toString(),
+          image_url: v.image_url || '',
+          is_active: v.is_active,
+        }))
+        setVariants(loadedVariants)
+      } catch (error) {
+        console.error('Failed to load variants:', error)
+        setOptions([])
+        setVariants([])
+      }
+    } else {
+      setOptions([])
+      setVariants([])
+    }
+    setNewOptionValue({})
     setIsDialogOpen(true)
   }
 
@@ -240,8 +441,88 @@ export default function AdminShopProductsPage() {
   const openNewDialog = () => {
     setForm(DEFAULT_FORM)
     setImages([])
+    setOptions([])
+    setVariants([])
+    setNewOptionValue({})
     setEditingId(null)
     setIsDialogOpen(true)
+  }
+
+  // Handle option name change
+  const handleOptionNameChange = (index: number, name: string) => {
+    const newOptions = [...options]
+    newOptions[index] = { ...newOptions[index], name }
+    setOptions(newOptions)
+    // Regenerate variants
+    regenerateVariants(newOptions)
+  }
+
+  // Add value to option
+  const handleAddOptionValue = (optionIndex: number) => {
+    const value = newOptionValue[optionIndex]?.trim()
+    if (!value) return
+
+    const newOptions = [...options]
+    newOptions[optionIndex] = {
+      ...newOptions[optionIndex],
+      values: [...newOptions[optionIndex].values, { value }],
+    }
+    setOptions(newOptions)
+    setNewOptionValue({ ...newOptionValue, [optionIndex]: '' })
+    // Regenerate variants
+    regenerateVariants(newOptions)
+  }
+
+  // Remove value from option
+  const handleRemoveOptionValue = (optionIndex: number, valueIndex: number) => {
+    const newOptions = [...options]
+    newOptions[optionIndex] = {
+      ...newOptions[optionIndex],
+      values: newOptions[optionIndex].values.filter((_, i) => i !== valueIndex),
+    }
+    setOptions(newOptions)
+    // Regenerate variants
+    regenerateVariants(newOptions)
+  }
+
+  // Add new option (max 2)
+  const handleAddOption = () => {
+    if (options.length >= 2) return
+    setOptions([...options, { name: '', values: [] }])
+  }
+
+  // Remove option
+  const handleRemoveOption = (index: number) => {
+    const newOptions = options.filter((_, i) => i !== index)
+    setOptions(newOptions)
+    regenerateVariants(newOptions)
+  }
+
+  // Regenerate variants when options change
+  const regenerateVariants = (newOptions: OptionDraft[]) => {
+    const combinations = generateVariantCombinations(newOptions)
+
+    // Preserve existing variant data where possible
+    const newVariants: VariantDraft[] = combinations.map((combo) => {
+      const label = getVariantLabel(combo)
+      const existing = variants.find((v) => getVariantLabel(v.optionValues) === label)
+      return existing || {
+        optionValues: combo,
+        sku: '',
+        price_naira: '',
+        stock_quantity: '0',
+        image_url: '',
+        is_active: true,
+      }
+    })
+    setVariants(newVariants)
+  }
+
+  // Update variant field
+  const updateVariant = (index: number, field: keyof VariantDraft, value: string | boolean) => {
+    const newVariants = [...variants]
+    newVariants[index] = { ...newVariants[index], [field]: value }
+    setVariants(newVariants)
   }
 
   const filteredProducts = products.filter((p) =>
@@ -318,18 +599,25 @@ export default function AdminShopProductsPage() {
                     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 capitalize">
                       {product.product_type}
                     </span>
+                    {product.has_variants && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-600">
+                        Variants
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-4 mt-1">
                     <p className="text-lg font-bold text-gray-900 dark:text-white">
                       ₦{product.price_naira.toLocaleString()}
                     </p>
-                    <p className={cn(
-                      "text-sm",
-                      product.stock_quantity > 5 ? "text-green-600" :
-                      product.stock_quantity > 0 ? "text-amber-600" : "text-red-600"
-                    )}>
-                      {product.stock_quantity} in stock
-                    </p>
+                    {!product.has_variants && (
+                      <p className={cn(
+                        "text-sm",
+                        product.stock_quantity > 5 ? "text-green-600" :
+                        product.stock_quantity > 0 ? "text-amber-600" : "text-red-600"
+                      )}>
+                        {product.stock_quantity} in stock
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -506,19 +794,208 @@ export default function AdminShopProductsPage() {
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            {/* Variants Toggle */}
+            <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
               <div>
-                <Label>Stock Quantity</Label>
-                <Input
-                  type="number"
-                  value={form.stock_quantity}
-                  onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })}
-                  placeholder="1"
-                  min="0"
-                  disabled={isSaving}
-                />
+                <Label className="font-medium">This product has variations</Label>
+                <p className="text-xs text-gray-500 mt-1">
+                  E.g., different editions, colors, or sizes
+                </p>
               </div>
-              <div>
+              <Switch
+                checked={form.has_variants}
+                onCheckedChange={(checked) => {
+                  setForm({ ...form, has_variants: checked })
+                  if (checked && options.length === 0) {
+                    setOptions([{ name: '', values: [] }])
+                  }
+                }}
+                disabled={isSaving}
+              />
+            </div>
+
+            {/* Options Builder (when has_variants is true) */}
+            {form.has_variants && (
+              <div className="space-y-4 p-4 border rounded-lg">
+                <div className="flex items-center justify-between">
+                  <Label className="font-medium">Product Options</Label>
+                  {options.length < 2 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddOption}
+                      disabled={isSaving}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Option
+                    </Button>
+                  )}
+                </div>
+
+                {options.map((option, optIdx) => (
+                  <div key={optIdx} className="space-y-2 p-3 border rounded-lg bg-white dark:bg-gray-800">
+                    <div className="flex gap-2">
+                      <Input
+                        value={option.name}
+                        onChange={(e) => handleOptionNameChange(optIdx, e.target.value)}
+                        placeholder="Option name (e.g., Edition, Color)"
+                        className="flex-1"
+                        disabled={isSaving}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveOption(optIdx)}
+                        disabled={isSaving}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+
+                    {/* Option Values */}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {option.values.map((val, valIdx) => (
+                        <span
+                          key={valIdx}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-sm"
+                        >
+                          {val.value}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOptionValue(optIdx, valIdx)}
+                            className="hover:text-purple-600"
+                            disabled={isSaving}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Add Value Input */}
+                    <div className="flex gap-2">
+                      <Input
+                        value={newOptionValue[optIdx] || ''}
+                        onChange={(e) => setNewOptionValue({ ...newOptionValue, [optIdx]: e.target.value })}
+                        placeholder="Add value (e.g., Lavender)"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            handleAddOptionValue(optIdx)
+                          }
+                        }}
+                        disabled={isSaving}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddOptionValue(optIdx)}
+                        disabled={isSaving || !newOptionValue[optIdx]?.trim()}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Variants Table */}
+                {variants.length > 0 && (
+                  <div className="mt-4">
+                    <Label className="font-medium mb-2 block">
+                      Variants ({variants.length})
+                    </Label>
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 dark:bg-gray-900">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-medium">Variant</th>
+                            <th className="px-3 py-2 text-left font-medium">Price</th>
+                            <th className="px-3 py-2 text-left font-medium">Stock</th>
+                            <th className="px-3 py-2 text-center font-medium">Active</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {variants.map((variant, idx) => (
+                            <tr key={idx} className={cn(!variant.is_active && 'opacity-50')}>
+                              <td className="px-3 py-2">
+                                <span className="font-medium">
+                                  {getVariantLabel(variant.optionValues)}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2">
+                                <Input
+                                  type="number"
+                                  value={variant.price_naira}
+                                  onChange={(e) => updateVariant(idx, 'price_naira', e.target.value)}
+                                  placeholder="Inherit"
+                                  className="w-24 h-8 text-sm"
+                                  disabled={isSaving}
+                                />
+                              </td>
+                              <td className="px-3 py-2">
+                                <Input
+                                  type="number"
+                                  value={variant.stock_quantity}
+                                  onChange={(e) => updateVariant(idx, 'stock_quantity', e.target.value)}
+                                  className="w-20 h-8 text-sm"
+                                  min="0"
+                                  disabled={isSaving}
+                                />
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                <Switch
+                                  checked={variant.is_active}
+                                  onCheckedChange={(checked) => updateVariant(idx, 'is_active', checked)}
+                                  disabled={isSaving}
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Leave price empty to inherit from product price (₦{form.price_naira || '0'})
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Stock (only when no variants) */}
+            {!form.has_variants && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label>Stock Quantity</Label>
+                  <Input
+                    type="number"
+                    value={form.stock_quantity}
+                    onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })}
+                    placeholder="1"
+                    min="0"
+                    disabled={isSaving}
+                  />
+                </div>
+                <div>
+                  <Label>Sort Order</Label>
+                  <Input
+                    type="number"
+                    value={form.sort_order}
+                    onChange={(e) => setForm({ ...form, sort_order: e.target.value })}
+                    placeholder="0"
+                    disabled={isSaving}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Lower = appears first</p>
+                </div>
+              </div>
+            )}
+
+            {/* Sort Order (when has variants) */}
+            {form.has_variants && (
+              <div className="w-1/2">
                 <Label>Sort Order</Label>
                 <Input
                   type="number"
@@ -529,7 +1006,7 @@ export default function AdminShopProductsPage() {
                 />
                 <p className="text-xs text-gray-500 mt-1">Lower = appears first</p>
               </div>
-            </div>
+            )}
 
             <div className="flex gap-3 pt-4">
               <Button

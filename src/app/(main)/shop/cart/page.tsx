@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { ArrowLeft, ShoppingBag, Minus, Plus, Trash2, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useCart } from '@/lib/shop/cart-context'
+import { useCart, getEffectivePrice, getEffectiveStock, getVariantLabel, getCartItemKey } from '@/lib/shop/cart-context'
 
 export default function CartPage() {
   const { items, subtotal, updateQuantity, removeItem, itemCount } = useCart()
@@ -66,72 +66,86 @@ export default function CartPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-        {items.map((item, index) => (
-          <motion.div
-            key={item.product.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="bg-white rounded-2xl p-4 border border-gray-100 flex gap-4"
-          >
-            {/* Image */}
-            <Link href={`/shop/${item.product.slug}`} className="shrink-0">
-              <div className="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden relative">
-                {item.product.images?.[0] ? (
-                  <Image
-                    src={item.product.images[0]}
-                    alt={item.product.name}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Package className="w-6 h-6 text-gray-300" />
-                  </div>
-                )}
-              </div>
-            </Link>
+        {items.map((item, index) => {
+          const price = getEffectivePrice(item.product, item.variant)
+          const stock = getEffectiveStock(item.product, item.variant)
+          const variantLabel = getVariantLabel(item.variant)
+          const itemKey = getCartItemKey(item.product.id, item.variant?.id ?? null)
+          const variantId = item.variant?.id ?? null
 
-            {/* Details */}
-            <div className="flex-1 min-w-0">
-              <Link href={`/shop/${item.product.slug}`}>
-                <h3 className="font-medium text-gray-900 hover:text-purple-600 transition-colors line-clamp-2">
-                  {item.product.name}
-                </h3>
+          // Use variant image if available, otherwise product image
+          const imageUrl = item.variant?.image_url || item.product.images?.[0]
+
+          return (
+            <motion.div
+              key={itemKey}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className="bg-white rounded-2xl p-4 border border-gray-100 flex gap-4"
+            >
+              {/* Image */}
+              <Link href={`/shop/${item.product.slug}`} className="shrink-0">
+                <div className="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden relative">
+                  {imageUrl ? (
+                    <Image
+                      src={imageUrl}
+                      alt={item.product.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Package className="w-6 h-6 text-gray-300" />
+                    </div>
+                  )}
+                </div>
               </Link>
-              <p className="text-lg font-bold text-gray-900 mt-1">
-                ₦{item.product.price_naira.toLocaleString()}
-              </p>
 
-              {/* Quantity controls */}
-              <div className="flex items-center justify-between mt-3">
-                <div className="flex items-center gap-2">
+              {/* Details */}
+              <div className="flex-1 min-w-0">
+                <Link href={`/shop/${item.product.slug}`}>
+                  <h3 className="font-medium text-gray-900 hover:text-purple-600 transition-colors line-clamp-2">
+                    {item.product.name}
+                  </h3>
+                </Link>
+                {variantLabel && (
+                  <p className="text-sm text-gray-500 mt-0.5">{variantLabel}</p>
+                )}
+                <p className="text-lg font-bold text-gray-900 mt-1">
+                  ₦{price.toLocaleString()}
+                </p>
+
+                {/* Quantity controls */}
+                <div className="flex items-center justify-between mt-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => updateQuantity(item.product.id, variantId, item.quantity - 1)}
+                      className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                    <button
+                      onClick={() => updateQuantity(item.product.id, variantId, item.quantity + 1)}
+                      disabled={item.quantity >= stock}
+                      className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+
                   <button
-                    onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                    className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                    onClick={() => removeItem(item.product.id, variantId)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                   >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="w-8 text-center font-semibold">{item.quantity}</span>
-                  <button
-                    onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                    disabled={item.quantity >= item.product.stock_quantity}
-                    className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-
-                <button
-                  onClick={() => removeItem(item.product.id)}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
               </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          )
+        })}
 
         {/* Subtotal note */}
         <div className="bg-gray-50 rounded-2xl p-4 text-center">

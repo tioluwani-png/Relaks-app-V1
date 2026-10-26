@@ -1,6 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import type { ShopProduct } from '@/types/database'
+import type { ShopProduct, ShopProductVariant } from '@/types/database'
+
+// Extended product for list view with variant pricing info
+export type ShopProductListItem = ShopProduct & {
+  min_price?: number
+  max_price?: number
+  total_variant_stock?: number
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +39,67 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 })
     }
 
-    return NextResponse.json(data as ShopProduct[])
+    const products = (data || []) as ShopProduct[]
+
+    // Get products with variants
+    const variantProductIds = products
+      .filter((p) => p.has_variants)
+      .map((p) => p.id)
+
+    // Fetch variant pricing info if any products have variants
+    let variantsByProduct = new Map<
+      string,
+      { minPrice: number; maxPrice: number; totalStock: number }
+    >()
+
+    if (variantProductIds.length > 0) {
+      const { data: variantsData } = await supabase
+        .from('shop_product_variants')
+        .select('product_id, price_naira, stock_quantity')
+        .in('product_id', variantProductIds)
+        .eq('is_active', true)
+
+      const variants = (variantsData || []) as Pick<
+        ShopProductVariant,
+        'product_id' | 'price_naira' | 'stock_quantity'
+      >[]
+
+      // Group by product and calculate min/max prices and total stock
+      for (const v of variants) {
+        const existing = variantsByProduct.get(v.product_id)
+        const product = products.find((p) => p.id === v.product_id)
+        // If variant has no price, it inherits from product
+        const effectivePrice = v.price_naira ?? product?.price_naira ?? 0
+
+        if (existing) {
+          existing.minPrice = Math.min(existing.minPrice, effectivePrice)
+          existing.maxPrice = Math.max(existing.maxPrice, effectivePrice)
+          existing.totalStock += v.stock_quantity
+        } else {
+          variantsByProduct.set(v.product_id, {
+            minPrice: effectivePrice,
+            maxPrice: effectivePrice,
+            totalStock: v.stock_quantity,
+          })
+        }
+      }
+    }
+
+    // Enrich products with variant info
+    const enrichedProducts: ShopProductListItem[] = products.map((p) => {
+      if (p.has_variants) {
+        const variantInfo = variantsByProduct.get(p.id)
+        return {
+          ...p,
+          min_price: variantInfo?.minPrice ?? p.price_naira,
+          max_price: variantInfo?.maxPrice ?? p.price_naira,
+          total_variant_stock: variantInfo?.totalStock ?? 0,
+        }
+      }
+      return p
+    })
+
+    return NextResponse.json(enrichedProducts)
   } catch (error) {
     console.error('[shop/products] Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

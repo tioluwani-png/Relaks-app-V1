@@ -2,12 +2,19 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { generateOrderNumber, calculateCouponDiscount } from '@/lib/shop/config'
-import type { ShopProduct, ShopDeliveryZone, ShopCoupon } from '@/types/database'
+import type { ShopProduct, ShopDeliveryZone, ShopCoupon, ShopProductVariant } from '@/types/database'
 
 const cartItemSchema = z.object({
   productId: z.string().uuid(),
+  variantId: z.string().uuid().nullable().optional(),
   quantity: z.number().int().positive(),
 })
+
+// Helper to generate variant label from option_values
+function generateVariantLabel(optionValues: Record<string, string> | null): string | null {
+  if (!optionValues || Object.keys(optionValues).length === 0) return null
+  return Object.values(optionValues).join(' / ')
+}
 
 const createOrderSchema = z.object({
   items: z.array(cartItemSchema).min(1, 'Cart cannot be empty'),
@@ -41,8 +48,12 @@ export async function POST(request: NextRequest) {
     // Use admin client for writes
     const adminSupabase = await createAdminClient()
 
-    // 1. Validate products exist, are active, in stock, and get server prices
-    const productIds = items.map((i) => i.productId)
+    // 1. Validate products exist, are active, and get server prices
+    const productIds = [...new Set(items.map((i) => i.productId))]
+    const variantIds = items
+      .filter((i) => i.variantId)
+      .map((i) => i.variantId as string)
+
     const { data: products, error: productsError } = await adminSupabase
       .from('shop_products')
       .select('*')
@@ -59,7 +70,26 @@ export async function POST(request: NextRequest) {
       productMap.set(p.id, p)
     }
 
-    // Check all products exist
+    // Fetch variants if any
+    const variantMap = new Map<string, ShopProductVariant>()
+    if (variantIds.length > 0) {
+      const { data: variants, error: variantsError } = await adminSupabase
+        .from('shop_product_variants')
+        .select('*')
+        .in('id', variantIds)
+        .eq('is_active', true)
+
+      if (variantsError) {
+        console.error('[shop/orders/create] Variants query error:', variantsError)
+        return NextResponse.json({ error: 'Failed to validate variants' }, { status: 500 })
+      }
+
+      for (const v of (variants || []) as ShopProductVariant[]) {
+        variantMap.set(v.id, v)
+      }
+    }
+
+    // Check all products and variants exist and have sufficient stock
     for (const item of items) {
       const product = productMap.get(item.productId)
       if (!product) {
@@ -68,15 +98,53 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         )
       }
-      if (product.stock_quantity < item.quantity) {
+
+      // If product has variants, a variant must be selected
+      if (product.has_variants && !item.variantId) {
         return NextResponse.json(
-          {
-            error: `Not enough stock for "${product.name}". Available: ${product.stock_quantity}`,
-            product: product.name,
-            available: product.stock_quantity,
-          },
+          { error: `Please select options for "${product.name}"` },
           { status: 400 }
         )
+      }
+
+      // If variant is specified, validate it
+      if (item.variantId) {
+        const variant = variantMap.get(item.variantId)
+        if (!variant) {
+          return NextResponse.json(
+            { error: `Variant not found or unavailable for "${product.name}"` },
+            { status: 400 }
+          )
+        }
+        if (variant.product_id !== item.productId) {
+          return NextResponse.json(
+            { error: `Invalid variant for product "${product.name}"` },
+            { status: 400 }
+          )
+        }
+        if (variant.stock_quantity < item.quantity) {
+          const label = generateVariantLabel(variant.option_values)
+          return NextResponse.json(
+            {
+              error: `Not enough stock for "${product.name}${label ? ` (${label})` : ''}". Available: ${variant.stock_quantity}`,
+              product: product.name,
+              available: variant.stock_quantity,
+            },
+            { status: 400 }
+          )
+        }
+      } else {
+        // Non-variant product - check product stock
+        if (product.stock_quantity < item.quantity) {
+          return NextResponse.json(
+            {
+              error: `Not enough stock for "${product.name}". Available: ${product.stock_quantity}`,
+              product: product.name,
+              available: product.stock_quantity,
+            },
+            { status: 400 }
+          )
+        }
       }
     }
 
@@ -104,17 +172,31 @@ export async function POST(request: NextRequest) {
 
     // 3. Calculate totals server-side (never trust client)
     let subtotal = 0
-    const orderItems: { productId: string; productName: string; unitPrice: number; quantity: number }[] = []
+    const orderItems: {
+      productId: string
+      productName: string
+      unitPrice: number
+      quantity: number
+      variantId: string | null
+      variantLabel: string | null
+    }[] = []
 
     for (const item of items) {
       const product = productMap.get(item.productId)!
-      const lineTotal = product.price_naira * item.quantity
+      const variant = item.variantId ? variantMap.get(item.variantId) : null
+
+      // Use variant price if specified, otherwise product price
+      const unitPrice = variant?.price_naira ?? product.price_naira
+      const lineTotal = unitPrice * item.quantity
       subtotal += lineTotal
+
       orderItems.push({
         productId: item.productId,
         productName: product.name,
-        unitPrice: product.price_naira,
+        unitPrice,
         quantity: item.quantity,
+        variantId: item.variantId ?? null,
+        variantLabel: variant ? generateVariantLabel(variant.option_values) : null,
       })
     }
 
@@ -197,6 +279,8 @@ export async function POST(request: NextRequest) {
       product_name: item.productName,
       unit_price_naira: item.unitPrice,
       quantity: item.quantity,
+      variant_id: item.variantId,
+      variant_label: item.variantLabel,
     }))
 
     const { error: itemsError } = await adminSupabase

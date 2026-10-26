@@ -1668,6 +1668,38 @@ export interface ShopProduct {
   images: string[]
   stock_quantity: number
   is_active: boolean
+  has_variants: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ShopProductOption {
+  id: string
+  product_id: string
+  name: string
+  sort_order: number
+  created_at: string
+}
+
+export interface ShopProductOptionValue {
+  id: string
+  option_id: string
+  value: string
+  sort_order: number
+  created_at: string
+}
+
+export interface ShopProductVariant {
+  id: string
+  product_id: string
+  option_values: Record<string, string>  // e.g., { "Edition": "Lavender", "Size": "Large" }
+  sku: string | null
+  price_naira: number | null  // null means inherit from product
+  compare_at_price_naira: number | null
+  stock_quantity: number
+  image_url: string | null
+  is_active: boolean
   sort_order: number
   created_at: string
   updated_at: string
@@ -1732,6 +1764,8 @@ export interface ShopOrderItem {
   product_name: string
   unit_price_naira: number
   quantity: number
+  variant_id: string | null
+  variant_label: string | null
   created_at: string
 }
 
@@ -1754,4 +1788,14 @@ export type ShopOrderWithDetails = ShopOrder & {
   items: (ShopOrderItem & { product?: ShopProduct | null })[]
   zone?: ShopDeliveryZone | null
   payment?: ShopPayment | null
+}
+
+// Product with variant data
+export type ShopProductOptionWithValues = ShopProductOption & {
+  values: ShopProductOptionValue[]
+}
+
+export type ShopProductWithVariants = ShopProduct & {
+  options: ShopProductOptionWithValues[]
+  variants: ShopProductVariant[]
 }

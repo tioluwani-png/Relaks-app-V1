@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { useCart } from '@/lib/shop/cart-context'
+import { useCart, getEffectivePrice, getVariantLabel, getCartItemKey } from '@/lib/shop/cart-context'
 import { createClient } from '@/lib/supabase/client'
 import { LAGOS_LGAS } from '@/lib/shop/config'
 import type { ShopDeliveryZone } from '@/types/database'
@@ -187,6 +187,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           items: items.map((i) => ({
             productId: i.product.id,
+            variantId: i.variant?.id ?? null,
             quantity: i.quantity,
           })),
           customerName: customerName.trim(),
@@ -266,31 +267,41 @@ export default function CheckoutPage() {
           <h2 className="font-semibold text-gray-900 mb-4">Order Summary</h2>
 
           <div className="space-y-3">
-            {items.map((item) => (
-              <div key={item.product.id} className="flex gap-3">
-                <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden relative shrink-0">
-                  {item.product.images?.[0] ? (
-                    <Image
-                      src={item.product.images[0]}
-                      alt={item.product.name}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="w-4 h-4 text-gray-300" />
-                    </div>
-                  )}
+            {items.map((item) => {
+              const price = getEffectivePrice(item.product, item.variant)
+              const variantLabel = getVariantLabel(item.variant)
+              const itemKey = getCartItemKey(item.product.id, item.variant?.id ?? null)
+              const imageUrl = item.variant?.image_url || item.product.images?.[0]
+
+              return (
+                <div key={itemKey} className="flex gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden relative shrink-0">
+                    {imageUrl ? (
+                      <Image
+                        src={imageUrl}
+                        alt={item.product.name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package className="w-4 h-4 text-gray-300" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-900 text-sm line-clamp-1">{item.product.name}</p>
+                    {variantLabel && (
+                      <p className="text-gray-500 text-xs">{variantLabel}</p>
+                    )}
+                    <p className="text-gray-500 text-sm">×{item.quantity}</p>
+                  </div>
+                  <p className="text-gray-900 font-medium">
+                    ₦{(price * item.quantity).toLocaleString()}
+                  </p>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-gray-900 text-sm line-clamp-1">{item.product.name}</p>
-                  <p className="text-gray-500 text-sm">×{item.quantity}</p>
-                </div>
-                <p className="text-gray-900 font-medium">
-                  ₦{(item.product.price_naira * item.quantity).toLocaleString()}
-                </p>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* Coupon Section */}

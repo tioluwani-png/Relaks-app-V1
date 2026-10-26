@@ -12,6 +12,7 @@ import { useCart } from '@/lib/shop/cart-context'
 import { getWhatsAppLink, getDistributorWhatsAppMessage, PRODUCT_TYPES } from '@/lib/shop/config'
 import type { Distributor } from '@/lib/shop/config'
 import type { ShopProduct, ShopProductType } from '@/types/database'
+import type { ShopProductListItem } from '@/app/api/shop/products/route'
 
 const TYPE_LABELS: Record<ShopProductType | 'all', string> = {
   all: 'All',
@@ -22,7 +23,7 @@ const TYPE_LABELS: Record<ShopProductType | 'all', string> = {
 }
 
 export default function ShopPage() {
-  const [products, setProducts] = useState<ShopProduct[]>([])
+  const [products, setProducts] = useState<ShopProductListItem[]>([])
   const [distributors, setDistributors] = useState<Distributor[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -71,7 +72,11 @@ export default function ShopPage() {
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const handleAddToCart = (product: ShopProduct) => {
+  const handleAddToCart = (product: ShopProductListItem) => {
+    // Products with variants should go to detail page
+    if (product.has_variants) {
+      return
+    }
     if (product.stock_quantity <= 0) {
       toast.error('This item is sold out')
       return
@@ -194,12 +199,20 @@ function ProductCard({
   product,
   onAddToCart,
 }: {
-  product: ShopProduct
+  product: ShopProductListItem
   onAddToCart: () => void
 }) {
-  const isSoldOut = product.stock_quantity <= 0
+  const hasVariants = product.has_variants
+  // For variant products, check total_variant_stock; otherwise check stock_quantity
+  const isSoldOut = hasVariants
+    ? (product.total_variant_stock ?? 0) <= 0
+    : product.stock_quantity <= 0
+
   const hasDiscount = product.compare_at_price_naira && product.compare_at_price_naira > product.price_naira
   const coverImage = product.images?.[0]
+
+  // Check if price range exists (for variant products)
+  const hasPriceRange = hasVariants && product.min_price !== undefined && product.max_price !== undefined && product.min_price !== product.max_price
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 group">
@@ -250,26 +263,45 @@ function ProductCard({
         </Link>
 
         <div className="flex items-baseline gap-2 mb-3">
-          <span className="text-lg font-bold text-gray-900">
-            ₦{product.price_naira.toLocaleString()}
-          </span>
-          {hasDiscount && (
-            <span className="text-sm text-gray-400 line-through">
-              ₦{product.compare_at_price_naira!.toLocaleString()}
+          {hasPriceRange ? (
+            <span className="text-lg font-bold text-gray-900">
+              From ₦{product.min_price!.toLocaleString()}
             </span>
+          ) : (
+            <>
+              <span className="text-lg font-bold text-gray-900">
+                ₦{(product.min_price ?? product.price_naira).toLocaleString()}
+              </span>
+              {hasDiscount && !hasVariants && (
+                <span className="text-sm text-gray-400 line-through">
+                  ₦{product.compare_at_price_naira!.toLocaleString()}
+                </span>
+              )}
+            </>
           )}
         </div>
 
-        <Button
-          onClick={(e) => {
-            e.preventDefault()
-            onAddToCart()
-          }}
-          disabled={isSoldOut}
-          className="w-full h-9 text-sm rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 disabled:opacity-50"
-        >
-          {isSoldOut ? 'Sold out' : 'Add to Cart'}
-        </Button>
+        {hasVariants ? (
+          <Link href={`/shop/${product.slug}`}>
+            <Button
+              disabled={isSoldOut}
+              className="w-full h-9 text-sm rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 disabled:opacity-50"
+            >
+              {isSoldOut ? 'Sold out' : 'Select Options'}
+            </Button>
+          </Link>
+        ) : (
+          <Button
+            onClick={(e) => {
+              e.preventDefault()
+              onAddToCart()
+            }}
+            disabled={isSoldOut}
+            className="w-full h-9 text-sm rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 disabled:opacity-50"
+          >
+            {isSoldOut ? 'Sold out' : 'Add to Cart'}
+          </Button>
+        )}
       </div>
     </div>
   )

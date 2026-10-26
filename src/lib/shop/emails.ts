@@ -33,7 +33,7 @@ export async function sendShopOrderConfirmationEmail(
       (item) => `
       <tr>
         <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6;">
-          ${item.product_name} × ${item.quantity}
+          ${item.product_name}${item.variant_label ? ` <span style="color: #9333ea; font-size: 12px;">(${item.variant_label})</span>` : ''} × ${item.quantity}
         </td>
         <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; text-align: right;">
           ₦${(item.unit_price_naira * item.quantity).toLocaleString()}
@@ -161,7 +161,10 @@ export async function sendShopNewOrderAlertEmail(
     timeStyle: 'short',
   })
 
-  const itemsList = items.map((i) => `• ${i.product_name} × ${i.quantity}`).join('\n')
+  const itemsList = items.map((i) => {
+    const variantSuffix = i.variant_label ? ` (${i.variant_label})` : ''
+    return `• ${i.product_name}${variantSuffix} × ${i.quantity}`
+  }).join('\n')
   const orderUrl = `https://relaks.co/admin/shop/orders/${orderId}`
 
   const stockWarningHtml = stockWarnings?.length
@@ -231,7 +234,10 @@ View Order: ${orderUrl}
 
           <p style="margin: 0 0 8px 0; font-size: 12px; color: #666;">ITEMS:</p>
           <ul style="margin: 0; padding-left: 20px;">
-            ${items.map((i) => `<li>${i.product_name} × ${i.quantity}</li>`).join('')}
+            ${items.map((i) => {
+              const variantSuffix = i.variant_label ? ` <span style="color: #9333ea;">(${i.variant_label})</span>` : ''
+              return `<li>${i.product_name}${variantSuffix} × ${i.quantity}</li>`
+            }).join('')}
           </ul>
 
           <hr style="border: none; border-top: 1px solid #ccc; margin: 16px 0;" />

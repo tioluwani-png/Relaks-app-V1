@@ -144,7 +144,10 @@ export default function AdminShopOrderDetailPage() {
   const copyOrderBrief = () => {
     if (!order) return
 
-    const itemsList = order.items.map((i) => `• ${i.product_name} ×${i.quantity}`).join('\n')
+    const itemsList = order.items.map((i) => {
+      const variantSuffix = i.variant_label ? ` (${i.variant_label})` : ''
+      return `• ${i.product_name}${variantSuffix} ×${i.quantity}`
+    }).join('\n')
     const discountLine = order.coupon_code && order.discount_naira > 0
       ? `Discount (${order.coupon_code}): -₦${order.discount_naira.toLocaleString()}\n`
       : ''
@@ -324,6 +327,9 @@ Total: ₦${order.total_naira.toLocaleString()}
                 <div key={item.id} className="flex justify-between items-center">
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">{item.product_name}</p>
+                    {item.variant_label && (
+                      <p className="text-xs text-purple-600">{item.variant_label}</p>
+                    )}
                     <p className="text-sm text-gray-500">×{item.quantity}</p>
                   </div>
                   <p className="font-semibold">

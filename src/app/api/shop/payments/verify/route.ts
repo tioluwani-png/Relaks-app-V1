@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { sendShopOrderConfirmationEmail, sendShopNewOrderAlertEmail } from '@/lib/shop/emails'
-import type { ShopOrder, ShopOrderItem, ShopProduct } from '@/types/database'
+import type { ShopOrder, ShopOrderItem, ShopProduct, ShopProductVariant } from '@/types/database'
 
 const verifySchema = z.object({
   reference: z.string().min(5).max(100),
@@ -146,36 +146,68 @@ export async function POST(request: NextRequest) {
 
     const items = itemsData as unknown as ShopOrderItem[]
 
-    // 6. Atomically decrement stock for each item
+    // 6. Atomically decrement stock for each item (variant or product stock)
     const stockFailures: string[] = []
 
     for (const item of items) {
-      if (!item.product_id) continue
+      const itemLabel = item.variant_label
+        ? `${item.product_name} (${item.variant_label})`
+        : item.product_name
 
-      // Get current stock
-      const { data: productData } = await adminSupabase
-        .from('shop_products')
-        .select('stock_quantity, name')
-        .eq('id', item.product_id)
-        .single()
+      // If item has a variant, decrement variant stock
+      if (item.variant_id) {
+        // Get current variant stock
+        const { data: variantData } = await adminSupabase
+          .from('shop_product_variants')
+          .select('stock_quantity')
+          .eq('id', item.variant_id)
+          .single()
 
-      if (!productData) {
-        stockFailures.push(item.product_name)
-        continue
-      }
+        if (!variantData) {
+          stockFailures.push(itemLabel)
+          continue
+        }
 
-      const product = productData as unknown as Pick<ShopProduct, 'stock_quantity' | 'name'>
+        const variant = variantData as unknown as Pick<ShopProductVariant, 'stock_quantity'>
 
-      // Optimistic lock update
-      const { data: updated, error: updateError } = await adminSupabase
-        .from('shop_products')
-        .update({ stock_quantity: product.stock_quantity - item.quantity } as never)
-        .eq('id', item.product_id)
-        .gte('stock_quantity', item.quantity) // Only if enough stock
-        .select('id')
+        // Optimistic lock update on variant
+        const { data: updated, error: updateError } = await adminSupabase
+          .from('shop_product_variants')
+          .update({ stock_quantity: variant.stock_quantity - item.quantity } as never)
+          .eq('id', item.variant_id)
+          .gte('stock_quantity', item.quantity) // Only if enough stock
+          .select('id')
 
-      if (updateError || !updated || (Array.isArray(updated) && updated.length === 0)) {
-        stockFailures.push(item.product_name)
+        if (updateError || !updated || (Array.isArray(updated) && updated.length === 0)) {
+          stockFailures.push(itemLabel)
+        }
+      } else if (item.product_id) {
+        // Non-variant item - decrement product stock
+        // Get current stock
+        const { data: productData } = await adminSupabase
+          .from('shop_products')
+          .select('stock_quantity, name')
+          .eq('id', item.product_id)
+          .single()
+
+        if (!productData) {
+          stockFailures.push(itemLabel)
+          continue
+        }
+
+        const product = productData as unknown as Pick<ShopProduct, 'stock_quantity' | 'name'>
+
+        // Optimistic lock update
+        const { data: updated, error: updateError } = await adminSupabase
+          .from('shop_products')
+          .update({ stock_quantity: product.stock_quantity - item.quantity } as never)
+          .eq('id', item.product_id)
+          .gte('stock_quantity', item.quantity) // Only if enough stock
+          .select('id')
+
+        if (updateError || !updated || (Array.isArray(updated) && updated.length === 0)) {
+          stockFailures.push(itemLabel)
+        }
       }
     }
 
@@ -208,7 +240,9 @@ export async function POST(request: NextRequest) {
     // 9. Increment coupon usage atomically (only if coupon was used)
     if (order.coupon_id && order.discount_naira > 0) {
       try {
-        const { data: incrementResult, error: incrementError } = await adminSupabase
+        // Type assertion needed until Supabase types are regenerated
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: incrementResult, error: incrementError } = await (adminSupabase as any)
           .rpc('increment_coupon_usage', {
             p_coupon_id: order.coupon_id,
             p_discount_amount: order.discount_naira,
