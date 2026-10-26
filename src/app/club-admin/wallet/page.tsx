@@ -53,6 +53,7 @@ const EXPENSE_CATEGORIES = [
 
 export default function ReadingClubWalletPage() {
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(0)
   const [available, setAvailable] = useState(0)
   const [transactions, setTransactions] = useState<WalletTransaction[]>([])
@@ -82,23 +83,38 @@ export default function ReadingClubWalletPage() {
 
   const loadWallet = async () => {
     setIsLoading(true)
+    setError(null)
     try {
       const currentMonth = format(startOfMonth(new Date()), 'yyyy-MM')
       const response = await fetch(`/api/club-admin/wallet?period=${period}&month=${currentMonth}`)
-      if (!response.ok) throw new Error('Failed to load wallet')
-
       const data = await response.json()
-      setPending(data.pending)
-      setAvailable(data.available)
-      setTransactions(data.transactions)
-      setIsAdmin(data.isAdmin)
-      setSplit(data.split)
-      setMonthlySummary(data.monthlySummary)
-      setNewRelaksPercent(data.split.relaks_percent.toString())
-      setNewPartnerPercent(data.split.partner_percent.toString())
-    } catch (error) {
-      console.error('Load wallet error:', error)
-      toast.error('Failed to load wallet')
+
+      if (!response.ok) {
+        if (response.status === 500 && data.error?.includes('wallet_transactions')) {
+          setError('migration_needed')
+        } else {
+          setError(data.error || 'Failed to load wallet')
+        }
+        setPending(0)
+        setAvailable(0)
+        setTransactions([])
+        return
+      }
+
+      setPending(data.pending || 0)
+      setAvailable(data.available || 0)
+      setTransactions(data.transactions || [])
+      setIsAdmin(data.isAdmin || false)
+      setSplit(data.split || { relaks_percent: 50, partner_percent: 50 })
+      setMonthlySummary(data.monthlySummary || null)
+      setNewRelaksPercent((data.split?.relaks_percent || 50).toString())
+      setNewPartnerPercent((data.split?.partner_percent || 50).toString())
+    } catch (err) {
+      console.error('Load wallet error:', err)
+      setError('Failed to load wallet')
+      setPending(0)
+      setAvailable(0)
+      setTransactions([])
     } finally {
       setIsLoading(false)
     }
@@ -421,6 +437,18 @@ export default function ReadingClubWalletPage() {
         )}
       </div>
 
+      {/* Migration Warning */}
+      {error === 'migration_needed' && (
+        <Card className="border-yellow-300 bg-yellow-50">
+          <CardContent className="p-4">
+            <p className="text-yellow-800 text-sm">
+              <strong>Setup required:</strong> The wallet_transactions table needs to be created.
+              Run the SQL migration in your Supabase dashboard.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Transactions */}
       <Card>
         <CardHeader>
@@ -428,7 +456,13 @@ export default function ReadingClubWalletPage() {
         </CardHeader>
         <CardContent>
           {transactions.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No transactions yet</p>
+            <div className="text-center py-12">
+              <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 font-medium">No transactions yet</p>
+              <p className="text-gray-400 text-sm mt-1">
+                Sales will appear here once a rental payment is verified
+              </p>
+            </div>
           ) : (
             <div className="space-y-3">
               {transactions.map((tx) => (

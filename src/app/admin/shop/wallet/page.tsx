@@ -41,6 +41,7 @@ type Period = 'week' | 'month' | 'all'
 
 export default function ShopWalletPage() {
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(0)
   const [available, setAvailable] = useState(0)
   const [transactions, setTransactions] = useState<WalletTransaction[]>([])
@@ -64,17 +65,34 @@ export default function ShopWalletPage() {
 
   const loadWallet = async () => {
     setIsLoading(true)
+    setError(null)
     try {
       const response = await fetch(`/api/admin/wallet?period=${period}`)
-      if (!response.ok) throw new Error('Failed to load wallet')
-
       const data = await response.json()
-      setPending(data.pending)
-      setAvailable(data.available)
-      setTransactions(data.transactions)
-    } catch (error) {
-      console.error('Load wallet error:', error)
-      toast.error('Failed to load wallet')
+
+      if (!response.ok) {
+        // Handle specific error cases
+        if (response.status === 500 && data.error?.includes('wallet_transactions')) {
+          setError('migration_needed')
+        } else {
+          setError(data.error || 'Failed to load wallet')
+        }
+        // Still show the page with zero balances
+        setPending(0)
+        setAvailable(0)
+        setTransactions([])
+        return
+      }
+
+      setPending(data.pending || 0)
+      setAvailable(data.available || 0)
+      setTransactions(data.transactions || [])
+    } catch (err) {
+      console.error('Load wallet error:', err)
+      setError('Failed to load wallet')
+      setPending(0)
+      setAvailable(0)
+      setTransactions([])
     } finally {
       setIsLoading(false)
     }
@@ -311,6 +329,18 @@ export default function ShopWalletPage() {
         </Button>
       </div>
 
+      {/* Migration Warning */}
+      {error === 'migration_needed' && (
+        <Card className="border-yellow-300 bg-yellow-50">
+          <CardContent className="p-4">
+            <p className="text-yellow-800 text-sm">
+              <strong>Setup required:</strong> The wallet_transactions table needs to be created.
+              Run the SQL migration in your Supabase dashboard.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Transactions */}
       <Card>
         <CardHeader>
@@ -318,7 +348,13 @@ export default function ShopWalletPage() {
         </CardHeader>
         <CardContent>
           {transactions.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No transactions yet</p>
+            <div className="text-center py-12">
+              <Wallet className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 font-medium">No transactions yet</p>
+              <p className="text-gray-400 text-sm mt-1">
+                Sales will appear here once a payment is verified
+              </p>
+            </div>
           ) : (
             <div className="space-y-3">
               {transactions.map((tx) => (
