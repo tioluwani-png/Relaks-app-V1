@@ -7,6 +7,7 @@ import {
   EXPECTED_AMOUNTS,
 } from '@/lib/payment-fulfillment'
 import { sendPurchaseEmail, handleFirstPurchase } from '@/lib/email'
+import { fulfillShopOrder } from '@/lib/shop/fulfillment'
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!
 
@@ -44,41 +45,23 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createAdminClient()
 
-    // Handle shop payments (backup - primary verification is in callback)
+    // Handle shop payments - use shared fulfillment function
+    // This ensures full fulfillment (stock, wallet, emails) whether webhook or callback runs first
     if (type === 'shop' && order_id) {
-      // Check if already processed
-      const { data: existingPayment } = await supabase
-        .from('shop_payments')
-        .select('id')
-        .eq('paystack_reference', reference)
-        .single()
+      const result = await fulfillShopOrder(
+        supabase,
+        reference,
+        order_id,
+        true, // skipPaystackVerify - webhook signature already verified
+        amount / 100 // paystackAmount in Naira
+      )
 
-      if (existingPayment) {
-        console.log('[webhook] Shop payment already processed:', { order_id, reference })
-        return NextResponse.json({ received: true })
-      }
-
-      // Update order status to paid (if still pending)
-      const { data: updated } = await supabase
-        .from('shop_orders')
-        .update({ status: 'paid' } as never)
-        .eq('id', order_id)
-        .eq('status', 'pending_payment')
-        .select('id')
-        .maybeSingle()
-
-      if (updated) {
-        // Record payment
-        await supabase.from('shop_payments').insert({
-          order_id,
-          amount_naira: amount / 100,
-          paystack_reference: reference,
-          paystack_status: 'success',
-        } as never)
-
+      if (result.alreadyProcessed) {
+        console.log('[webhook] Shop order already fulfilled:', { order_id, reference })
+      } else if (result.success) {
         console.log('[webhook] Shop order fulfilled:', { reference, order_id, amount })
       } else {
-        console.log('[webhook] Shop order already processed or not found:', { order_id, reference })
+        console.error('[webhook] Shop fulfillment failed:', { order_id, reference, error: result.error })
       }
 
       return NextResponse.json({ received: true })

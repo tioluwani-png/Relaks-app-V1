@@ -22,14 +22,15 @@ function ShopPaymentCallbackContent() {
 
     const verify = async (ref: string) => {
       try {
-        // Extract orderId from reference (format: shop-{orderId}-{timestamp})
-        const parts = ref.split('-')
-        if (parts.length < 2 || parts[0] !== 'shop') {
+        // Extract orderId from reference (format: shop-{uuid}-{timestamp}).
+        // The UUID itself contains dashes, so match it as a whole instead of splitting.
+        const match = ref.match(/^shop[-_]([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})[-_]\d+$/)
+        if (!match) {
           setStatus('failed')
           setMessage('Invalid payment reference format')
           return
         }
-        const orderId = parts[1]
+        const orderId = match[1]
 
         const response = await fetch('/api/shop/payments/verify', {
           method: 'POST',
