@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Trash2, Flag, Eye, Search } from 'lucide-react'
+import { Trash2, Flag, Eye, Search, Home } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
@@ -13,6 +13,8 @@ interface AdminPost {
   caption: string | null
   is_public: boolean
   is_flagged: boolean
+  // Missing until the featured_on_home migration is run
+  featured_on_home?: boolean
   created_at: string
   user: {
     id: string
@@ -37,13 +39,9 @@ export default function AdminPostsPage() {
     try {
       let query = supabase
         .from('posts')
+        // `*` so featured_on_home is included once the migration has run, without breaking before
         .select(`
-          id,
-          image_url,
-          caption,
-          is_public,
-          is_flagged,
-          created_at,
+          *,
           user:users!posts_user_id_fkey(id, username, email)
         `)
         .order('created_at', { ascending: false })
@@ -103,6 +101,26 @@ export default function AdminPostsPage() {
     } catch (error) {
       console.error('Failed to flag post:', error)
       toast.error('Failed to update post')
+    }
+  }
+
+  const handleFeaturePost = async (postId: string, featured: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/posts/${postId}/feature`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ featured }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update post')
+
+      setPosts(posts.map(p =>
+        p.id === postId ? { ...p, featured_on_home: featured } : p
+      ))
+      toast.success(featured ? 'Featured on homepage' : 'Removed from homepage')
+    } catch (error) {
+      console.error('Failed to feature post:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to update post')
     }
   }
 
@@ -174,6 +192,11 @@ export default function AdminPostsPage() {
                     Flagged
                   </div>
                 )}
+                {post.featured_on_home && (
+                  <div className="absolute top-2 right-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-full">
+                    On homepage
+                  </div>
+                )}
               </div>
 
               {/* Info */}
@@ -226,6 +249,19 @@ export default function AdminPostsPage() {
                     <Trash2 size={16} />
                   </button>
                 </div>
+                <button
+                  onClick={() => handleFeaturePost(post.id, !post.featured_on_home)}
+                  disabled={!post.is_public && !post.featured_on_home}
+                  title={!post.is_public ? 'Only public posts can be featured' : undefined}
+                  className={`mt-2 w-full flex items-center justify-center gap-1 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                    post.featured_on_home
+                      ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                      : 'bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300'
+                  }`}
+                >
+                  <Home size={16} />
+                  {post.featured_on_home ? 'Featured on homepage' : 'Feature on homepage'}
+                </button>
               </div>
             </div>
           ))}

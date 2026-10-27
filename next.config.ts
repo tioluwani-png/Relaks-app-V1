@@ -1,7 +1,18 @@
 import type { NextConfig } from "next";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+
+// Landing photo slots present at build time (see src/lib/landing/images.ts).
+// Checked here because public/ isn't on the serverless filesystem when ISR re-renders.
+const landingDir = join(process.cwd(), "public", "landing");
+const landingImages = existsSync(landingDir) ? readdirSync(landingDir).join(",") : "";
 
 const nextConfig: NextConfig = {
+  env: {
+    LANDING_IMAGES: landingImages,
+  },
   images: {
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
         protocol: 'https',

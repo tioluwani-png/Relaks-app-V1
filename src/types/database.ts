@@ -225,6 +225,7 @@ export interface Database {
           is_flagged: boolean
           flag_reason: string | null
           flagged_at: string | null
+          featured_on_home: boolean
           created_at: string
         }
         Insert: {
@@ -241,6 +242,7 @@ export interface Database {
           is_flagged?: boolean
           flag_reason?: string | null
           flagged_at?: string | null
+          featured_on_home?: boolean
           created_at?: string
         }
         Update: {
@@ -257,6 +259,7 @@ export interface Database {
           is_flagged?: boolean
           flag_reason?: string | null
           flagged_at?: string | null
+          featured_on_home?: boolean
           created_at?: string
         }
       }

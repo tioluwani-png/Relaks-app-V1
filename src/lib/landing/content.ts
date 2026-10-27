@@ -96,7 +96,7 @@ export const HERO = {
   titleLine1: "You've done enough today.",
   titleLine2: 'Just RELAKS.',
   subline:
-    'Join thousands finding peace through creative expression. Relax, create, and unwind at your own pace.',
+    'Coloring books, a calm coloring app, and a book club that delivers in Lagos. Take ten minutes for yourself.',
   primary: { label: 'Shop the books', href: '/shop', event: 'hero_shop' },
   secondary: { label: 'Color free in the app', href: '/signup', event: 'hero_app' },
   note: 'Free to join · Sign up with Google',
@@ -116,88 +116,118 @@ export const STATS = {
 }
 
 // ============================================
-// PROBLEM -> SOLUTION
+// THREE DOORS (#doors)
 // ============================================
 
-export const PROBLEM = {
-  heading: 'We get it. Life can feel overwhelming.',
-  items: [
-    { emoji: '😮‍💨', text: 'Work stress follows you home' },
-    { emoji: '🌀', text: "Your mind won't slow down" },
-    { emoji: '😔', text: "You're searching for an outlet that doesn't drain you" },
-    { emoji: '📱', text: 'Scrolling only makes it worse' },
-  ],
-  solutionHeading: 'Relaks gives you a different kind of escape.',
-  solutionParagraphs: [
-    'No pressure. No judgment. Just you, your colors and a moment to breathe.',
-    'Whether you have 5 minutes or an hour, Relaks meets you where you are, helping you relax, create and feel a little lighter.',
-  ],
+export const DOORS_SECTION = {
+  eyebrow: 'Three ways to Relaks',
+  heading: 'Find your way in',
+}
+
+export const DOORS = {
+  books: {
+    title: 'The Books',
+    /** `{editions}` and `{price}` come from the database */
+    body: 'Adult coloring books in {editions}. From ₦{price}.',
+    bodyNoPrice: 'Adult coloring books in {editions}.',
+    cta: { label: 'Shop the books', href: '/shop', event: 'door_books' },
+  },
+  club: {
+    title: 'The Reading Club',
+    /** Used when no active rental plan has a description */
+    body: 'Rent books every month, delivered and swapped at your door in Lagos.',
+    /** `{price}` is the cheapest active plan */
+    meta: 'Plans from ₦{price} · Lagos',
+    cta: { label: 'See plans', href: '/rent', event: 'door_club' },
+  },
+  app: {
+    title: 'The App',
+    body: 'Color on your phone, journal and share your pages. Free.',
+    cta: { label: 'Start free', href: '/signup', event: 'door_app' },
+  },
 }
 
 // ============================================
-// FEATURES (THE APP)
+// THE BOOKS (#books)
 // ============================================
 
-export type FeatureIcon = 'palette' | 'sparkles' | 'book' | 'pen' | 'brush' | 'heart'
+/**
+ * Products whose names match are left out of the adult-facing hero/door images and the
+ * "From ₦X" price (they still appear in the Pick your edition row).
+ */
+export const NON_ADULT_PRODUCT_PATTERN = /\bkids?\b/i
 
-export interface Feature {
-  icon: FeatureIcon
-  title: string
-  /** `{editions}` is replaced with the active edition names from the database */
-  description: string
-  color: string
-  bg: string
+export const BOOKS_SECTION = {
+  eyebrow: 'The Books',
+  heading: 'Pick your edition',
+  seeAll: { label: 'See the whole shop', href: '/shop', event: 'books_see_all' },
+  /** `{fee}` is the lowest active Lagos delivery zone fee */
+  delivery: 'Delivery across Lagos from ₦{fee}.',
+  deliveryNoFee: 'Delivery across Lagos.',
+  outsideLagos: { label: 'Outside Lagos? Order from a distributor.', href: '/shop#distributors' },
 }
 
-export const FEATURES_SECTION = {
-  eyebrow: 'Features',
-  heading: 'Everything you need to unwind',
+// ============================================
+// THE APP (#app)
+// ============================================
+
+export type AppRowImage = 'appCanvas' | 'appReferences' | 'appFeed' | 'appJournal'
+
+export interface AppRow {
+  heading: string
+  /** `{editions}` and `{aiPrice}` are filled in at render */
+  lines: [string, string]
+  image: AppRowImage
 }
 
-export const FEATURES: Feature[] = [
+export const APP_SECTION = {
+  eyebrow: 'The App',
+  heading: 'A calm corner on your phone',
+  cta: { label: 'Start coloring free', href: '/signup', event: 'app_start' },
+}
+
+export const APP_ROWS: AppRow[] = [
   {
-    icon: 'palette',
-    title: 'Beautiful color guides',
-    description: 'Stuck on what colors to use? Browse our curated palettes and references from the {editions} editions.',
-    color: 'text-purple-500',
-    bg: 'bg-purple-50',
+    heading: 'Color on your phone',
+    lines: ['Choose your colors, pick a brush and color right on your screen.', 'No pencils, no mess. Just a few quiet minutes.'],
+    image: 'appCanvas',
   },
   {
-    icon: 'sparkles',
-    title: 'Show off your artwork',
-    description: 'Upload your finished pages, get inspired by others, and celebrate every colorful moment with the community.',
-    color: 'text-pink-500',
-    bg: 'bg-pink-50',
+    heading: 'Never stuck on colors',
+    lines: ['Color references for every edition: {editions}.', 'See how others colored the same page, then make it yours.'],
+    image: 'appReferences',
   },
   {
-    icon: 'book',
-    title: 'Create custom designs',
-    description: 'Imagine any coloring page and watch it come to life. From mandalas to florals, if you can describe it, we can create it.',
-    color: 'text-orange-500',
-    bg: 'bg-orange-50',
+    heading: 'Imagine a page, get a page',
+    lines: ['Describe any page you can dream up and AI draws it for you to color.', 'From ₦{aiPrice} a page. No subscription.'],
+    image: 'appFeed',
   },
   {
-    icon: 'pen',
-    title: 'Reflect and release',
-    description: 'Gentle daily journal prompts to help you process your thoughts, track your mood, and build a streak.',
-    color: 'text-emerald-500',
-    bg: 'bg-emerald-50',
-  },
-  {
-    icon: 'brush',
-    title: 'Color anywhere',
-    description: 'No pencils needed. Choose your colors, pick your brush, and create directly on your phone.',
-    color: 'text-blue-500',
-    bg: 'bg-blue-50',
-  },
-  {
-    icon: 'heart',
-    title: "You're not alone",
-    description: 'Join a warm community of colorists who get it. Like, comment, and connect with kindred spirits.',
-    color: 'text-rose-500',
-    bg: 'bg-rose-50',
+    heading: 'Reflect and keep your streak',
+    lines: ['Gentle journal prompts help you put the day down.', 'Track your mood and build a streak, one evening at a time.'],
+    image: 'appJournal',
   },
 ]
+
+// ============================================
+// COMMUNITY GALLERY (#community)
+// ============================================
+
+export const GALLERY_SECTION = {
+  eyebrow: 'Community',
+  heading: 'Colored by the community',
+  /** Section is hidden below this many featured posts */
+  minPosts: 4,
+}
+
+// ============================================
+// MOBILE STICKY BAR
+// ============================================
+
+export const STICKY_BAR = {
+  primary: { label: 'Shop', href: '/shop', event: 'sticky_shop' },
+  secondary: { label: 'Start free', href: '/signup', event: 'sticky_app' },
+}
 
 // Used when the editions table can't be read
 export const FALLBACK_EDITION_NAMES = ['Lavender', 'Pink', 'Christmas']

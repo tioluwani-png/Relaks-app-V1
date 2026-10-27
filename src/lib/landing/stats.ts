@@ -1,20 +1,8 @@
 import 'server-only'
 import { unstable_cache } from 'next/cache'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { ShopDeliveryZone } from '@/types/database'
 import { FALLBACK_EDITION_NAMES } from './content'
-
-const ONE_HOUR = 60 * 60
-
-// Cookie-less service client so landing pages stay statically cacheable.
-// Never import this file from client code.
-function createLandingClient() {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } }
-  )
-}
+import { createLandingClient, ONE_HOUR } from './supabase'
 
 // Round down to the nearest 100 (small counts are shown as-is)
 function roundDown(n: number): number {
