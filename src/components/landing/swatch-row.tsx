@@ -1,4 +1,4 @@
-import { RotateCcw, Undo2 } from 'lucide-react'
+import { Download, RotateCcw, Undo2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Swatch } from '@/lib/landing/content'
 
@@ -15,6 +15,9 @@ export function SwatchRow({
   canUndo = false,
   canReset = false,
   disabled = false,
+  onSave,
+  saveLabel = 'Save my page',
+  saving = false,
 }: {
   palette: Swatch[]
   selected?: number
@@ -24,13 +27,17 @@ export function SwatchRow({
   canUndo?: boolean
   canReset?: boolean
   disabled?: boolean
+  /** Shows the Save button (once something has been filled) */
+  onSave?: () => void
+  saveLabel?: string
+  saving?: boolean
 }) {
   const iconButton =
     'flex h-11 w-11 items-center justify-center rounded-full text-gray-700 transition-colors hover:bg-relaks-tint hover:text-relaks-ink disabled:opacity-40 disabled:hover:bg-transparent'
 
   return (
     <div className="flex items-center gap-2">
-      <div role="group" aria-label="Colours" className="grid flex-1 grid-cols-4 justify-items-center sm:grid-cols-8 lg:grid-cols-4">
+      <div role="group" aria-label="Colours" className="grid flex-1 grid-cols-4 justify-items-center">
         {palette.map((swatch, i) => {
           const isSelected = i === selected
           return (
@@ -65,6 +72,18 @@ export function SwatchRow({
         <button type="button" onClick={onReset} disabled={disabled || !canReset} aria-label="Reset" className={iconButton}>
           <RotateCcw className="h-5 w-5" aria-hidden="true" />
         </button>
+        {onSave && (
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving}
+            aria-label={saveLabel}
+            title={saveLabel}
+            className={iconButton}
+          >
+            <Download className="h-5 w-5" aria-hidden="true" />
+          </button>
+        )}
       </div>
     </div>
   )

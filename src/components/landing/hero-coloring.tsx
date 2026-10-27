@@ -16,6 +16,8 @@ export interface HeroColoringProps {
   completeHeading: string
   shopHref: string
   shopLabel: string
+  /** File name for "Save my page" */
+  saveFileName: string
   onReady?: () => void
 }
 
@@ -37,12 +39,13 @@ function isFilled(el: SVGPathElement) {
   return fill !== '' && fill !== 'white' && fill !== 'rgb(255, 255, 255)' && fill !== '#ffffff'
 }
 
-export function HeroColoring({ cardId, messagesId, palette, completeHeading, shopHref, shopLabel, onReady }: HeroColoringProps) {
+export function HeroColoring({ cardId, messagesId, palette, completeHeading, shopHref, shopLabel, saveFileName, onReady }: HeroColoringProps) {
   const [selected, setSelected] = useState(0)
   const [canUndo, setCanUndo] = useState(false)
   const [userFills, setUserFills] = useState(0)
   const [complete, setComplete] = useState(false)
   const [sharing, setSharing] = useState(false)
+  const [saving, setSaving] = useState(false)
   // The island only renders in the browser (dynamic, ssr: false), so document is available here
   const [messagesEl] = useState<HTMLElement | null>(() => document.getElementById(messagesId))
 
@@ -243,6 +246,20 @@ export function HeroColoring({ cardId, messagesId, palette, completeHeading, sho
     }
   }
 
+  // Same framed 1080x1350 PNG as the share: share sheet first (iPhone "Save Image"), else a download
+  const save = async () => {
+    const svg = svgRef.current
+    if (!svg || saving) return
+    setSaving(true)
+    trackLandingEvent(HERO_COLORING.save.event)
+    try {
+      const { shareColoring } = await import('./hero-coloring-export')
+      await shareColoring(svg, { footer: HERO_COLORING.share.footer, fileName: saveFileName })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const messageClass =
     'animate-in fade-in slide-in-from-bottom-1 duration-500 ease-out motion-reduce:animate-none rounded-2xl border border-relaks-ink/10 bg-white/90 p-4 text-center'
 
@@ -306,6 +323,9 @@ export function HeroColoring({ cardId, messagesId, palette, completeHeading, sho
         onReset={reset}
         canUndo={canUndo}
         canReset={canUndo || userFills > 0}
+        onSave={userFills > 0 ? save : undefined}
+        saveLabel={HERO_COLORING.save.label}
+        saving={saving}
       />
       {messagesEl && createPortal(messages, messagesEl)}
     </>

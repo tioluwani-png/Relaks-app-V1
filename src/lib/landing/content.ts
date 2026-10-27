@@ -195,6 +195,21 @@ export const HERO_COLORING = {
   completeRatio: 0.8,
   share: { label: 'Share to WhatsApp', event: 'hero_color_share', footer: 'Colored on relaks.co', fileName: 'relaks-coloring.png' },
   shopCta: { label: 'Get the Christmas edition', event: 'hero_color_shop_christmas' },
+  /** Shown next to Undo/Reset once something is filled: same framed PNG as the WhatsApp share */
+  save: { label: 'Save my page', event: 'hero_color_save', christmasFileName: 'relaks-christmas-page.png', defaultFileName: 'relaks-coloring-page.png' },
+  /** Blank A4 PDF under the card, built once at build time by src/app/landing/<file>/route.ts */
+  print: {
+    label: 'Download to print',
+    event: 'hero_color_print_download',
+    christmas: {
+      href: '/landing/relaks-christmas-coloring-page.pdf',
+      footer: 'Want more pages like this? Get the Christmas edition at relaks.co',
+    },
+    default: {
+      href: '/landing/relaks-coloring-page.pdf',
+      footer: 'Want more pages like this? Get a Relaks coloring book at relaks.co',
+    },
+  },
 }
 
 // ============================================

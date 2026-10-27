@@ -23,8 +23,8 @@ export function TrackedLink({ event, onClick, href, ...props }: TrackedLinkProps
     onClick?.(e)
   }
 
-  // mailto: and external links don't go through the Next router
-  if (typeof href === 'string' && /^(mailto:|https?:)/.test(href)) {
+  // mailto:, external links and file downloads don't go through the Next router
+  if (typeof href === 'string' && (/^(mailto:|https?:)/.test(href) || 'download' in props)) {
     const external = href.startsWith('http')
     return (
       <a

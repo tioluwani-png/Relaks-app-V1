@@ -1,7 +1,9 @@
-import type { Swatch } from '@/lib/landing/content'
+import { Printer } from 'lucide-react'
+import { HERO_COLORING, type Swatch } from '@/lib/landing/content'
 import { cn } from '@/lib/utils'
 import { HeroColoringLoader } from './hero-coloring-loader'
 import { SwatchRow } from './swatch-row'
+import { TrackedLink } from './tracked-link'
 
 const CARD_ID = 'hero-coloring'
 const MESSAGES_ID = 'hero-coloring-messages'
@@ -56,11 +58,24 @@ export function HeroColoringCard({
             completeHeading={completeHeading}
             shopHref={shopHref}
             shopLabel={shopLabel}
+            saveFileName={season === 'christmas' ? HERO_COLORING.save.christmasFileName : HERO_COLORING.save.defaultFileName}
             placeholder={<SwatchRow palette={palette} disabled />}
           />
         </div>
       </div>
-      <div id={MESSAGES_ID} className="mt-3" />
+      {/* Blank A4 PDF, generated once at build time (src/app/landing/<file>/route.ts) */}
+      <p className="mt-2 text-center">
+        <TrackedLink
+          href={HERO_COLORING.print[season].href}
+          event={HERO_COLORING.print.event}
+          download
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-relaks-coral-ink underline underline-offset-2"
+        >
+          <Printer className="h-4 w-4" aria-hidden="true" />
+          {HERO_COLORING.print.label}
+        </TrackedLink>
+      </p>
+      <div id={MESSAGES_ID} className="mt-1" />
     </div>
   )
 }
