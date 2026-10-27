@@ -19,9 +19,9 @@ export const BOOKS_SOLD_LABEL = `${BOOKS_SOLD.toLocaleString('en-US')}+`
 // Social links - leave a value empty to hide its icon
 export const SOCIAL_LINKS = {
   instagram: 'https://instagram.com/relaks.coo',
-  tiktok: '', // TODO: add TikTok URL
-  x: '', // TODO: add X URL
-  whatsapp: '', // TODO: add WhatsApp link, e.g. https://wa.me/234XXXXXXXXXX
+  tiktok: 'https://www.tiktok.com/@relaks.co',
+  x: 'https://x.com/relaks_co',
+  whatsapp: 'https://wa.me/2348070513352',
 }
 
 // Shown under the 4.9 rating in the stats bar. Hidden while empty.

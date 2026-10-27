@@ -52,7 +52,8 @@ const organizationJsonLd = {
   name: 'Relaks',
   url: SITE_URL,
   logo: `${SITE_URL}/logo-square.png`,
-  sameAs: [SOCIAL_LINKS.instagram],
+  // Public profiles only (WhatsApp is a chat link, not a profile)
+  sameAs: [SOCIAL_LINKS.instagram, SOCIAL_LINKS.tiktok, SOCIAL_LINKS.x].filter(Boolean),
 }
 
 const naira = (n: number) => `₦${formatCount(n)}`
