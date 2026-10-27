@@ -30,7 +30,7 @@ export function HeroColoringCard({
   shopLabel: string
 }) {
   return (
-    <div className="w-full max-w-[520px] lg:max-w-[420px] mx-auto">
+    <div data-pencils-avoid className="w-full max-w-[520px] lg:max-w-[420px] mx-auto">
       <div
         id={CARD_ID}
         role="group"

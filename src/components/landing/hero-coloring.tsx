@@ -81,6 +81,12 @@ export function HeroColoring({ cardId, messagesId, palette, completeHeading, sho
       historyRef.current.push({ el, prev })
       el.style.fill = hex
 
+      // Lets the floating pencils react without the two components knowing about each other
+      const box = el.getBoundingClientRect()
+      window.dispatchEvent(
+        new CustomEvent('relaks:fill', { detail: { color: hex, x: box.left + box.width / 2, y: box.top + box.height / 2 } })
+      )
+
       try {
         navigator.vibrate?.(10)
       } catch {

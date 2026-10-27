@@ -11,15 +11,19 @@ export function Hero({
   eyebrow,
   snow = false,
   aside,
+  background,
 }: {
   /** Seasonal eyebrow; the "books in homes" badge shows otherwise */
   eyebrow?: string
   snow?: boolean
   /** The coloring card (or nothing if the page art is missing) */
   aside?: ReactNode
+  /** Animated layer behind everything (the floating pencils) */
+  background?: ReactNode
 }) {
   return (
-    <section id="hero" className="relative overflow-hidden bg-relaks-cream pt-8 pb-10 md:pt-16 md:pb-20">
+    <section id="hero" className="relative overflow-hidden bg-relaks-cream pt-20 pb-24 md:pt-16 md:pb-20">
+      {background}
       {snow && <HeroSnow />}
 
       <div
@@ -31,14 +35,14 @@ export function Hero({
       >
         <div className={aside ? 'text-center lg:text-left' : 'text-center'}>
           {eyebrow ? (
-            <p className="mb-4 text-sm font-semibold uppercase tracking-wider text-relaks-coral-ink">{eyebrow}</p>
+            <p data-pencils-avoid className="mb-4 text-sm font-semibold uppercase tracking-wider text-relaks-coral-ink">{eyebrow}</p>
           ) : (
-            <p className="inline-flex items-center bg-white/80 text-relaks-ink px-4 py-2 rounded-full text-sm font-medium mb-6 border border-relaks-coral/40">
+            <p data-pencils-avoid className="inline-flex items-center bg-white/80 text-relaks-ink px-4 py-2 rounded-full text-sm font-medium mb-6 border border-relaks-coral/40">
               {HERO.badge}
             </p>
           )}
 
-          <h1 className="font-display text-[36px] md:text-[48px] font-bold tracking-tight text-relaks-ink mb-5 leading-[1.1]">
+          <h1 data-pencils-avoid className="font-display text-[36px] md:text-[48px] font-bold tracking-tight text-relaks-ink mb-5 leading-[1.1]">
             {HERO.titleLine1}
             <br />
             {HERO.titleLine2Lead}{' '}
@@ -48,11 +52,11 @@ export function Hero({
             .
           </h1>
 
-          <p className={`text-base md:text-lg text-gray-700 mb-8 max-w-[52ch] leading-relaxed mx-auto ${aside ? 'lg:mx-0' : ''}`}>
+          <p data-pencils-avoid className={`text-base md:text-lg text-gray-700 mb-8 max-w-[52ch] leading-relaxed mx-auto ${aside ? 'lg:mx-0' : ''}`}>
             {HERO.subline}
           </p>
 
-          <div className={`flex flex-col items-center gap-3 ${aside ? 'lg:items-start' : ''}`}>
+          <div data-pencils-avoid className={`flex flex-col items-center gap-3 ${aside ? 'lg:items-start' : ''}`}>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full sm:w-auto">
               <CtaButton href={HERO.primary.href} event={HERO.primary.event} variant="gradient">
                 {HERO.primary.label}

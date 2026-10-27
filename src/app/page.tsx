@@ -16,6 +16,7 @@ import { FinalCta } from '@/components/landing/final-cta'
 import { MobileStickyBar } from '@/components/landing/mobile-sticky-bar'
 import { HeroColoringCard } from '@/components/landing/hero-coloring-card'
 import { LandingImageView } from '@/components/landing/landing-image'
+import { FloatingPencilsLoader } from '@/components/landing/floating-pencils-loader'
 import type { Tone } from '@/components/landing/section'
 import { formatCount, getActiveEditionNames, getLandingStats, joinNaturally } from '@/lib/landing/stats'
 import {
@@ -35,7 +36,7 @@ import {
 import { getLandingImages } from '@/lib/landing/images'
 import { getHeroArt } from '@/lib/landing/hero-art'
 import { christmasBanner, isChristmasSeason } from '@/lib/landing/season'
-import { CHRISTMAS, DOORS, FAQ_SECTION, GALLERY_SECTION, HERO, HERO_COLORING, SITE_URL, SOCIAL_LINKS } from '@/lib/landing/content'
+import { CHRISTMAS, DOORS, FAQ_SECTION, GALLERY_SECTION, HERO, HERO_COLORING, PENCILS, SITE_URL, SOCIAL_LINKS } from '@/lib/landing/content'
 import { PRICING } from '@/lib/paystack'
 import { UNRETURNED_DAYS_THRESHOLD } from '@/lib/rental/config'
 
@@ -143,6 +144,7 @@ export default async function Home() {
   const heroSvg = getHeroArt(christmas ? 'christmas' : 'default', coloring.prefill)
   const christmasProduct = products.find((p) => p.isChristmas)
   const christmasImage = christmasProduct?.product.images[0]
+  const pencilPalette = christmas ? PENCILS.christmasPalette : PENCILS.palette
 
   // "From ₦X" uses adult coloring books, so stationery and kids kits don't set the floor
   const adultPrices = adultBooks(products).map((p) => p.price)
@@ -215,7 +217,7 @@ export default async function Home() {
     distributors.length > 0 ? (tone: Tone) => <OutsideLagosSection distributors={distributors} tone={tone} /> : null,
     (tone: Tone) => <FaqSection items={faq} tone={tone} />,
     blogPosts.length > 0 ? (tone: Tone) => <BlogSection posts={blogPosts} tone={tone} /> : null,
-    (tone: Tone) => <FinalCta colorists={stats?.colorists ?? null} tone={tone} />,
+    (tone: Tone) => <FinalCta colorists={stats?.colorists ?? null} tone={tone} pencilPalette={pencilPalette} />,
   ]
   const blocks = candidates.filter((block): block is (tone: Tone) => ReactNode => block !== null)
 
@@ -240,6 +242,17 @@ export default async function Home() {
       <Hero
         eyebrow={christmas ? CHRISTMAS.heroEyebrow : undefined}
         snow={christmas}
+        background={
+          <FloatingPencilsLoader
+            containerId="hero"
+            count={PENCILS.heroPhone}
+            desktopCount={PENCILS.heroDesktop}
+            palette={pencilPalette}
+            hover
+            listenFills
+            tapEvent={PENCILS.tapEvent}
+          />
+        }
         aside={
           heroSvg ? (
             <HeroColoringCard
@@ -253,12 +266,14 @@ export default async function Home() {
               shopLabel={christmas ? HERO_COLORING.shopCta.label : HERO.primary.label}
             />
           ) : images.hero ? (
+            <div data-pencils-avoid className="mx-auto w-full max-w-[220px] sm:max-w-xs lg:max-w-none">
             <LandingImageView
               image={images.hero}
               preload
               sizes="(min-width: 1024px) 460px, (min-width: 640px) 320px, 220px"
-              photoClassName="mx-auto w-full max-w-[220px] sm:max-w-xs lg:max-w-none aspect-[4/5] rounded-3xl"
+              photoClassName="w-full aspect-[4/5] rounded-3xl"
             />
+            </div>
           ) : undefined
         }
       />

@@ -130,6 +130,21 @@ export const CHRISTMAS = {
 }
 
 // ============================================
+// FLOATING PENCILS (hero and final CTA background)
+// ============================================
+
+export const PENCILS = {
+  palette: ['#FF6B81', '#A758FF', '#FF9F43', '#7EC8C1', '#F7A8C0'],
+  christmasPalette: ['#C8102E', '#1B7A43', '#E8B33C', '#F4E1C1', '#FF6B81'],
+  /** Below 1024px wide */
+  heroPhone: 13,
+  heroDesktop: 18,
+  finalCta: 8,
+  /** Fired once per session, the first time someone taps the hero background */
+  tapEvent: 'hero_pencils_tap',
+}
+
+// ============================================
 // HERO COLORING PAGE
 // ============================================
 
