@@ -17,11 +17,13 @@ import { MobileStickyBar } from '@/components/landing/mobile-sticky-bar'
 import { HeroColoringCard } from '@/components/landing/hero-coloring-card'
 import { LandingImageView } from '@/components/landing/landing-image'
 import { FloatingPencilsLoader } from '@/components/landing/floating-pencils-loader'
+import { AiScreen, CanvasScreen, JournalScreen, ReferencesScreen } from '@/components/landing/app-screens'
 import type { Tone } from '@/components/landing/section'
 import { formatCount, getActiveEditionNames, getLandingStats, joinNaturally } from '@/lib/landing/stats'
 import {
   adultBooks,
   getDistributors,
+  getAppScreenData,
   getFeaturedPosts,
   getLandingClubInfo,
   getLandingProducts,
@@ -34,10 +36,11 @@ import {
   type ZoneSummary,
 } from '@/lib/landing/data'
 import { getLandingImages } from '@/lib/landing/images'
-import { getHeroArt } from '@/lib/landing/hero-art'
+import { getAppPreviewArt, getHeroArt } from '@/lib/landing/hero-art'
 import { christmasBanner, isChristmasSeason } from '@/lib/landing/season'
-import { CHRISTMAS, DOORS, FAQ_SECTION, GALLERY_SECTION, HERO, HERO_COLORING, PENCILS, SITE_URL, SOCIAL_LINKS } from '@/lib/landing/content'
+import { APP_SECTION, CHRISTMAS, DOORS, FAQ_SECTION, GALLERY_SECTION, HERO, HERO_COLORING, PENCILS, SITE_URL, SOCIAL_LINKS } from '@/lib/landing/content'
 import { PRICING } from '@/lib/paystack'
+import { categoryLabels, getTodaysPrompt } from '@/lib/journal-prompts'
 import { UNRETURNED_DAYS_THRESHOLD } from '@/lib/rental/config'
 
 // Statically rendered, refreshed hourly alongside the cached data
@@ -121,7 +124,7 @@ function buildFaq(zones: ZoneSummary | null, distributors: LandingDistributor[],
 export default async function Home() {
   const [
     stats, editionNames, products, lowestFee, club, featuredPosts, images,
-    plans, distributors, zones, blogPosts,
+    plans, distributors, zones, blogPosts, appScreenData,
   ] = await Promise.all([
     getLandingStats(),
     getActiveEditionNames(),
@@ -134,6 +137,7 @@ export default async function Home() {
     getDistributors(),
     getZoneSummary(),
     getLatestBlogPosts(),
+    getAppScreenData(),
   ])
 
   const editions = joinNaturally(editionNames)
@@ -145,6 +149,32 @@ export default async function Home() {
   const christmasProduct = products.find((p) => p.isChristmas)
   const christmasImage = christmasProduct?.product.images[0]
   const pencilPalette = christmas ? PENCILS.christmasPalette : PENCILS.palette
+
+  // App section phones, built from real content (a screenshot in public/landing/ still wins)
+  const previewSvg = getAppPreviewArt(
+    christmas ? 'christmas' : 'default',
+    coloring.palette.map((swatch) => swatch.hex),
+    christmas ? { ...coloring.prefill, r4: '#1B7A43', r5: '#1B7A43' } : coloring.prefill
+  )
+  const todaysPrompt = getTodaysPrompt()
+  const appScreens = {
+    ...(appScreenData.reference ? { appReferences: <ReferencesScreen reference={appScreenData.reference} /> } : {}),
+    ...(appScreenData.aiExample
+      ? { appFeed: <AiScreen example={appScreenData.aiExample} price={naira(PRICING.aiStarter)} /> }
+      : {}),
+    appJournal: <JournalScreen prompt={todaysPrompt.text} category={categoryLabels[todaysPrompt.category]} />,
+    ...(previewSvg
+      ? {
+          appCanvas: (
+            <CanvasScreen
+              svg={previewSvg}
+              palette={coloring.palette.map((swatch) => swatch.hex)}
+              comingSoon={APP_SECTION.comingSoon}
+            />
+          ),
+        }
+      : {}),
+  }
 
   // "From ₦X" uses adult coloring books, so stationery and kids kits don't set the floor
   const adultPrices = adultBooks(products).map((p) => p.price)
@@ -207,7 +237,7 @@ export default async function Home() {
           />
         )
       : null,
-    (tone: Tone) => <AppSection editions={editions} images={images} tone={tone} />,
+    (tone: Tone) => <AppSection editions={editions} images={images} screens={appScreens} tone={tone} />,
     featuredPosts.length >= GALLERY_SECTION.minPosts
       ? (tone: Tone) => <CommunityGallery posts={featuredPosts} tone={tone} />
       : null,

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Brush, NotebookPen, Palette, Sparkles, type LucideIcon } from 'lucide-react'
 import { APP_ROWS, APP_SECTION, type AppRowImage } from '@/lib/landing/content'
 import type { LandingImages } from '@/lib/landing/images'
@@ -21,7 +22,18 @@ const ROW_ICONS: Record<AppRowImage, LucideIcon> = {
  * Desktop: four rows alternating image left/right.
  * Phones: the same rows as a swipe row, which keeps the page a sensible length.
  */
-export function AppSection({ editions, images, tone }: { editions: string; images: LandingImages; tone: Tone }) {
+export function AppSection({
+  editions,
+  images,
+  screens = {},
+  tone,
+}: {
+  editions: string
+  images: LandingImages
+  /** Built screens from real content; a screenshot in public/landing/ still takes priority */
+  screens?: Partial<Record<AppRowImage, ReactNode>>
+  tone: Tone
+}) {
   const fill = (line: string) =>
     line.replace('{editions}', editions).replace('{aiPrice}', formatCount(PRICING.aiStarter))
   const accent = ACCENTS.orange
@@ -52,7 +64,9 @@ export function AppSection({ editions, images, tone }: { editions: string; image
         label={image.kind === 'phone' ? image.label : row.heading}
         sizes="(min-width: 768px) 240px, 180px"
         className={className}
-      />
+      >
+        {image.src ? undefined : screens[row.image]}
+      </PhoneFrame>
     )
     return { row, text, phone }
   })

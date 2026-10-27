@@ -358,3 +358,75 @@ export const getLatestBlogPosts = unstable_cache(
   ['landing-blog-posts'],
   { revalidate: ONE_HOUR }
 )
+
+// ============================================
+// APP SECTION SCREENS
+// ============================================
+
+export interface AppScreenData {
+  /** An official color reference, for the "Never stuck on colors" phone */
+  reference: { imageUrl: string; edition: string; page: number } | null
+  /** An AI page made by the Relaks team, for the "Imagine a page" phone */
+  aiExample: { prompt: string; imageUrl: string } | null
+}
+
+/**
+ * Real content for the app section's phone screens.
+ * The AI example only ever comes from admin accounts, so no customer's prompt or page is shown publicly.
+ */
+export const getAppScreenData = unstable_cache(
+  async (): Promise<AppScreenData> => {
+    const supabase = createLandingClient()
+    let reference: AppScreenData['reference'] = null
+    let aiExample: AppScreenData['aiExample'] = null
+
+    try {
+      const { data } = await supabase
+        .from('reference_images')
+        .select('image_url, edition, page_number')
+        .eq('is_official', true)
+        .order('created_at', { ascending: false })
+        .limit(12)
+      const row = ((data ?? []) as { image_url: string | null; edition: string; page_number: number }[]).find(
+        (r) => !!r.image_url
+      )
+      if (row?.image_url) {
+        const { data: edition } = await supabase
+          .from('editions')
+          .select('display_name')
+          .eq('slug', row.edition)
+          .maybeSingle()
+        const name =
+          (edition as { display_name: string } | null)?.display_name ??
+          `${row.edition.charAt(0).toUpperCase()}${row.edition.slice(1)} Edition`
+        reference = { imageUrl: row.image_url, edition: name, page: row.page_number }
+      }
+    } catch {
+      reference = null
+    }
+
+    try {
+      const { data: team } = await supabase.from('users').select('id').in('role', ['admin', 'super_admin'])
+      const ids = ((team ?? []) as { id: string }[]).map((u) => u.id)
+      if (ids.length > 0) {
+        const { data } = await supabase
+          .from('ai_generations')
+          .select('prompt, result_url')
+          .in('user_id', ids)
+          .like('result_url', '%supabase.co%')
+          .order('created_at', { ascending: false })
+          .limit(1)
+        const row = ((data ?? []) as { prompt: string | null; result_url: string | null }[])[0]
+        if (row?.result_url && row.prompt?.trim()) {
+          aiExample = { prompt: row.prompt.trim(), imageUrl: row.result_url }
+        }
+      }
+    } catch {
+      aiExample = null
+    }
+
+    return { reference, aiExample }
+  },
+  ['landing-app-screens'],
+  { revalidate: ONE_HOUR }
+)

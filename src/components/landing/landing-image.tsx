@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import Image from 'next/image'
 import { Smartphone } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -25,8 +26,8 @@ export function LandingPhoto({
 }
 
 /**
- * Phone mock-up. Shows `src` as the screen, or a warm tint with the feature
- * name until a real screenshot is added.
+ * Phone mock-up. Shows `src` as the screen, else `children` (a built screen),
+ * else a warm tint with the feature name.
  */
 export function PhoneFrame({
   src,
@@ -34,12 +35,14 @@ export function PhoneFrame({
   label,
   sizes = '(min-width: 768px) 280px, 60vw',
   className,
+  children,
 }: {
   src: string | null
   alt: string
   label: string
   sizes?: string
   className?: string
+  children?: ReactNode
 }) {
   return (
     <div
@@ -53,6 +56,10 @@ export function PhoneFrame({
       <div className="relative h-full w-full overflow-hidden rounded-[2rem] bg-relaks-cream">
         {src ? (
           <Image src={src} alt={alt} fill sizes={sizes} className="object-cover" />
+        ) : children ? (
+          <div role="img" aria-label={alt} className="h-full w-full">
+            {children}
+          </div>
         ) : (
           <div
             role="img"
