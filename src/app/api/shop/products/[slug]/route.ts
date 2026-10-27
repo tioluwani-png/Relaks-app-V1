@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import type {
   ShopProduct,
@@ -7,7 +7,11 @@ import type {
   ShopProductVariant,
   ShopProductOptionWithValues,
   ShopProductWithVariants,
+  ShopSale,
 } from '@/types/database'
+import { getSalePrice, saleAppliesToProduct } from '@/lib/shop/sales'
+
+export const revalidate = 60
 
 export async function GET(
   request: NextRequest,
@@ -16,6 +20,20 @@ export async function GET(
   try {
     const { slug } = await params
     const supabase = await createClient()
+    const adminClient = await createAdminClient()
+
+    // Fetch live sale (use admin client to bypass RLS)
+    const now = new Date().toISOString()
+    const { data: saleData } = await adminClient
+      .from('shop_sales')
+      .select('*')
+      .eq('is_active', true)
+      .lte('starts_at', now)
+      .gt('ends_at', now)
+      .limit(1)
+      .maybeSingle()
+
+    const liveSale = saleData as ShopSale | null
 
     const { data, error } = await supabase
       .from('shop_products')
@@ -70,16 +88,54 @@ export async function GET(
 
       const variants = (variantsData || []) as ShopProductVariant[]
 
-      const productWithVariants: ShopProductWithVariants = {
+      // Apply sale prices to variants
+      const variantsWithSale = variants.map((v) => {
+        const priceInfo = getSalePrice(product, v, liveSale)
+        return {
+          ...v,
+          sale_price: priceInfo.isOnSale ? priceInfo.salePrice : null,
+          original_price: priceInfo.isOnSale ? v.price_naira ?? product.price_naira : null,
+        }
+      })
+
+      const productWithVariants = {
         ...product,
         options: optionsWithValues,
-        variants,
+        variants: variantsWithSale,
       }
 
-      return NextResponse.json(productWithVariants)
+      // Add sale info to product
+      const priceInfo = getSalePrice(product, null, liveSale)
+      return NextResponse.json({
+        ...productWithVariants,
+        sale_price: priceInfo.isOnSale ? priceInfo.salePrice : null,
+        sale_percent: priceInfo.discountPercent,
+        original_price: priceInfo.isOnSale ? priceInfo.originalPrice : null,
+        sale: liveSale && saleAppliesToProduct(liveSale, product) ? {
+          id: liveSale.id,
+          name: liveSale.name,
+          discount_percent: liveSale.discount_percent,
+          banner_text: liveSale.banner_text,
+          ends_at: liveSale.ends_at,
+        } : null,
+      })
     }
 
-    return NextResponse.json(product)
+    // Non-variant product
+    const priceInfo = getSalePrice(product, null, liveSale)
+    return NextResponse.json({
+      ...product,
+      sale_price: priceInfo.isOnSale ? priceInfo.salePrice : null,
+      sale_percent: priceInfo.discountPercent,
+      original_price: priceInfo.isOnSale ? priceInfo.originalPrice : null,
+      sale: liveSale && saleAppliesToProduct(liveSale, product) ? {
+        id: liveSale.id,
+        name: liveSale.name,
+        discount_percent: liveSale.discount_percent,
+        banner_text: liveSale.banner_text,
+        ends_at: liveSale.ends_at,
+      } : null,
+    })
   } catch (error) {
     console.error('[shop/products/slug] Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

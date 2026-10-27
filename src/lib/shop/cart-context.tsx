@@ -36,9 +36,35 @@ export function getCartItemKey(productId: string, variantId: string | null): str
   return variantId ? `${productId}:${variantId}` : productId
 }
 
-// Helper to get effective price (variant price or product price)
+// Helper to get effective price (sale price if on sale, otherwise variant/product price)
 export function getEffectivePrice(product: ShopProduct, variant: ShopProductVariant | null): number {
+  // Check for sale price on variant or product (added by API when sale is live)
+  const variantWithSale = variant as (ShopProductVariant & { sale_price?: number | null }) | null
+  const productWithSale = product as ShopProduct & { sale_price?: number | null }
+
+  if (variantWithSale?.sale_price) return variantWithSale.sale_price
+  if (!variant && productWithSale.sale_price) return productWithSale.sale_price
+
   return variant?.price_naira ?? product.price_naira
+}
+
+// Helper to get original price before sale (null if not on sale)
+export function getOriginalPrice(product: ShopProduct, variant: ShopProductVariant | null): number | null {
+  const variantWithSale = variant as (ShopProductVariant & { sale_price?: number | null; original_price?: number | null }) | null
+  const productWithSale = product as ShopProduct & { sale_price?: number | null; original_price?: number | null }
+
+  if (variantWithSale?.sale_price) return variantWithSale.original_price ?? variantWithSale.price_naira ?? product.price_naira
+  if (!variant && productWithSale.sale_price) return productWithSale.original_price ?? product.price_naira
+
+  return null
+}
+
+// Helper to check if item is on sale
+export function isItemOnSale(product: ShopProduct, variant: ShopProductVariant | null): boolean {
+  const variantWithSale = variant as (ShopProductVariant & { sale_price?: number | null }) | null
+  const productWithSale = product as ShopProduct & { sale_price?: number | null }
+
+  return !!(variantWithSale?.sale_price || (!variant && productWithSale.sale_price))
 }
 
 // Helper to get effective stock (shared rule: variant stock, never the product's own stock for variant products)
@@ -57,6 +83,7 @@ interface CartContextType {
   items: CartItem[]
   itemCount: number
   subtotal: number
+  saleSavings: number
   isHydrating: boolean
   addItem: (product: ShopProduct, variant?: ShopProductVariant | null, quantity?: number) => void
   removeItem: (productId: string, variantId?: string | null) => void
@@ -366,11 +393,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [items]
   )
 
+  const saleSavings = useMemo(
+    () => items.reduce((sum, item) => {
+      const price = getEffectivePrice(item.product, item.variant)
+      const original = getOriginalPrice(item.product, item.variant)
+      if (original) {
+        return sum + (original - price) * item.quantity
+      }
+      return sum
+    }, 0),
+    [items]
+  )
+
   const value = useMemo(
     () => ({
       items,
       itemCount,
       subtotal,
+      saleSavings,
       isHydrating,
       addItem,
       removeItem,
@@ -382,6 +422,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       items,
       itemCount,
       subtotal,
+      saleSavings,
       isHydrating,
       addItem,
       removeItem,

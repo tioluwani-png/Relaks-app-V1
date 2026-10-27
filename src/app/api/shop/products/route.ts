@@ -1,22 +1,42 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import type { ShopProduct, ShopProductVariant } from '@/types/database'
+import type { ShopProduct, ShopProductVariant, ShopSale } from '@/types/database'
 import { isVariantAvailable } from '@/lib/shop/availability'
+import { getSalePrice, saleAppliesToProduct } from '@/lib/shop/sales'
 
-// Extended product for list view with variant pricing info
+export const revalidate = 60
+
+// Extended product for list view with variant pricing info and sale
 export type ShopProductListItem = ShopProduct & {
   min_price?: number
   max_price?: number
   total_variant_stock?: number
+  sale_price?: number | null
+  sale_percent?: number | null
+  original_price?: number
 }
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
+    const adminClient = await createAdminClient()
     const { searchParams } = new URL(request.url)
 
     const type = searchParams.get('type')
     const search = searchParams.get('search')
+
+    // Fetch live sale (use admin client to bypass RLS)
+    const now = new Date().toISOString()
+    const { data: saleData } = await adminClient
+      .from('shop_sales')
+      .select('*')
+      .eq('is_active', true)
+      .lte('starts_at', now)
+      .gt('ends_at', now)
+      .limit(1)
+      .maybeSingle()
+
+    const liveSale = saleData as ShopSale | null
 
     let query = supabase
       .from('shop_products')
@@ -87,21 +107,48 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Enrich products with variant info
+    // Enrich products with variant info and sale prices
     const enrichedProducts: ShopProductListItem[] = products.map((p) => {
+      const basePrice = p.price_naira
+      const priceInfo = getSalePrice(p, null, liveSale)
+
       if (p.has_variants) {
         const variantInfo = variantsByProduct.get(p.id)
+        // For variant products, apply sale to min price
+        const minPrice = variantInfo?.minPrice ?? basePrice
+        const saleMinPrice = liveSale && saleAppliesToProduct(liveSale, p)
+          ? Math.round(minPrice * (1 - liveSale.discount_percent / 100) / 50) * 50
+          : null
+
         return {
           ...p,
-          min_price: variantInfo?.minPrice ?? p.price_naira,
-          max_price: variantInfo?.maxPrice ?? p.price_naira,
+          min_price: saleMinPrice ?? minPrice,
+          max_price: variantInfo?.maxPrice ?? basePrice,
           total_variant_stock: variantInfo?.totalStock ?? 0,
+          sale_price: saleMinPrice,
+          sale_percent: liveSale && saleAppliesToProduct(liveSale, p) ? liveSale.discount_percent : null,
+          original_price: minPrice,
         }
       }
-      return p
+
+      return {
+        ...p,
+        sale_price: priceInfo.isOnSale ? priceInfo.salePrice : null,
+        sale_percent: priceInfo.discountPercent,
+        original_price: priceInfo.originalPrice,
+      }
     })
 
-    return NextResponse.json(enrichedProducts)
+    return NextResponse.json({
+      products: enrichedProducts,
+      sale: liveSale ? {
+        id: liveSale.id,
+        name: liveSale.name,
+        discount_percent: liveSale.discount_percent,
+        banner_text: liveSale.banner_text,
+        ends_at: liveSale.ends_at,
+      } : null,
+    })
   } catch (error) {
     console.error('[shop/products] Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

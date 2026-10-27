@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { ArrowLeft, ShoppingBag, Minus, Plus, Trash2, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useCart, getEffectivePrice, getEffectiveStock, getVariantLabel, getCartItemKey } from '@/lib/shop/cart-context'
+import { useCart, getEffectivePrice, getEffectiveStock, getVariantLabel, getCartItemKey, getOriginalPrice, isItemOnSale } from '@/lib/shop/cart-context'
 
 export default function CartPage() {
   const { items, subtotal, updateQuantity, removeItem, itemCount } = useCart()
@@ -68,6 +68,8 @@ export default function CartPage() {
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {items.map((item, index) => {
           const price = getEffectivePrice(item.product, item.variant)
+          const originalPrice = getOriginalPrice(item.product, item.variant)
+          const onSale = isItemOnSale(item.product, item.variant)
           const stock = getEffectiveStock(item.product, item.variant)
           const variantLabel = getVariantLabel(item.variant)
           const itemKey = getCartItemKey(item.product.id, item.variant?.id ?? null)
@@ -112,9 +114,16 @@ export default function CartPage() {
                 {variantLabel && (
                   <p className="text-sm text-gray-500 mt-0.5">{variantLabel}</p>
                 )}
-                <p className="text-lg font-bold text-gray-900 mt-1">
-                  ₦{price.toLocaleString()}
-                </p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className={`text-lg font-bold ${onSale ? 'text-red-600' : 'text-gray-900'}`}>
+                    ₦{price.toLocaleString()}
+                  </p>
+                  {onSale && originalPrice && (
+                    <p className="text-sm text-gray-400 line-through">
+                      ₦{originalPrice.toLocaleString()}
+                    </p>
+                  )}
+                </div>
 
                 {/* Quantity controls */}
                 <div className="flex items-center justify-between mt-3">

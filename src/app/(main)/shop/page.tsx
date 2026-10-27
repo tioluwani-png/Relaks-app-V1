@@ -23,9 +23,18 @@ const TYPE_LABELS: Record<ShopProductType | 'all', string> = {
   other: 'Other',
 }
 
+interface LiveSale {
+  id: string
+  name: string
+  discount_percent: number
+  banner_text: string | null
+  ends_at: string
+}
+
 export default function ShopPage() {
   const [products, setProducts] = useState<ShopProductListItem[]>([])
   const [distributors, setDistributors] = useState<Distributor[]>([])
+  const [sale, setSale] = useState<LiveSale | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState<ShopProductType | 'all'>('all')
@@ -67,7 +76,8 @@ export default function ShopPage() {
       if (!res.ok) throw new Error('Failed to load products')
 
       const data = await res.json()
-      setProducts(data)
+      setProducts(data.products || data) // Handle both new and old format
+      setSale(data.sale || null)
     } catch (error) {
       console.error('Failed to load products:', error)
       toast.error('Failed to load products')
@@ -111,6 +121,15 @@ export default function ShopPage() {
           </div>
         </div>
       </div>
+
+      {/* Sale Banner */}
+      {sale && (
+        <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white py-3 px-4">
+          <div className="max-w-6xl mx-auto flex items-center justify-center gap-2 text-center">
+            <span className="font-semibold">{sale.banner_text || `${sale.name} — ${sale.discount_percent}% off!`}</span>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* Search */}
@@ -217,11 +236,19 @@ function ProductCard({
     ? (product.total_variant_stock ?? 0) <= 0
     : !getVariantAvailability(product).inStock
 
-  const hasDiscount = product.compare_at_price_naira && product.compare_at_price_naira > product.price_naira
+  const isOnSale = !!product.sale_price && product.sale_percent
+  const hasCompareAt = product.compare_at_price_naira && product.compare_at_price_naira > product.price_naira
   const coverImage = product.images?.[0]
 
   // Check if price range exists (for variant products)
   const hasPriceRange = hasVariants && product.min_price !== undefined && product.max_price !== undefined && product.min_price !== product.max_price
+
+  // Display price: sale price if on sale, otherwise min_price or price_naira
+  const displayPrice = isOnSale ? product.sale_price! : (product.min_price ?? product.price_naira)
+  // Struck-through price: original price if on sale, compare_at_price if set
+  const strikePrice = isOnSale
+    ? (product.original_price ?? product.price_naira)
+    : (hasCompareAt ? product.compare_at_price_naira! : null)
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 group">
@@ -242,6 +269,11 @@ function ProductCard({
 
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
+            {isOnSale && (
+              <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+                -{product.sale_percent}%
+              </span>
+            )}
             {product.product_type === 'combo' && (
               <span className="px-2 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium rounded-full">
                 Combo
@@ -272,18 +304,18 @@ function ProductCard({
         </Link>
 
         <div className="flex items-baseline gap-2 mb-3">
-          {hasPriceRange ? (
+          {hasPriceRange && !isOnSale ? (
             <span className="text-lg font-bold text-gray-900">
-              From ₦{product.min_price!.toLocaleString()}
+              From ₦{displayPrice.toLocaleString()}
             </span>
           ) : (
             <>
-              <span className="text-lg font-bold text-gray-900">
-                ₦{(product.min_price ?? product.price_naira).toLocaleString()}
+              <span className={`text-lg font-bold ${isOnSale ? 'text-red-600' : 'text-gray-900'}`}>
+                ₦{displayPrice.toLocaleString()}
               </span>
-              {hasDiscount && !hasVariants && (
+              {strikePrice && !hasVariants && (
                 <span className="text-sm text-gray-400 line-through">
-                  ₦{product.compare_at_price_naira!.toLocaleString()}
+                  ₦{strikePrice.toLocaleString()}
                 </span>
               )}
             </>

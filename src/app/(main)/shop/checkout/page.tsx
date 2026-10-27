@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Loader2, MapPin, Package, AlertCircle, Tag, X } from 'lucide-react'
+import { ArrowLeft, Loader2, MapPin, Package, AlertCircle, Tag, X, Percent } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -29,7 +29,7 @@ function formatDeliveryTime(minDays: number, maxDays: number): string {
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, subtotal } = useCart()
+  const { items, subtotal, saleSavings } = useCart()
   const supabase = createClient()
 
   const [zones, setZones] = useState<ShopDeliveryZone[]>([])
@@ -385,11 +385,20 @@ export default function CheckoutPage() {
               <span>Subtotal</span>
               <span>₦{subtotal.toLocaleString()}</span>
             </div>
+            {saleSavings > 0 && (
+              <div className="flex justify-between text-red-600">
+                <span className="flex items-center gap-1">
+                  <Percent className="w-4 h-4" />
+                  Sale savings
+                </span>
+                <span>−₦{saleSavings.toLocaleString()}</span>
+              </div>
+            )}
             {appliedCoupon && (
               <div className="flex justify-between text-green-600">
                 <span className="flex items-center gap-1">
                   <Tag className="w-4 h-4" />
-                  Discount
+                  Coupon
                 </span>
                 <span>−₦{appliedCoupon.discount.toLocaleString()}</span>
               </div>

@@ -136,9 +136,29 @@ export default function ProductDetailPage() {
   // Products with variants ignore their own stock_quantity
   const effectiveStock = getItemStock(product, selectedVariant)
 
+  // Get sale info from API response
+  const productWithSale = product as ShopProduct & {
+    sale_price?: number | null
+    sale_percent?: number | null
+    original_price?: number | null
+    sale?: { id: string; name: string; discount_percent: number; banner_text: string | null; ends_at: string } | null
+    variants?: (ShopProductVariant & { sale_price?: number | null; original_price?: number | null })[]
+  }
+
+  // For variants, check if the selected variant has a sale price
+  const selectedVariantWithSale = selectedVariant as (ShopProductVariant & { sale_price?: number | null; original_price?: number | null }) | null
+
+  const isOnSale = hasVariants
+    ? !!selectedVariantWithSale?.sale_price
+    : !!productWithSale.sale_price
+
   const effectivePrice = hasVariants
-    ? (selectedVariant?.price_naira ?? product.price_naira)
-    : product.price_naira
+    ? (selectedVariantWithSale?.sale_price ?? selectedVariantWithSale?.price_naira ?? product.price_naira)
+    : (productWithSale.sale_price ?? product.price_naira)
+
+  const originalPrice = hasVariants
+    ? (selectedVariantWithSale?.original_price ?? selectedVariantWithSale?.price_naira ?? product.price_naira)
+    : (productWithSale.original_price ?? product.price_naira)
 
   // For variant products, isSoldOut is based on total available variants or selected variant
   const isSoldOut = hasVariants
@@ -273,10 +293,20 @@ export default function ProductDetailPage() {
 
             {/* Price */}
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-bold text-gray-900">
+              <span className={`text-3xl font-bold ${isOnSale ? 'text-red-600' : 'text-gray-900'}`}>
                 ₦{effectivePrice.toLocaleString()}
               </span>
-              {hasDiscount && (
+              {isOnSale && (
+                <>
+                  <span className="text-lg text-gray-400 line-through">
+                    ₦{originalPrice.toLocaleString()}
+                  </span>
+                  <span className="px-2 py-0.5 bg-red-500 text-white text-sm font-bold rounded-full">
+                    -{productWithSale.sale_percent}%
+                  </span>
+                </>
+              )}
+              {!isOnSale && hasDiscount && (
                 <span className="text-lg text-gray-400 line-through">
                   ₦{product.compare_at_price_naira!.toLocaleString()}
                 </span>
