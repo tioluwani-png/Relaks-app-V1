@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { calculateCouponDiscount, formatCouponDiscount } from '@/lib/shop/config'
-import type { ShopCoupon } from '@/types/database'
+import type { ShopCoupon, ShopSale } from '@/types/database'
 
 const validateSchema = z.object({
   code: z.string().min(1).max(50).transform((s) => s.toUpperCase().trim()),
@@ -24,6 +24,20 @@ export async function POST(request: NextRequest) {
     const { code, subtotal } = validation.data
     const adminSupabase = await createAdminClient()
 
+    // Check if there's a live sale
+    const now = new Date()
+    const nowIso = now.toISOString()
+    const { data: saleData } = await adminSupabase
+      .from('shop_sales')
+      .select('*')
+      .eq('is_active', true)
+      .lte('starts_at', nowIso)
+      .gt('ends_at', nowIso)
+      .limit(1)
+      .maybeSingle()
+
+    const liveSale = saleData as ShopSale | null
+
     // Look up coupon (using admin client since RLS blocks public access)
     const { data: couponData, error } = await adminSupabase
       .from('shop_coupons')
@@ -39,7 +53,6 @@ export async function POST(request: NextRequest) {
     }
 
     const coupon = couponData as ShopCoupon
-    const now = new Date()
     const startsAt = new Date(coupon.starts_at)
     const expiresAt = new Date(coupon.expires_at)
 
@@ -76,6 +89,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         valid: false,
         error: `Minimum order of ₦${coupon.min_order_amount.toLocaleString()} required`,
+      })
+    }
+
+    // Check if coupon is allowed during sales
+    if (liveSale && !coupon.allowed_during_sales) {
+      return NextResponse.json({
+        valid: false,
+        error: "Coupons can't be combined with the current sale",
       })
     }
 

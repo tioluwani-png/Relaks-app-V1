@@ -54,6 +54,7 @@ const createCouponSchema = z.object({
   min_order_amount: z.number().int().positive().nullable().optional(),
   is_active: z.boolean().default(true),
   internal_note: z.string().max(500).nullable().optional(),
+  allowed_during_sales: z.boolean().default(false),
 })
 
 export async function POST(request: NextRequest) {

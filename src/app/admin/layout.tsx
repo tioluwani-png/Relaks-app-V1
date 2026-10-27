@@ -23,6 +23,7 @@ import {
   UserCheck,
   Tag,
   Wallet,
+  Percent,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { UserRole } from '@/types/database'
@@ -113,6 +114,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/shop/products', label: 'Shop Products', icon: Package, roles: ['admin', 'super_admin'], section: 'shop' },
     { href: '/admin/shop/orders', label: 'Shop Orders', icon: ShoppingBag, roles: ['admin', 'super_admin'], section: 'shop' },
     { href: '/admin/shop/coupons', label: 'Coupons', icon: Tag, roles: ['admin', 'super_admin'], section: 'shop' },
+    { href: '/admin/shop/sales', label: 'Sales', icon: Percent, roles: ['admin', 'super_admin'], section: 'shop' },
     { href: '/admin/shop/zones', label: 'Delivery Zones', icon: MapPin, roles: ['admin', 'super_admin'], section: 'shop' },
     { href: '/admin/shop/distributors', label: 'Distributors', icon: UserCheck, roles: ['admin', 'super_admin'], section: 'shop' },
     { href: '/admin/shop/wallet', label: 'Wallet', icon: Wallet, roles: ['admin', 'super_admin'], section: 'shop' },

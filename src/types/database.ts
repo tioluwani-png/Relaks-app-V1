@@ -1747,6 +1747,9 @@ export interface ShopOrder {
   coupon_id: string | null
   coupon_code: string | null
   discount_naira: number
+  sale_id: string | null
+  sale_percent: number | null
+  sale_savings_naira: number
   estimated_min_days: number | null
   estimated_max_days: number | null
   dispatched_at: string | null
@@ -1771,6 +1774,7 @@ export interface ShopCoupon {
   is_active: boolean
   internal_note: string | null
   total_discount_given: number
+  allowed_during_sales: boolean
   created_at: string
   updated_at: string
 }
@@ -1781,6 +1785,7 @@ export interface ShopOrderItem {
   product_id: string | null
   product_name: string
   unit_price_naira: number
+  original_unit_price_naira: number | null
   quantity: number
   variant_id: string | null
   variant_label: string | null
@@ -1806,6 +1811,23 @@ export interface ShopOrderEmail {
   sent_at: string
   sent_by: string | null
   is_resend: boolean
+}
+
+export type ShopSaleScope = 'all' | 'types' | 'products'
+
+export interface ShopSale {
+  id: string
+  name: string
+  discount_percent: number
+  starts_at: string
+  ends_at: string
+  scope: ShopSaleScope
+  product_types: ShopProductType[] | null
+  product_ids: string[] | null
+  banner_text: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }
 
 // Extended types

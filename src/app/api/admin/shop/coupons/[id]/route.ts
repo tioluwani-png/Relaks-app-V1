@@ -68,6 +68,7 @@ const updateCouponSchema = z.object({
   min_order_amount: z.number().int().positive().nullable().optional(),
   is_active: z.boolean().optional(),
   internal_note: z.string().max(500).nullable().optional(),
+  allowed_during_sales: z.boolean().optional(),
 })
 
 export async function PATCH(

@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getItemStock } from '@/lib/shop/availability'
 import { z } from 'zod'
 import { generateOrderNumber, calculateCouponDiscount } from '@/lib/shop/config'
-import type { ShopProduct, ShopDeliveryZone, ShopDeliveryArea, ShopCoupon, ShopProductVariant } from '@/types/database'
+import { getSalePrice, saleAppliesToProduct } from '@/lib/shop/sales'
+import type { ShopProduct, ShopDeliveryZone, ShopDeliveryArea, ShopCoupon, ShopProductVariant, ShopSale } from '@/types/database'
 
 const cartItemSchema = z.object({
   productId: z.string().uuid(),
@@ -177,12 +178,28 @@ export async function POST(request: NextRequest) {
 
     const zone = area.zone
 
-    // 3. Calculate totals server-side (never trust client)
+    // 3. Check for live sale (server-side - never trust client)
+    const now = new Date()
+    const nowIso = now.toISOString()
+    const { data: saleData } = await adminSupabase
+      .from('shop_sales')
+      .select('*')
+      .eq('is_active', true)
+      .lte('starts_at', nowIso)
+      .gt('ends_at', nowIso)
+      .limit(1)
+      .maybeSingle()
+
+    const liveSale = saleData as ShopSale | null
+
+    // 4. Calculate totals server-side (never trust client)
     let subtotal = 0
+    let saleSavings = 0
     const orderItems: {
       productId: string
       productName: string
       unitPrice: number
+      originalUnitPrice: number | null
       quantity: number
       variantId: string | null
       variantLabel: string | null
@@ -190,17 +207,27 @@ export async function POST(request: NextRequest) {
 
     for (const item of items) {
       const product = productMap.get(item.productId)!
-      const variant = item.variantId ? variantMap.get(item.variantId) : null
+      const variant = item.variantId ? variantMap.get(item.variantId) ?? null : null
 
-      // Use variant price if specified, otherwise product price
-      const unitPrice = variant?.price_naira ?? product.price_naira
+      // Calculate price with sale if applicable
+      const priceInfo = getSalePrice(product, variant, liveSale)
+      const unitPrice = priceInfo.price
+      const originalUnitPrice = priceInfo.isOnSale
+        ? (variant?.price_naira ?? product.price_naira)
+        : null
+
       const lineTotal = unitPrice * item.quantity
       subtotal += lineTotal
+
+      if (priceInfo.isOnSale && originalUnitPrice) {
+        saleSavings += (originalUnitPrice - unitPrice) * item.quantity
+      }
 
       orderItems.push({
         productId: item.productId,
         productName: product.name,
         unitPrice,
+        originalUnitPrice,
         quantity: item.quantity,
         variantId: item.variantId ?? null,
         variantLabel: variant ? generateVariantLabel(variant.option_values) : null,
@@ -209,7 +236,7 @@ export async function POST(request: NextRequest) {
 
     const deliveryFee = zone.fee_naira
 
-    // 4. Validate and apply coupon if provided (server-side - never trust client)
+    // 5. Validate and apply coupon if provided (server-side - never trust client)
     let couponId: string | null = null
     let appliedCouponCode: string | null = null
     let discount = 0
@@ -223,17 +250,18 @@ export async function POST(request: NextRequest) {
 
       if (couponData) {
         const coupon = couponData as ShopCoupon
-        const now = new Date()
         const startsAt = new Date(coupon.starts_at)
         const expiresAt = new Date(coupon.expires_at)
 
         // Re-validate coupon server-side (never trust client)
+        // Also check if coupon is allowed during sales
         const isValid =
           coupon.is_active &&
           now >= startsAt &&
           now < expiresAt &&
           (coupon.max_uses === null || coupon.times_used < coupon.max_uses) &&
-          (coupon.min_order_amount === null || subtotal >= coupon.min_order_amount)
+          (coupon.min_order_amount === null || subtotal >= coupon.min_order_amount) &&
+          (!liveSale || coupon.allowed_during_sales)
 
         if (isValid) {
           couponId = coupon.id
@@ -247,7 +275,7 @@ export async function POST(request: NextRequest) {
 
     const total = subtotal - discount + deliveryFee
 
-    // 5. Create order
+    // 6. Create order
     const orderNumber = generateOrderNumber()
 
     const { data: order, error: orderError } = await adminSupabase
@@ -266,6 +294,9 @@ export async function POST(request: NextRequest) {
         coupon_id: couponId,
         coupon_code: appliedCouponCode,
         discount_naira: discount,
+        sale_id: liveSale?.id || null,
+        sale_percent: liveSale?.discount_percent || null,
+        sale_savings_naira: saleSavings,
         total_naira: total,
         status: 'pending_payment',
         estimated_min_days: zone.min_days,
@@ -281,12 +312,13 @@ export async function POST(request: NextRequest) {
 
     const orderId = (order as { id: string; order_number: string }).id
 
-    // 6. Create order items
+    // 7. Create order items
     const itemsToInsert = orderItems.map((item) => ({
       order_id: orderId,
       product_id: item.productId,
       product_name: item.productName,
       unit_price_naira: item.unitPrice,
+      original_unit_price_naira: item.originalUnitPrice,
       quantity: item.quantity,
       variant_id: item.variantId,
       variant_label: item.variantLabel,
@@ -313,6 +345,8 @@ export async function POST(request: NextRequest) {
       couponCode: appliedCouponCode,
       deliveryFee,
       total,
+      saleSavings,
+      salePercent: liveSale?.discount_percent || null,
     })
   } catch (error) {
     console.error('[shop/orders/create] Error:', error)

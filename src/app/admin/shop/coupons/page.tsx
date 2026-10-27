@@ -63,6 +63,7 @@ export default function AdminCouponsPage() {
   const [formMinOrderAmount, setFormMinOrderAmount] = useState('')
   const [formInternalNote, setFormInternalNote] = useState('')
   const [formIsActive, setFormIsActive] = useState(true)
+  const [formAllowedDuringSales, setFormAllowedDuringSales] = useState(false)
 
   // Delete confirmation
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -110,6 +111,7 @@ export default function AdminCouponsPage() {
     setFormMinOrderAmount('')
     setFormInternalNote('')
     setFormIsActive(true)
+    setFormAllowedDuringSales(false)
     setDialogOpen(true)
   }
 
@@ -124,6 +126,7 @@ export default function AdminCouponsPage() {
     setFormMinOrderAmount(coupon.min_order_amount?.toString() || '')
     setFormInternalNote(coupon.internal_note || '')
     setFormIsActive(coupon.is_active)
+    setFormAllowedDuringSales(coupon.allowed_during_sales ?? false)
     setDialogOpen(true)
   }
 
@@ -170,6 +173,7 @@ export default function AdminCouponsPage() {
         min_order_amount: formMinOrderAmount ? parseInt(formMinOrderAmount) : null,
         internal_note: formInternalNote.trim() || null,
         is_active: formIsActive,
+        allowed_during_sales: formAllowedDuringSales,
       }
 
       const res = editingCoupon
@@ -517,6 +521,21 @@ export default function AdminCouponsPage() {
                 id="active"
                 checked={formIsActive}
                 onCheckedChange={setFormIsActive}
+              />
+            </div>
+
+            {/* Allowed During Sales */}
+            <div className="flex items-center justify-between">
+              <Label htmlFor="allowedDuringSales" className="text-sm">
+                Allowed during sales
+                <span className="block text-xs text-gray-500 font-normal">
+                  Can be used with a store-wide sale
+                </span>
+              </Label>
+              <Switch
+                id="allowedDuringSales"
+                checked={formAllowedDuringSales}
+                onCheckedChange={setFormAllowedDuringSales}
               />
             </div>
           </div>

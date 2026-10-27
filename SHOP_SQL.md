@@ -253,7 +253,98 @@ USING (
 
 ---
 
-## Table 6: shop_order_emails
+## Table 6: shop_sales
+
+Store-wide sales/promotions with discount percentages.
+
+```sql
+CREATE TABLE shop_sales (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  discount_percent INTEGER NOT NULL CHECK (discount_percent >= 1 AND discount_percent <= 90),
+  starts_at TIMESTAMPTZ NOT NULL,
+  ends_at TIMESTAMPTZ NOT NULL,
+  scope TEXT NOT NULL DEFAULT 'all' CHECK (scope IN ('all', 'types', 'products')),
+  product_types TEXT[] DEFAULT NULL,
+  product_ids UUID[] DEFAULT NULL,
+  banner_text TEXT DEFAULT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT shop_sales_dates_check CHECK (ends_at > starts_at)
+);
+
+-- Indexes
+CREATE INDEX idx_shop_sales_active ON shop_sales(is_active, starts_at, ends_at) WHERE is_active = true;
+
+-- RLS
+ALTER TABLE shop_sales ENABLE ROW LEVEL SECURITY;
+
+-- Public can view live sales
+CREATE POLICY "Public can view live sales"
+ON shop_sales FOR SELECT
+USING (
+  is_active = true
+  AND starts_at <= NOW()
+  AND ends_at > NOW()
+);
+
+-- Admins can manage sales
+CREATE POLICY "Admins can manage sales"
+ON shop_sales FOR ALL
+USING (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid()
+    AND users.role IN ('admin', 'super_admin')
+  )
+);
+```
+
+---
+
+## Sale columns on shop_orders
+
+Track which sale an order was placed under.
+
+```sql
+-- Add sale columns to shop_orders
+ALTER TABLE shop_orders
+ADD COLUMN sale_id UUID REFERENCES shop_sales(id) ON DELETE SET NULL,
+ADD COLUMN sale_percent INTEGER DEFAULT NULL,
+ADD COLUMN sale_savings_naira INTEGER NOT NULL DEFAULT 0;
+
+-- Index for sale analytics
+CREATE INDEX idx_shop_orders_sale ON shop_orders(sale_id) WHERE sale_id IS NOT NULL;
+```
+
+---
+
+## Sale column on shop_order_items
+
+Track original price per item (before sale).
+
+```sql
+-- Add original price column to shop_order_items
+ALTER TABLE shop_order_items
+ADD COLUMN original_unit_price_naira INTEGER DEFAULT NULL;
+```
+
+---
+
+## Coupon sale compatibility
+
+Allow some coupons to work during sales.
+
+```sql
+-- Add allowed_during_sales column to shop_coupons
+ALTER TABLE shop_coupons
+ADD COLUMN allowed_during_sales BOOLEAN NOT NULL DEFAULT false;
+```
+
+---
+
+## Table 7: shop_order_emails
 
 Tracks customer emails sent for each order (processing, dispatched, delivered).
 
