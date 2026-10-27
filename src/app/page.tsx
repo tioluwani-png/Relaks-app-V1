@@ -157,11 +157,16 @@ export default async function Home() {
     christmas ? { ...coloring.prefill, r4: '#1B7A43', r5: '#1B7A43' } : coloring.prefill
   )
   const todaysPrompt = getTodaysPrompt()
+  // Until the team has an AI page to show, the AI phone shows the hero page as line art with a matching prompt
+  const lineArt = appScreenData.aiExample ? null : getAppPreviewArt(christmas ? 'christmas' : 'default', [])
+  const aiExample = appScreenData.aiExample
+    ? appScreenData.aiExample
+    : lineArt
+      ? { prompt: APP_SECTION.aiFallbackPrompt, svg: lineArt, label: APP_SECTION.aiFallbackLabel }
+      : null
   const appScreens = {
     ...(appScreenData.reference ? { appReferences: <ReferencesScreen reference={appScreenData.reference} /> } : {}),
-    ...(appScreenData.aiExample
-      ? { appFeed: <AiScreen example={appScreenData.aiExample} price={naira(PRICING.aiStarter)} /> }
-      : {}),
+    ...(aiExample ? { appFeed: <AiScreen example={aiExample} price={naira(PRICING.aiStarter)} /> } : {}),
     appJournal: <JournalScreen prompt={todaysPrompt.text} category={categoryLabels[todaysPrompt.category]} />,
     ...(previewSvg
       ? {

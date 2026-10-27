@@ -282,6 +282,9 @@ export const APP_SECTION = {
   heading: 'A calm corner on your phone',
   comingSoon: 'Coming soon',
   cta: { label: 'Join the app free', href: '/signup', event: 'app_start' },
+  /** Shown on the AI phone until the team has made an AI page that can be shown publicly */
+  aiFallbackPrompt: 'A Christmas tree covered in baubles and bows, with presents underneath',
+  aiFallbackLabel: 'Example',
 }
 
 // Live features first; digital coloring is coming soon, so it goes last

@@ -43,11 +43,17 @@ export function AppSection({
     const Icon = ROW_ICONS[row.image]
     const text = (
       <>
-        <div className="flex items-center gap-2 mb-3 justify-center md:justify-start">
-          <Icon className={cn('h-5 w-5', accent.icon)} aria-hidden="true" />
-          <h3 className="text-lg md:text-xl font-bold text-relaks-ink">{row.heading}</h3>
+        <div className="mb-3 flex flex-col items-center gap-1.5 md:flex-row md:flex-wrap md:items-center md:gap-2">
+          <Icon className={cn('h-5 w-5 shrink-0', accent.icon)} aria-hidden="true" />
+          <h3 className="text-lg md:text-xl font-bold leading-snug text-relaks-ink">{row.heading}</h3>
           {row.comingSoon && (
-            <span className={cn('rounded-full border px-2.5 py-0.5 text-xs font-semibold', accent.border, accent.text)}>
+            <span
+              className={cn(
+                'whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold',
+                accent.border,
+                accent.text
+              )}
+            >
               {APP_SECTION.comingSoon}
             </span>
           )}

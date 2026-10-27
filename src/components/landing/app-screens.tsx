@@ -54,8 +54,13 @@ export function ReferencesScreen({ reference }: { reference: NonNullable<AppScre
   )
 }
 
-/** "Imagine a page, get a page": an AI page made by the Relaks team, with its prompt. */
-export function AiScreen({ example, price }: { example: NonNullable<AppScreenData['aiExample']>; price: string }) {
+export type AiExample = { prompt: string; imageUrl?: string; svg?: string; label?: string }
+
+/**
+ * "Imagine a page, get a page": an AI page made by the Relaks team with its prompt,
+ * or, until one exists, a line-art example from the hero page.
+ */
+export function AiScreen({ example, price }: { example: AiExample; price: string }) {
   return (
     <Screen>
       <TopBar title="Create a page" sub="AI coloring pages" />
@@ -64,7 +69,16 @@ export function AiScreen({ example, price }: { example: NonNullable<AppScreenDat
         <p className="line-clamp-3 text-[0.8em] leading-snug text-relaks-ink/80">{example.prompt}</p>
       </div>
       <div className="relative mt-[0.7em] min-h-0 flex-1 overflow-hidden rounded-[0.9em] bg-white shadow-sm">
-        <Image src={example.imageUrl} alt="" fill sizes="(min-width: 768px) 220px, 140px" className="object-contain p-[0.4em]" />
+        {example.imageUrl ? (
+          <Image src={example.imageUrl} alt="" fill sizes="(min-width: 768px) 220px, 140px" className="object-contain p-[0.4em]" />
+        ) : example.svg ? (
+          <div className="h-full w-full p-[0.5em] [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: example.svg }} />
+        ) : null}
+        {example.label && (
+          <span className="absolute left-[0.6em] top-[0.6em] rounded-full bg-relaks-cream/95 px-[0.6em] py-[0.25em] text-[0.7em] font-semibold text-relaks-orange-ink">
+            {example.label}
+          </span>
+        )}
       </div>
       <div className="mt-[0.8em] rounded-full bg-gradient-to-r from-relaks-purple via-relaks-coral to-relaks-orange py-[0.6em] text-center text-[0.85em] font-bold text-white">
         Generate · {price}

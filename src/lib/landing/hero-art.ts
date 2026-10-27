@@ -48,14 +48,14 @@ export function getHeroArt(season: 'christmas' | 'default', prefill: Record<stri
 /**
  * A half-colored copy of the coloring page for the app section's "coming soon" phone.
  * Region ids are removed so they never clash with the interactive hero page on the same screen.
- * Fills are deterministic, so every render looks the same.
+ * Fills are deterministic, so every render looks the same. An empty palette gives plain line art.
  */
 export function getAppPreviewArt(season: 'christmas' | 'default', palette: string[], keep: Record<string, string> = {}): string | null {
   const svg =
     season === 'default'
       ? readSvg(DEFAULT_FILE) ?? readSvg(CHRISTMAS_FILE)
       : readSvg(CHRISTMAS_FILE)
-  if (!svg || palette.length === 0) return null
+  if (!svg) return null
 
   let index = 0
   let out = svg
@@ -67,7 +67,9 @@ export function getAppPreviewArt(season: 'christmas' | 'default', palette: strin
     .replace(/<path class="region" id="(r\d+)"/g, (_match, id: string) => {
       index += 1
       // Leave the background and ground white, and about 40% of the rest unfilled, so it reads as "in progress"
-      const fill = keep[id] ?? (index > 2 && (index * 37) % 10 < 6 ? palette[(index * 7) % palette.length] : null)
+      const fill =
+        keep[id] ??
+        (palette.length > 0 && index > 2 && (index * 37) % 10 < 6 ? palette[(index * 7) % palette.length] : null)
       return fill ? `<path style="fill:${fill}"` : '<path'
     })
     .replace(/\sid="(regions|ink)"/g, '')
