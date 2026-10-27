@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
+import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "@/lib/landing/content";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -12,8 +13,9 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Relaks - Wellness Coloring Community",
-  description: "Share your colored pages, find inspiration, and build wellness habits with the Relaks community.",
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -26,13 +28,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Relaks",
-    title: "Relaks - Wellness Coloring Community",
-    description: "Share your colored pages, find inspiration, and build wellness habits with the Relaks community.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Relaks - Wellness Coloring Community",
-    description: "Share your colored pages, find inspiration, and build wellness habits with the Relaks community.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
 };
 
@@ -40,8 +42,6 @@ export const viewport: Viewport = {
   themeColor: "#A855F7",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
 };
 

@@ -35,6 +35,13 @@ export default function ShopPage() {
     loadDistributors()
   }, [selectedType])
 
+  // Distributors load async, so the browser can't jump to /shop#distributors on its own
+  useEffect(() => {
+    if (distributors.length > 0 && window.location.hash === '#distributors') {
+      document.getElementById('distributors')?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [distributors.length])
+
   const loadDistributors = async () => {
     try {
       const res = await fetch('/api/shop/distributors')
@@ -163,10 +170,11 @@ export default function ShopPage() {
         {/* Distributors Section - only show if there are active distributors */}
         {distributors.length > 0 && (
           <motion.div
+            id="distributors"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="mt-12 bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 rounded-3xl p-6 border border-purple-100"
+            className="mt-12 scroll-mt-20 bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 rounded-3xl p-6 border border-purple-100"
           >
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Outside Lagos?</h2>
             <p className="text-gray-600 text-sm mb-4">

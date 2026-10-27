@@ -306,4 +306,10 @@
   .animate-pulse-glow {
     animation: none;
   }
+
+  /* Landing scroll reveals (components/landing/reveal.tsx) */
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
