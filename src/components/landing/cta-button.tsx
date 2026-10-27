@@ -2,23 +2,26 @@ import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { TrackedLink } from './tracked-link'
 
+// The gradient is reserved for the hero and final CTA primary buttons
 const VARIANTS = {
   gradient:
-    'text-white bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 shadow-lg shadow-purple-200/50 hover:shadow-xl hover:scale-[1.03]',
-  outline:
-    'text-gray-800 bg-white/70 border-2 border-gray-300 hover:border-purple-300 hover:bg-white',
+    'text-white bg-gradient-to-r from-relaks-purple via-relaks-coral to-relaks-orange shadow-lg shadow-relaks-coral/25 hover:shadow-xl',
+  ink: 'text-white bg-relaks-ink hover:bg-black',
+  outline: 'text-relaks-ink bg-white/80 border-2 border-relaks-ink/25 hover:border-relaks-ink/60 hover:bg-white',
 }
 
 export function CtaButton({
   href,
   event,
-  variant = 'gradient',
+  variant = 'ink',
+  size = 'lg',
   className,
   children,
 }: {
   href: string
   event: string
   variant?: keyof typeof VARIANTS
+  size?: 'md' | 'lg'
   className?: string
   children: ReactNode
 }) {
@@ -27,7 +30,8 @@ export function CtaButton({
       href={href}
       event={event}
       className={cn(
-        'inline-flex items-center justify-center px-8 py-4 text-lg font-semibold rounded-full transition-all duration-300',
+        'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all duration-300',
+        size === 'lg' ? 'min-h-14 px-8 text-lg' : 'min-h-12 px-6 text-base',
         VARIANTS[variant],
         className
       )}

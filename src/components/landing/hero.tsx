@@ -2,50 +2,50 @@ import { HERO } from '@/lib/landing/content'
 import type { LandingImage } from '@/lib/landing/images'
 import { CtaButton } from './cta-button'
 import { LandingImageView } from './landing-image'
+import { LineArt } from './section'
 
 // Rendered without animation so the headline and buttons paint immediately.
 export function Hero({ image }: { image: LandingImage | null }) {
   return (
-    <section id="hero" className="relative pt-12 pb-16 md:pt-20 md:pb-24">
-      {/* Soft blurred shapes */}
-      <div className="absolute top-10 left-10 w-72 h-72 bg-purple-200/30 rounded-full blur-3xl" aria-hidden="true" />
-      <div className="absolute bottom-10 right-10 w-80 h-80 bg-pink-200/25 rounded-full blur-3xl" aria-hidden="true" />
-      <div className="absolute top-32 right-1/4 w-56 h-56 bg-orange-100/30 rounded-full blur-3xl" aria-hidden="true" />
+    <section id="hero" className="relative overflow-hidden bg-relaks-cream pt-8 pb-10 md:pt-20 md:pb-24">
+      <LineArt />
 
       <div
         className={
           image
-            ? 'container mx-auto px-4 max-w-6xl relative grid gap-12 lg:grid-cols-[1.15fr_1fr] lg:items-center'
+            ? 'container mx-auto px-4 max-w-6xl relative grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-center'
             : 'container mx-auto px-4 max-w-4xl relative'
         }
       >
         <div className={image ? 'text-center lg:text-left' : 'text-center'}>
-          <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-sm text-purple-800 px-4 py-2 rounded-full text-sm font-medium mb-8 border border-purple-100/60">
-            <span>{HERO.badge}</span>
-          </div>
+          <p className="inline-flex items-center bg-white/80 text-relaks-ink px-4 py-2 rounded-full text-sm font-medium mb-6 border border-relaks-coral/40">
+            {HERO.badge}
+          </p>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-extrabold tracking-tight text-gray-900 mb-6 leading-[1.1]">
+          <h1 className="font-display text-[36px] md:text-[48px] font-bold tracking-tight text-relaks-ink mb-5 leading-[1.1]">
             {HERO.titleLine1}
             <br />
-            <span className="bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 bg-clip-text text-transparent">
-              {HERO.titleLine2}
+            {HERO.titleLine2Lead}{' '}
+            <span className="bg-gradient-to-r from-relaks-purple via-relaks-coral to-relaks-orange bg-clip-text text-transparent">
+              {HERO.titleLine2Word}
             </span>
+            .
           </h1>
 
-          <p className={`text-lg md:text-xl text-gray-600 mb-10 max-w-2xl leading-relaxed mx-auto ${image ? 'lg:mx-0' : ''}`}>
+          <p className={`text-base md:text-lg text-gray-700 mb-8 max-w-[52ch] leading-relaxed mx-auto ${image ? 'lg:mx-0' : ''}`}>
             {HERO.subline}
           </p>
 
           <div className={`flex flex-col items-center gap-3 ${image ? 'lg:items-start' : ''}`}>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full sm:w-auto">
-              <CtaButton href={HERO.primary.href} event={HERO.primary.event}>
+              <CtaButton href={HERO.primary.href} event={HERO.primary.event} variant="gradient">
                 {HERO.primary.label}
               </CtaButton>
               <CtaButton href={HERO.secondary.href} event={HERO.secondary.event} variant="outline">
                 {HERO.secondary.label}
               </CtaButton>
             </div>
-            <p className="text-sm text-gray-600">{HERO.note}</p>
+            <p className="text-sm text-gray-700">{HERO.note}</p>
           </div>
         </div>
 
@@ -53,8 +53,8 @@ export function Hero({ image }: { image: LandingImage | null }) {
           <LandingImageView
             image={image}
             preload
-            sizes="(min-width: 1024px) 480px, (min-width: 640px) 70vw, 90vw"
-            photoClassName="mx-auto w-full max-w-md lg:max-w-none aspect-[4/5] rounded-3xl shadow-2xl shadow-purple-200/50 border border-white"
+            sizes="(min-width: 1024px) 460px, (min-width: 640px) 320px, 220px"
+            photoClassName="mx-auto w-full max-w-[220px] sm:max-w-xs lg:max-w-none aspect-[4/5] rounded-3xl shadow-xl shadow-relaks-ink/10 border-4 border-white"
           />
         )}
       </div>

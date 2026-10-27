@@ -94,7 +94,9 @@ export const FOOTER_COLUMNS: FooterColumn[] = [
 export const HERO = {
   badge: '8,000+ books in homes across Nigeria, Kenya and the UK',
   titleLine1: "You've done enough today.",
-  titleLine2: 'Just RELAKS.',
+  // Renders as "Just RELAKS." with only the word in the brand gradient
+  titleLine2Lead: 'Just',
+  titleLine2Word: 'RELAKS',
   subline:
     'Coloring books, a calm coloring app, and a book club that delivers in Lagos. Take ten minutes for yourself.',
   primary: { label: 'Shop the books', href: '/shop', event: 'hero_shop' },
@@ -164,7 +166,7 @@ export const BOOKS_SECTION = {
   /** `{fee}` is the lowest active Lagos delivery zone fee */
   delivery: 'Delivery across Lagos from ₦{fee}.',
   deliveryNoFee: 'Delivery across Lagos.',
-  outsideLagos: { label: 'Outside Lagos? Order from a distributor.', href: '/shop#distributors' },
+  outsideLagos: { label: 'Outside Lagos? Order from a distributor.', href: '#outside-lagos', fallbackHref: '/delivery-returns' },
 }
 
 // ============================================
@@ -233,18 +235,48 @@ export const STICKY_BAR = {
 export const FALLBACK_EDITION_NAMES = ['Lavender', 'Pink', 'Christmas']
 
 // ============================================
-// OUR STORY
+// THE READING CLUB (#reading-club)
 // ============================================
+
+export const READING_CLUB_SECTION = {
+  eyebrow: 'The Reading Club',
+  heading: 'How the Reading Club works',
+  steps: [
+    { icon: 'list', title: 'Choose your plan', text: 'Pick a plan and the books you want to read.' },
+    { icon: 'truck', title: 'We deliver your books', text: 'Your books arrive at your door in Lagos.' },
+    { icon: 'repeat', title: 'We swap them next time', text: 'Finished? We collect them when we bring the next ones.' },
+  ] as const,
+  plansHeading: 'Plans',
+  lagosOnly: 'Lagos only for now',
+  cta: { label: 'See plans', href: '/rent', event: 'club_see_plans' },
+}
+
+// ============================================
+// OUR STORY (#story)
+// ============================================
+
+// TODO: add the founder's name (shown under the story; hidden while empty)
+export const FOUNDER_NAME = ''
+
+// TODO: add the URL of the full founder story on the blog (link hidden while empty)
+export const BLOG_STORY_URL = ''
 
 export const STORY = {
   eyebrow: 'Our Story',
   heading: 'More than an app. An experience.',
+  // Four sentences, cut down from the original story
   paragraphs: [
-    "Relaks was born from a deeply personal place. The founder's own journey through grief and anxiety shaped everything about this app.",
-    "We didn't just build features. We built a space where you feel considered, supported and free to express yourself without judgment.",
-    "Every detail is intentional. The prompts, the colors, the references, the community. It's all designed to help you feel a little more at peace.",
+    "Relaks was born from a deeply personal place: the founder's own journey through grief and anxiety shaped everything about it.",
+    'Every detail is intentional. The prompts, the colors, the references, the community.',
+    "This isn't about being artistic; it's about giving yourself permission to slow down.",
   ],
-  closing: "This isn't about being artistic. It's about giving yourself permission to slow down.",
+  readMore: { label: 'Read the full story', event: 'story_read_more' },
+  milestones: [
+    { value: '₦2,500', label: 'first TikTok ad' },
+    { value: '10 orders', label: 'overnight' },
+    { value: '100 books', label: 'in week one' },
+    { value: '8,000+', label: 'books since' },
+  ],
 }
 
 // ============================================
@@ -255,7 +287,7 @@ export interface Testimonial {
   name: string
   location: string
   quote: string
-  /** Optional photo path, e.g. /landing/chisom.jpg */
+  /** Optional photo of their colored page, e.g. /landing/chisom.jpg (4:3) */
   image?: string
 }
 
@@ -283,46 +315,33 @@ export const TESTIMONIALS: Testimonial[] = [
 ]
 
 // ============================================
-// HOW IT WORKS
+// OUTSIDE LAGOS (#outside-lagos)
 // ============================================
 
-export const STEPS_SECTION = {
-  eyebrow: 'Getting Started',
-  heading: 'Getting started is easy',
+export const OUTSIDE_LAGOS_SECTION = {
+  eyebrow: 'Outside Lagos',
+  heading: 'Not in Lagos? Order from a Relaks distributor near you',
+  button: 'Message on WhatsApp',
 }
 
-export const STEPS = [
-  { number: '1', emoji: '📲', title: 'Create your account', description: 'Sign up free in seconds with email or Google.' },
-  { number: '2', emoji: '🎨', title: 'Choose your first page', description: 'Pick from our gallery or create your own with AI.' },
-  { number: '3', emoji: '🌸', title: 'Start coloring', description: 'Breathe, relax, and let your creativity flow.' },
-]
-
 // ============================================
-// PRICING
+// FAQ (#faq) - answers are built from live data in components/landing/faq-section.tsx
 // ============================================
 
-export const PRICING_SECTION = {
-  eyebrow: 'Pricing',
-  heading: "Start for free. Upgrade when you're ready.",
-  free: {
-    title: 'Free',
-    subtitle: 'Everything you need to get started',
-    items: ['Upload unlimited artworks', 'Daily journaling', 'Community access', 'Mood tracking and streaks'],
-    cta: { label: 'Get Started Free', href: '/signup', event: 'pricing_free' },
-  },
-  credits: {
-    badge: 'Popular',
-    title: 'Credits',
-    subtitle: 'For AI pages and exclusive designs',
-    items: [
-      'AI-generated coloring pages',
-      'Exclusive premium designs',
-      'Buy as you go, no subscription',
-      'Bundles for better value',
-      'Starting from ₦500',
-    ],
-    cta: { label: 'Start Free, Upgrade Later', href: '/signup', event: 'pricing_credits' },
-  },
+export const FAQ_SECTION = {
+  eyebrow: 'Questions',
+  heading: 'Good to know',
+  paymentMethods: 'Card, bank transfer and USSD, all through Paystack. We never see or store your card details.',
+}
+
+// ============================================
+// FROM THE BLOG
+// ============================================
+
+export const BLOG_SECTION = {
+  eyebrow: 'From the blog',
+  heading: 'Notes on slowing down',
+  seeAll: { label: 'Read the blog', href: '/blog', event: 'blog_see_all' },
 }
 
 // ============================================

@@ -14,6 +14,17 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Relaks landing palette (values in :root) */
+  --color-relaks-coral: var(--relaks-coral);
+  --color-relaks-purple: var(--relaks-purple);
+  --color-relaks-orange: var(--relaks-orange);
+  --color-relaks-ink: var(--relaks-ink);
+  --color-relaks-cream: var(--relaks-cream);
+  --color-relaks-tint: var(--relaks-tint);
+  --color-relaks-coral-ink: var(--relaks-coral-ink);
+  --color-relaks-purple-ink: var(--relaks-purple-ink);
+  --color-relaks-orange-ink: var(--relaks-orange-ink);
+  --font-display: var(--font-display);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
@@ -56,6 +67,17 @@
 }
 
 :root {
+  /* Relaks brand colours */
+  --relaks-coral: #FF6B81;
+  --relaks-purple: #A758FF;
+  --relaks-orange: #FF9F43;
+  --relaks-ink: #1E1E2C;
+  --relaks-cream: #FDF8F5;
+  --relaks-tint: #FFF4EE;
+  /* Darker shades of the brand colours for text and links, which need 4.5:1 contrast on cream */
+  --relaks-coral-ink: #B3263F;
+  --relaks-purple-ink: #7A2ED6;
+  --relaks-orange-ink: #A04A00;
   --radius: 0.75rem;
 
   /* Relaks Redesign — Purple/Pink/Orange gradient palette */
@@ -312,4 +334,13 @@
     opacity: 1 !important;
     transform: none !important;
   }
+}
+
+/* Landing pages: visible focus rings on every interactive element (incl. the menu sheet) */
+.landing a:focus-visible,
+.landing button:focus-visible,
+.landing summary:focus-visible,
+.landing [tabindex]:focus-visible {
+  outline: 2px solid var(--relaks-purple-ink);
+  outline-offset: 3px;
 }

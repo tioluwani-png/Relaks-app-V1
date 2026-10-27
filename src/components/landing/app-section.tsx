@@ -1,4 +1,5 @@
-import { APP_ROWS, APP_SECTION } from '@/lib/landing/content'
+import { Brush, NotebookPen, Palette, Sparkles, type LucideIcon } from 'lucide-react'
+import { APP_ROWS, APP_SECTION, type AppRowImage } from '@/lib/landing/content'
 import type { LandingImages } from '@/lib/landing/images'
 import { PRICING } from '@/lib/paystack'
 import { cn } from '@/lib/utils'
@@ -6,51 +7,89 @@ import { formatCount } from '@/lib/landing/stats'
 import { CtaButton } from './cta-button'
 import { PhoneFrame } from './landing-image'
 import { Reveal } from './reveal'
-import { SectionHeading } from './section-heading'
+import { ACCENTS, Section, SectionHeading, type Tone } from './section'
+import { SwipeRow } from './swipe-row'
 
-/** `editions` is the naturally joined list of active edition names */
-export function AppSection({ editions, images }: { editions: string; images: LandingImages }) {
+const ROW_ICONS: Record<AppRowImage, LucideIcon> = {
+  appCanvas: Brush,
+  appReferences: Palette,
+  appFeed: Sparkles,
+  appJournal: NotebookPen,
+}
+
+/**
+ * Desktop: four rows alternating image left/right.
+ * Phones: the same rows as a swipe row, which keeps the page a sensible length.
+ */
+export function AppSection({ editions, images, tone }: { editions: string; images: LandingImages; tone: Tone }) {
   const fill = (line: string) =>
     line.replace('{editions}', editions).replace('{aiPrice}', formatCount(PRICING.aiStarter))
+  const accent = ACCENTS.orange
+
+  const rows = APP_ROWS.map((row) => {
+    const image = images[row.image]
+    const Icon = ROW_ICONS[row.image]
+    const text = (
+      <>
+        <div className="flex items-center gap-2 mb-3 justify-center md:justify-start">
+          <Icon className={cn('h-5 w-5', accent.icon)} aria-hidden="true" />
+          <h3 className="text-lg md:text-xl font-bold text-relaks-ink">{row.heading}</h3>
+        </div>
+        {row.lines.map((line) => (
+          <p key={line} className="text-gray-700 leading-relaxed max-w-[46ch] mx-auto md:mx-0">{fill(line)}</p>
+        ))}
+      </>
+    )
+    const phone = (className: string) => (
+      <PhoneFrame
+        src={image.src}
+        alt={image.alt}
+        label={image.kind === 'phone' ? image.label : row.heading}
+        sizes="(min-width: 768px) 240px, 180px"
+        className={className}
+      />
+    )
+    return { row, text, phone }
+  })
 
   return (
-    <section id="app" className="py-16 md:py-24 scroll-mt-16">
+    <Section id="app" tone={tone}>
       <div className="container mx-auto px-4 max-w-5xl">
-        <SectionHeading eyebrow={APP_SECTION.eyebrow} heading={APP_SECTION.heading} className="mb-12 md:mb-16" />
+        <SectionHeading eyebrow={APP_SECTION.eyebrow} heading={APP_SECTION.heading} accent="orange" />
 
-        <div className="space-y-16 md:space-y-24">
-          {APP_ROWS.map((row, i) => {
-            const image = images[row.image]
+        {/* Phones */}
+        <div className="md:hidden">
+          <SwipeRow label="What you can do in the app" dots itemClassName="w-[78%]">
+            {rows.map(({ row, text, phone }) => (
+              <div key={row.heading} className="h-full rounded-2xl border border-relaks-ink/10 bg-white p-4 text-center">
+                {phone('max-w-[130px] mb-4')}
+                {text}
+              </div>
+            ))}
+          </SwipeRow>
+        </div>
+
+        {/* Tablet and desktop */}
+        <div className="hidden md:block space-y-14">
+          {rows.map(({ row, text, phone }, i) => {
             const flipped = i % 2 === 1
             return (
               <Reveal key={row.heading}>
-                <div className="grid items-center gap-8 md:grid-cols-2 md:gap-16">
-                  <div className={cn('text-center md:text-left', flipped && 'md:order-2')}>
-                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">{row.heading}</h3>
-                    {row.lines.map((line) => (
-                      <p key={line} className="text-lg text-gray-700 leading-relaxed">{fill(line)}</p>
-                    ))}
-                  </div>
-                  <div className={cn(flipped && 'md:order-1')}>
-                    <PhoneFrame
-                      src={image.src}
-                      alt={image.alt}
-                      label={image.kind === 'phone' ? image.label : row.heading}
-                      className="max-w-[220px] md:max-w-[250px]"
-                    />
-                  </div>
+                <div className="grid grid-cols-2 items-center gap-16">
+                  <div className={cn(flipped && 'order-2')}>{text}</div>
+                  <div className={cn(flipped && 'order-1')}>{phone('max-w-[200px] lg:max-w-[220px]')}</div>
                 </div>
               </Reveal>
             )
           })}
         </div>
 
-        <div className="mt-16 text-center">
+        <div className="mt-6 md:mt-16 text-center">
           <CtaButton href={APP_SECTION.cta.href} event={APP_SECTION.cta.event}>
             {APP_SECTION.cta.label}
           </CtaButton>
         </div>
       </div>
-    </section>
+    </Section>
   )
 }

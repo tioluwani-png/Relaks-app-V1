@@ -1,52 +1,52 @@
 import Image from 'next/image'
-import { TESTIMONIALS, TESTIMONIALS_SECTION, type Testimonial } from '@/lib/landing/content'
-import { Reveal } from './reveal'
-import { SectionHeading } from './section-heading'
+import { TESTIMONIALS, TESTIMONIALS_SECTION } from '@/lib/landing/content'
+import { Section, SectionHeading, type Tone } from './section'
+import { SwipeRow } from './swipe-row'
 
-function Avatar({ testimonial }: { testimonial: Testimonial }) {
-  if (testimonial.image) {
-    return (
-      <Image
-        src={testimonial.image}
-        alt={testimonial.name}
-        width={40}
-        height={40}
-        className="h-10 w-10 rounded-full object-cover"
-      />
-    )
-  }
+export function TestimonialsSection({ tone }: { tone: Tone }) {
   return (
-    <div className="h-10 w-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm" aria-hidden="true">
-      {testimonial.name.charAt(0)}
-    </div>
-  )
-}
-
-export function TestimonialsSection() {
-  return (
-    <section className="py-20 md:py-28 bg-white/40">
+    <Section tone={tone}>
       <div className="container mx-auto px-4 max-w-6xl">
-        <SectionHeading eyebrow={TESTIMONIALS_SECTION.eyebrow} heading={TESTIMONIALS_SECTION.heading} color="pink" />
+        <SectionHeading eyebrow={TESTIMONIALS_SECTION.eyebrow} heading={TESTIMONIALS_SECTION.heading} accent="purple" />
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {TESTIMONIALS.map((t, i) => (
-            <Reveal key={t.name} delay={i * 0.12}>
-              <figure className="bg-white rounded-2xl p-7 border border-gray-100/80 shadow-sm h-full flex flex-col">
-                <blockquote className="text-gray-700 mb-6 flex-1 leading-relaxed">
-                  &ldquo;{t.quote}&rdquo;
-                </blockquote>
-                <figcaption className="flex items-center gap-3">
-                  <Avatar testimonial={t} />
-                  <div>
-                    <p className="font-semibold text-sm text-gray-900">{t.name}</p>
-                    <p className="text-xs text-gray-600">{t.location}</p>
-                  </div>
+        <SwipeRow
+          label="What our community says"
+          dots
+          itemClassName="w-[85%] sm:w-[60%] md:w-auto"
+          desktopGridClassName="md:grid-cols-3 md:gap-6"
+        >
+          {TESTIMONIALS.map((t) => (
+            <figure key={t.name} className="flex h-full flex-col overflow-hidden rounded-2xl border border-relaks-ink/10 bg-white">
+              {t.image && (
+                <div className="relative aspect-[4/3] bg-relaks-tint">
+                  <Image
+                    src={t.image}
+                    alt={`Page colored by ${t.name}`}
+                    fill
+                    sizes="(min-width: 768px) 360px, 85vw"
+                    className="object-cover"
+                  />
+                </div>
+              )}
+              <div className="flex flex-1 flex-col p-5 md:p-6">
+                <blockquote className="flex-1 text-relaks-ink leading-relaxed">&ldquo;{t.quote}&rdquo;</blockquote>
+                <figcaption className="mt-4 flex items-center gap-3">
+                  <span
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-relaks-purple/15 text-sm font-bold text-relaks-purple-ink"
+                    aria-hidden="true"
+                  >
+                    {t.name.charAt(0)}
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold text-relaks-ink">{t.name}</span>
+                    <span className="block text-sm text-gray-700">{t.location}</span>
+                  </span>
                 </figcaption>
-              </figure>
-            </Reveal>
+              </div>
+            </figure>
           ))}
-        </div>
+        </SwipeRow>
       </div>
-    </section>
+    </Section>
   )
 }

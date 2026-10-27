@@ -59,7 +59,7 @@ export function SwipeRow({
   }
 
   const arrowClass =
-    'absolute top-1/3 z-10 hidden h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-800 shadow-md transition hover:bg-gray-50 md:flex'
+    'absolute top-1/3 z-10 hidden h-12 w-12 items-center justify-center rounded-full border border-relaks-ink/15 bg-white text-relaks-ink shadow-md transition hover:bg-relaks-tint md:flex'
 
   return (
     <div className={cn(arrows && 'relative', className)}>
@@ -80,7 +80,7 @@ export function SwipeRow({
         tabIndex={0}
         className={cn(
           // Bleed to the screen edge on mobile so the next card peeks in
-          '-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-px-4 px-4 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden focus-visible:outline-2 focus-visible:outline-purple-500',
+          '-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-px-4 px-4 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
           desktopGridClassName && cn('md:mx-0 md:grid md:overflow-visible md:px-0 md:pb-0', desktopGridClassName)
         )}
       >
@@ -92,7 +92,7 @@ export function SwipeRow({
       </div>
 
       {dots && items.length > 1 && (
-        <div className={cn('mt-2 flex justify-center gap-2', desktopGridClassName && 'md:hidden')}>
+        <div className={cn('mt-1 flex justify-center', desktopGridClassName && 'md:hidden')}>
           {items.map((_, i) => (
             <button
               key={i}
@@ -100,12 +100,12 @@ export function SwipeRow({
               onClick={() => scrollTo(i)}
               aria-label={`Go to card ${i + 1} of ${items.length}`}
               aria-current={i === active}
-              className="p-1"
+              className="flex h-11 w-11 items-center justify-center"
             >
               <span
                 className={cn(
                   'block h-2 rounded-full transition-all',
-                  i === active ? 'w-6 bg-purple-600' : 'w-2 bg-gray-300'
+                  i === active ? 'w-6 bg-relaks-ink' : 'w-2 bg-relaks-ink/25'
                 )}
               />
             </button>

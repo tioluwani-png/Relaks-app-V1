@@ -4,29 +4,35 @@ import { BOOKS_SECTION } from '@/lib/landing/content'
 import type { LandingProduct } from '@/lib/landing/data'
 import { formatCount } from '@/lib/landing/stats'
 import { ProductCard } from './product-card'
-import { SectionHeading } from './section-heading'
+import { Section, SectionHeading, type Tone } from './section'
 import { SwipeRow } from './swipe-row'
 import { TrackedLink } from './tracked-link'
 
 export function BooksSection({
   products,
   lowestFee,
+  hasDistributors,
+  tone,
 }: {
   products: LandingProduct[]
   lowestFee: number | null
+  /** When false, "Outside Lagos?" links to the delivery page instead of #outside-lagos */
+  hasDistributors: boolean
+  tone: Tone
 }) {
   if (products.length === 0) return null
 
   const delivery = lowestFee !== null
     ? BOOKS_SECTION.delivery.replace('{fee}', formatCount(lowestFee))
     : BOOKS_SECTION.deliveryNoFee
+  const outside = BOOKS_SECTION.outsideLagos
 
   return (
-    <section id="books" className="py-16 md:py-24 bg-white/40 scroll-mt-16">
+    <Section id="books" tone={tone}>
       <div className="container mx-auto px-4 max-w-6xl">
-        <SectionHeading eyebrow={BOOKS_SECTION.eyebrow} heading={BOOKS_SECTION.heading} color="pink" className="mb-10" />
+        <SectionHeading eyebrow={BOOKS_SECTION.eyebrow} heading={BOOKS_SECTION.heading} accent="coral" />
 
-        <SwipeRow label="Relaks shop products" arrows itemClassName="w-[65%] sm:w-[40%] md:w-[260px]">
+        <SwipeRow label="Relaks shop products" arrows itemClassName="w-[52%] sm:w-[36%] md:w-[250px]">
           {products.map((p) => (
             <ProductCard
               key={p.product.id}
@@ -39,27 +45,27 @@ export function BooksSection({
           ))}
         </SwipeRow>
 
-        <div className="mt-8 flex flex-col items-center gap-4 text-center">
+        <div className="mt-6 flex flex-col items-center gap-3 text-center">
           <TrackedLink
             href={BOOKS_SECTION.seeAll.href}
             event={BOOKS_SECTION.seeAll.event}
-            className="inline-flex items-center gap-1.5 rounded-full border-2 border-gray-300 bg-white/70 px-6 py-3 font-semibold text-gray-800 transition-colors hover:border-purple-300 hover:bg-white"
+            className="inline-flex min-h-12 items-center gap-1.5 rounded-full border-2 border-relaks-ink/25 bg-white px-6 font-semibold text-relaks-ink transition-colors hover:border-relaks-ink/60"
           >
             {BOOKS_SECTION.seeAll.label}
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </TrackedLink>
-          <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-sm text-gray-700">
-            <Truck className="h-4 w-4 text-purple-700" aria-hidden="true" />
+          <p className="flex flex-wrap items-center justify-center gap-x-1.5 text-sm text-gray-700">
+            <Truck className="h-4 w-4 text-relaks-coral" aria-hidden="true" />
             <span>{delivery}</span>
             <Link
-              href={BOOKS_SECTION.outsideLagos.href}
-              className="font-medium text-purple-800 underline underline-offset-2 hover:text-purple-950"
+              href={hasDistributors ? outside.href : outside.fallbackHref}
+              className="inline-flex min-h-11 items-center font-semibold text-relaks-coral-ink underline underline-offset-2"
             >
-              {BOOKS_SECTION.outsideLagos.label}
+              {outside.label}
             </Link>
           </p>
         </div>
       </div>
-    </section>
+    </Section>
   )
 }

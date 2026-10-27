@@ -34,9 +34,9 @@ export default async function DeliveryReturnsPage() {
           times count from when your order is confirmed.
         </p>
         {zones.length > 0 ? (
-          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+          <div className="overflow-x-auto rounded-2xl border border-relaks-ink/10 bg-white">
             <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-900">
+              <thead className="bg-relaks-tint text-relaks-ink">
                 <tr>
                   <th scope="col" className="px-4 py-3 font-semibold">Zone</th>
                   <th scope="col" className="px-4 py-3 font-semibold">Fee</th>
@@ -47,9 +47,9 @@ export default async function DeliveryReturnsPage() {
                 {zones.map((zone) => (
                   <tr key={zone.id} className="align-top">
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{zone.name}</p>
+                      <p className="font-medium text-relaks-ink">{zone.name}</p>
                       {zone.areas.length > 0 && (
-                        <p className="text-gray-600 mt-1">{zone.areas.join(', ')}</p>
+                        <p className="text-gray-700 mt-1">{zone.areas.join(', ')}</p>
                       )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">&#8358;{zone.fee_naira.toLocaleString('en-US')}</td>

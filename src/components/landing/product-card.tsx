@@ -44,26 +44,26 @@ export function ProductCard({
   }
 
   const buttonClass =
-    'mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold transition-colors'
+    'mt-3 inline-flex min-h-12 w-full items-center justify-center gap-1.5 rounded-full text-sm font-semibold transition-colors'
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-      <Link href={href} className="relative block aspect-square bg-purple-50">
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-relaks-ink/10 bg-white">
+      <Link href={href} className="relative block aspect-square bg-relaks-tint">
         {image && (
           <Image
             src={image}
             alt={product.name}
             fill
-            sizes="(min-width: 768px) 260px, 65vw"
+            sizes="(min-width: 768px) 250px, 52vw"
             className="object-cover"
           />
         )}
       </Link>
-      <div className="flex flex-1 flex-col p-4">
-        <Link href={href} className="font-semibold text-gray-900 leading-snug line-clamp-2 hover:text-purple-800">
+      <div className="flex flex-1 flex-col p-3 md:p-4">
+        <Link href={href} className="flex min-h-11 items-center font-semibold text-relaks-ink leading-snug hover:underline underline-offset-2">
           {product.name}
         </Link>
-        <p className="mt-1 text-gray-900">
+        <p className="mt-1 text-relaks-ink">
           <span className="font-bold">
             {fromPrice ? 'From ' : ''}
             {naira(price)}
@@ -71,7 +71,7 @@ export function ProductCard({
           {compareAt && (
             <>
               {' '}
-              <s className="text-sm text-gray-600">
+              <s className="text-sm text-gray-700">
                 <span className="sr-only">was </span>
                 {naira(compareAt)}
               </s>
@@ -80,20 +80,20 @@ export function ProductCard({
         </p>
         <div className="mt-auto">
           {product.has_variants ? (
-            <Link href={href} className={`${buttonClass} border-2 border-purple-200 text-purple-800 hover:bg-purple-50`}>
+            <Link href={href} className={`${buttonClass} border-2 border-relaks-coral/50 text-relaks-ink hover:border-relaks-coral`}>
               Choose options
             </Link>
           ) : inStock ? (
             <button
               type="button"
               onClick={handleAdd}
-              className={`${buttonClass} text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700`}
+              className={`${buttonClass} text-white bg-relaks-ink hover:bg-black`}
             >
-              <ShoppingBag className="h-4 w-4" />
+              <ShoppingBag className="h-4 w-4" aria-hidden="true" />
               Add to cart
             </button>
           ) : (
-            <span className={`${buttonClass} bg-gray-100 text-gray-700`}>Sold out</span>
+            <span className={`${buttonClass} bg-relaks-tint text-gray-700`}>Sold out</span>
           )}
         </div>
       </div>

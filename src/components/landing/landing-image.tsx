@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { Smartphone } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { LandingImage } from '@/lib/landing/images'
 
@@ -17,15 +18,15 @@ export function LandingPhoto({
   className?: string
 }) {
   return (
-    <div className={cn('relative overflow-hidden bg-purple-50', className)}>
+    <div className={cn('relative overflow-hidden bg-relaks-tint', className)}>
       <Image src={src} alt={alt} fill sizes={sizes} preload={preload} className="object-cover" />
     </div>
   )
 }
 
 /**
- * Phone mock-up. Shows `src` as the screen, or a soft brand gradient with the
- * feature name until a real screenshot is added.
+ * Phone mock-up. Shows `src` as the screen, or a warm tint with the feature
+ * name until a real screenshot is added.
  */
 export function PhoneFrame({
   src,
@@ -43,23 +44,25 @@ export function PhoneFrame({
   return (
     <div
       className={cn(
-        'relative mx-auto aspect-[9/19] w-full max-w-[280px] rounded-[2.5rem] bg-gray-900 p-2.5 shadow-2xl shadow-purple-200/60',
+        'relative mx-auto aspect-[9/19] w-full max-w-[280px] rounded-[2.5rem] bg-relaks-ink p-2.5 shadow-xl shadow-relaks-ink/15',
         className
       )}
     >
       {/* Speaker notch */}
-      <div className="absolute left-1/2 top-4 z-10 h-1.5 w-16 -translate-x-1/2 rounded-full bg-gray-700" aria-hidden="true" />
-      <div className="relative h-full w-full overflow-hidden rounded-[2rem] bg-[#FFFBF5]">
+      <div className="absolute left-1/2 top-4 z-10 h-1.5 w-16 -translate-x-1/2 rounded-full bg-white/25" aria-hidden="true" />
+      <div className="relative h-full w-full overflow-hidden rounded-[2rem] bg-relaks-cream">
         {src ? (
           <Image src={src} alt={alt} fill sizes={sizes} className="object-cover" />
         ) : (
           <div
             role="img"
             aria-label={alt}
-            className="flex h-full w-full flex-col items-center justify-center gap-4 bg-gradient-to-br from-purple-200 via-pink-100 to-orange-100 p-6 text-center"
+            className="flex h-full w-full flex-col items-center justify-center gap-4 bg-relaks-tint p-6 text-center"
           >
-            <div className="h-14 w-14 rounded-2xl bg-white/70 shadow-sm" aria-hidden="true" />
-            <p className="text-lg font-bold text-gray-900">{label}</p>
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-relaks-orange/15" aria-hidden="true">
+              <Smartphone className="h-7 w-7 text-relaks-orange" />
+            </div>
+            <p className="text-lg font-bold text-relaks-ink">{label}</p>
           </div>
         )}
       </div>

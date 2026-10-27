@@ -1,26 +1,26 @@
 import Image from 'next/image'
 import { GALLERY_SECTION } from '@/lib/landing/content'
 import type { LandingPost } from '@/lib/landing/data'
-import { SectionHeading } from './section-heading'
+import { Section, SectionHeading, type Tone } from './section'
 import { SwipeRow } from './swipe-row'
 
 /** Admin-featured posts. Hidden until at least GALLERY_SECTION.minPosts are featured. */
-export function CommunityGallery({ posts }: { posts: LandingPost[] }) {
+export function CommunityGallery({ posts, tone }: { posts: LandingPost[]; tone: Tone }) {
   if (posts.length < GALLERY_SECTION.minPosts) return null
 
   return (
-    <section id="community" className="py-16 md:py-24 bg-white/40 scroll-mt-16">
+    <Section id="community" tone={tone}>
       <div className="container mx-auto px-4 max-w-6xl">
-        <SectionHeading eyebrow={GALLERY_SECTION.eyebrow} heading={GALLERY_SECTION.heading} color="pink" className="mb-10" />
-        <SwipeRow label="Pages colored by the community" arrows itemClassName="w-[60%] sm:w-[35%] md:w-[240px]">
+        <SectionHeading eyebrow={GALLERY_SECTION.eyebrow} heading={GALLERY_SECTION.heading} />
+        <SwipeRow label="Pages colored by the community" arrows itemClassName="w-[55%] sm:w-[35%] md:w-[220px]">
           {posts.map((post) => (
             <figure key={post.id}>
-              <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-purple-50 shadow-sm">
+              <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-relaks-tint">
                 <Image
                   src={post.imageUrl}
                   alt={`Coloring page by ${post.colorist}`}
                   fill
-                  sizes="(min-width: 768px) 240px, 60vw"
+                  sizes="(min-width: 768px) 220px, 55vw"
                   className="object-cover"
                 />
               </div>
@@ -29,6 +29,6 @@ export function CommunityGallery({ posts }: { posts: LandingPost[] }) {
           ))}
         </SwipeRow>
       </div>
-    </section>
+    </Section>
   )
 }

@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from 'react'
 import { LandingShell } from '@/components/landing/landing-shell'
 import { Hero } from '@/components/landing/hero'
 import { StatsBar } from '@/components/landing/stats-bar'
@@ -5,16 +6,34 @@ import { DoorsSection, type DoorCard } from '@/components/landing/doors-section'
 import { BooksSection } from '@/components/landing/books-section'
 import { AppSection } from '@/components/landing/app-section'
 import { CommunityGallery } from '@/components/landing/community-gallery'
+import { ReadingClubSection } from '@/components/landing/reading-club-section'
 import { StorySection } from '@/components/landing/story-section'
 import { TestimonialsSection } from '@/components/landing/testimonials-section'
-import { StepsSection } from '@/components/landing/steps-section'
-import { PricingSection } from '@/components/landing/pricing-section'
+import { OutsideLagosSection } from '@/components/landing/outside-lagos-section'
+import { FaqSection, type FaqItem } from '@/components/landing/faq-section'
+import { BlogSection } from '@/components/landing/blog-section'
 import { FinalCta } from '@/components/landing/final-cta'
 import { MobileStickyBar } from '@/components/landing/mobile-sticky-bar'
+import type { Tone } from '@/components/landing/section'
 import { formatCount, getActiveEditionNames, getLandingStats, joinNaturally } from '@/lib/landing/stats'
-import { adultBooks, getFeaturedPosts, getLandingClubInfo, getLandingProducts, getLowestZoneFee } from '@/lib/landing/data'
+import {
+  adultBooks,
+  getDistributors,
+  getFeaturedPosts,
+  getLandingClubInfo,
+  getLandingProducts,
+  getLatestBlogPosts,
+  getLowestZoneFee,
+  getRentalPlans,
+  getZoneSummary,
+  type LandingDistributor,
+  type LandingPlan,
+  type ZoneSummary,
+} from '@/lib/landing/data'
 import { getLandingImages } from '@/lib/landing/images'
-import { DOORS, SITE_URL, SOCIAL_LINKS } from '@/lib/landing/content'
+import { DOORS, FAQ_SECTION, GALLERY_SECTION, SITE_URL, SOCIAL_LINKS } from '@/lib/landing/content'
+import { PRICING } from '@/lib/paystack'
+import { UNRETURNED_DAYS_THRESHOLD } from '@/lib/rental/config'
 
 // Statically rendered, refreshed hourly alongside the cached data
 export const revalidate = 3600
@@ -28,8 +47,77 @@ const organizationJsonLd = {
   sameAs: [SOCIAL_LINKS.instagram],
 }
 
+const naira = (n: number) => `₦${formatCount(n)}`
+
+/** FAQ answers built from live data where possible. */
+function buildFaq(zones: ZoneSummary | null, distributors: LandingDistributor[], plans: LandingPlan[]): FaqItem[] {
+  const deliveryPage = { label: 'Delivery & Returns', href: '/delivery-returns' }
+
+  const days = !zones
+    ? null
+    : zones.minDays === zones.maxDays
+      ? `${zones.minDays} working day${zones.minDays === 1 ? '' : 's'}`
+      : `${zones.minDays}–${zones.maxDays} working days`
+
+  const swapLines = plans.map((plan) =>
+    plan.swap_frequency === 'monthly'
+      ? `On the ${plan.name} plan we swap your books every month, collecting the ones you've finished when we bring the next ones.`
+      : `On the ${plan.name} plan your books arrive together and we collect them at the end of your term.`
+  )
+
+  return [
+    {
+      question: 'How long does delivery take?',
+      answer: days
+        ? `Lagos orders usually arrive in ${days}, depending on your area.`
+        : 'Delivery times for your area are shown at checkout.',
+      link: deliveryPage,
+    },
+    {
+      question: 'How much is delivery?',
+      answer: zones
+        ? zones.minFee === zones.maxFee
+          ? `Delivery within Lagos costs ${naira(zones.minFee)}.`
+          : `Delivery within Lagos costs ${naira(zones.minFee)} to ${naira(zones.maxFee)}, depending on your area. You'll see the exact fee at checkout.`
+        : "You'll see the delivery fee for your area at checkout.",
+      link: { label: 'See all delivery zones', href: '/delivery-returns' },
+    },
+    {
+      question: 'Do you deliver outside Lagos?',
+      answer: distributors.length > 0
+        ? `We deliver within Lagos ourselves. Outside Lagos, you can order from our distributors in ${joinNaturally([...new Set(distributors.map((d) => d.city))])} on WhatsApp.`
+        : 'Right now we deliver within Lagos only.',
+      link: distributors.length > 0 ? { label: 'Find a distributor', href: '#outside-lagos' } : undefined,
+    },
+    {
+      question: 'How do Reading Club swaps and returns work?',
+      answer: [
+        ...(swapLines.length > 0 ? swapLines : ['We deliver your books and collect them when your rental ends.']),
+        `Books not returned within ${UNRETURNED_DAYS_THRESHOLD} days of your rental ending may be charged at their replacement value.`,
+      ].join(' '),
+      link: { label: 'Reading Club terms', href: '/rent/terms' },
+    },
+    {
+      question: 'Is the app free?',
+      answer: `Yes. Coloring, journaling and the community are free. AI-generated pages are from ${naira(PRICING.aiStarter)} each, with no subscription.`,
+    },
+    {
+      question: 'How can I pay?',
+      answer: FAQ_SECTION.paymentMethods,
+    },
+    {
+      question: 'Can I return an order?',
+      answer: 'Yes. Our Delivery & Returns page explains what can be returned, how, and what to do if something arrives damaged.',
+      link: deliveryPage,
+    },
+  ]
+}
+
 export default async function Home() {
-  const [stats, editionNames, products, lowestFee, club, featuredPosts, images] = await Promise.all([
+  const [
+    stats, editionNames, products, lowestFee, club, featuredPosts, images,
+    plans, distributors, zones, blogPosts,
+  ] = await Promise.all([
     getLandingStats(),
     getActiveEditionNames(),
     getLandingProducts(),
@@ -37,6 +125,10 @@ export default async function Home() {
     getLandingClubInfo(),
     getFeaturedPosts(),
     getLandingImages(),
+    getRentalPlans(),
+    getDistributors(),
+    getZoneSummary(),
+    getLatestBlogPosts(),
   ])
 
   const editions = joinNaturally(editionNames)
@@ -72,23 +164,58 @@ export default async function Home() {
     },
   ]
 
+  const faq = buildFaq(zones, distributors, plans)
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faq.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: { '@type': 'Answer', text: item.answer },
+    })),
+  }
+
+  // Only sections that will render, so the cream/tint alternation never repeats a colour
+  const candidates: (((tone: Tone) => ReactNode) | null)[] = [
+    (tone: Tone) => <StatsBar stats={stats} tone={tone} />,
+    (tone: Tone) => <DoorsSection doors={doors} tone={tone} />,
+    products.length > 0
+      ? (tone: Tone) => (
+          <BooksSection products={products} lowestFee={lowestFee} hasDistributors={distributors.length > 0} tone={tone} />
+        )
+      : null,
+    (tone: Tone) => <AppSection editions={editions} images={images} tone={tone} />,
+    featuredPosts.length >= GALLERY_SECTION.minPosts
+      ? (tone: Tone) => <CommunityGallery posts={featuredPosts} tone={tone} />
+      : null,
+    (tone: Tone) => <ReadingClubSection plans={plans} tone={tone} />,
+    (tone: Tone) => <StorySection founderImage={images.founder} tone={tone} />,
+    (tone: Tone) => <TestimonialsSection tone={tone} />,
+    distributors.length > 0 ? (tone: Tone) => <OutsideLagosSection distributors={distributors} tone={tone} /> : null,
+    (tone: Tone) => <FaqSection items={faq} tone={tone} />,
+    blogPosts.length > 0 ? (tone: Tone) => <BlogSection posts={blogPosts} tone={tone} /> : null,
+    (tone: Tone) => <FinalCta colorists={stats?.colorists ?? null} tone={tone} />,
+  ]
+  const blocks = candidates.filter((block): block is (tone: Tone) => ReactNode => block !== null)
+
+  // The hero is cream, so the first block is tint
+  const toneAt = (i: number): Tone => (i % 2 === 0 ? 'tint' : 'cream')
+  const lastTone = toneAt(blocks.length - 1)
+
   return (
-    <LandingShell after={<MobileStickyBar />}>
+    <LandingShell footerTone={lastTone === 'tint' ? 'cream' : 'tint'} after={<MobileStickyBar />}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <Hero image={images.hero} />
-      <StatsBar stats={stats} />
-      <DoorsSection doors={doors} />
-      <BooksSection products={products} lowestFee={lowestFee} />
-      <AppSection editions={editions} images={images} />
-      <CommunityGallery posts={featuredPosts} />
-      <StorySection />
-      <TestimonialsSection />
-      <StepsSection />
-      <PricingSection />
-      <FinalCta colorists={stats?.colorists ?? null} />
+      {blocks.map((render, i) => (
+        <Fragment key={i}>{render(toneAt(i))}</Fragment>
+      ))}
     </LandingShell>
   )
 }

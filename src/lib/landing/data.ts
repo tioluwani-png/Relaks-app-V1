@@ -224,3 +224,130 @@ export const getFeaturedPosts = unstable_cache(
   ['landing-featured-posts'],
   { revalidate: ONE_HOUR, tags: [LANDING_GALLERY_TAG] }
 )
+
+// ============================================
+// READING CLUB PLANS
+// ============================================
+
+export type LandingPlan = Pick<
+  RentalPlan,
+  'id' | 'name' | 'description' | 'books_per_cycle' | 'duration_days' | 'price_naira' | 'delivery_included' | 'swap_frequency'
+>
+
+export const getRentalPlans = unstable_cache(
+  async (): Promise<LandingPlan[]> => {
+    try {
+      const supabase = createLandingClient()
+      const { data, error } = await supabase
+        .from('rental_plans')
+        .select('id, name, description, books_per_cycle, duration_days, price_naira, delivery_included, swap_frequency')
+        .eq('is_active', true)
+        .order('sort_order')
+      if (error || !data) return []
+      return data as LandingPlan[]
+    } catch {
+      return []
+    }
+  },
+  ['landing-rental-plans'],
+  { revalidate: ONE_HOUR }
+)
+
+// ============================================
+// DISTRIBUTORS
+// ============================================
+
+export interface LandingDistributor {
+  id: string
+  city: string
+  name: string
+  whatsapp_number: string
+}
+
+export const getDistributors = unstable_cache(
+  async (): Promise<LandingDistributor[]> => {
+    try {
+      const supabase = createLandingClient()
+      const { data, error } = await supabase
+        .from('distributors')
+        .select('id, city, name, whatsapp_number')
+        .eq('is_active', true)
+        .order('sort_order')
+      if (error || !data) return []
+      return data as LandingDistributor[]
+    } catch {
+      return []
+    }
+  },
+  ['landing-distributors'],
+  { revalidate: ONE_HOUR }
+)
+
+// ============================================
+// DELIVERY SUMMARY (for the FAQ)
+// ============================================
+
+export interface ZoneSummary {
+  minFee: number
+  maxFee: number
+  minDays: number
+  maxDays: number
+}
+
+export const getZoneSummary = unstable_cache(
+  async (): Promise<ZoneSummary | null> => {
+    try {
+      const supabase = createLandingClient()
+      const { data, error } = await supabase
+        .from('shop_delivery_zones')
+        .select('fee_naira, min_days, max_days')
+        .eq('is_active', true)
+        .eq('is_archived', false)
+      const rows = (data ?? []) as { fee_naira: number; min_days: number; max_days: number }[]
+      if (error || rows.length === 0) return null
+      return {
+        minFee: Math.min(...rows.map((z) => z.fee_naira)),
+        maxFee: Math.max(...rows.map((z) => z.fee_naira)),
+        minDays: Math.min(...rows.map((z) => z.min_days)),
+        maxDays: Math.max(...rows.map((z) => z.max_days)),
+      }
+    } catch {
+      return null
+    }
+  },
+  ['landing-zone-summary'],
+  { revalidate: ONE_HOUR }
+)
+
+// ============================================
+// BLOG
+// ============================================
+
+export interface LandingBlogPost {
+  slug: string
+  title: string
+  excerpt: string | null
+  coverUrl: string | null
+}
+
+export const getLatestBlogPosts = unstable_cache(
+  async (): Promise<LandingBlogPost[]> => {
+    try {
+      const supabase = createLandingClient()
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select('slug, title, excerpt, cover_image_url')
+        .eq('status', 'published')
+        .order('published_at', { ascending: false })
+        .limit(3)
+      if (error || !data) return []
+      return (data as { slug: string; title: string; excerpt: string | null; cover_image_url: string | null }[]).map(
+        (p) => ({ slug: p.slug, title: p.title, excerpt: p.excerpt, coverUrl: p.cover_image_url })
+      )
+    } catch {
+      return []
+    }
+  },
+  ['landing-blog-posts'],
+  { revalidate: ONE_HOUR }
+)

@@ -47,9 +47,9 @@ export function MobileStickyBar({ heroId = 'hero' }: { heroId?: string }) {
   return (
     <>
       {/* Keeps the footer reachable above the bar */}
-      <div className="h-20 md:hidden" aria-hidden="true" />
+      <div className="h-[76px] md:hidden" aria-hidden="true" />
       <div
-        className={`fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-[#FFFBF5]/95 backdrop-blur-md px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-transform duration-300 md:hidden ${
+        className={`landing fixed inset-x-0 bottom-0 z-40 border-t border-relaks-ink/10 bg-relaks-cream/95 backdrop-blur-md px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-transform duration-300 md:hidden ${
           pastHero ? 'translate-y-0' : 'translate-y-full'
         }`}
         aria-hidden={!pastHero}
@@ -59,14 +59,14 @@ export function MobileStickyBar({ heroId = 'hero' }: { heroId?: string }) {
           <TrackedLink
             href={STICKY_BAR.primary.href}
             event={STICKY_BAR.primary.event}
-            className="flex-1 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 py-2.5 text-center text-sm font-semibold text-white shadow-md"
+            className="flex min-h-12 flex-1 items-center justify-center rounded-full bg-relaks-ink text-sm font-semibold text-white"
           >
             {STICKY_BAR.primary.label}
           </TrackedLink>
           <TrackedLink
             href={STICKY_BAR.secondary.href}
             event={STICKY_BAR.secondary.event}
-            className="flex-1 rounded-full border-2 border-gray-300 bg-white py-2 text-center text-sm font-semibold text-gray-800"
+            className="flex min-h-12 flex-1 items-center justify-center rounded-full border-2 border-relaks-ink/25 bg-white text-sm font-semibold text-relaks-ink"
           >
             {STICKY_BAR.secondary.label}
           </TrackedLink>
@@ -74,7 +74,7 @@ export function MobileStickyBar({ heroId = 'hero' }: { heroId?: string }) {
             type="button"
             onClick={dismiss}
             aria-label="Hide this bar"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-700 hover:bg-gray-100"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-relaks-ink hover:bg-relaks-tint"
           >
             <X className="h-5 w-5" />
           </button>

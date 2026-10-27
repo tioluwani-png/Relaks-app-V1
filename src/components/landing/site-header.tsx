@@ -16,7 +16,7 @@ import { NAV_LINKS, NAV_LOGIN, NAV_PRIMARY, NAV_OPEN_APP } from '@/lib/landing/c
 import { TrackedLink } from './tracked-link'
 
 const PRIMARY_BUTTON =
-  'text-sm font-semibold text-white px-5 py-2.5 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 shadow-lg shadow-purple-200/40 hover:shadow-xl hover:scale-105 transition-all duration-300'
+  'inline-flex min-h-12 items-center justify-center text-sm font-semibold text-white px-6 rounded-full bg-relaks-ink hover:bg-black transition-colors'
 
 function useHasSession() {
   const [hasSession, setHasSession] = useState(false)
@@ -41,11 +41,11 @@ function CartButton() {
     <Link
       href="/shop/cart"
       aria-label={label}
-      className="relative p-2 rounded-full text-gray-700 hover:bg-gray-100 transition-colors"
+      className="relative flex h-11 w-11 items-center justify-center rounded-full text-relaks-ink hover:bg-relaks-tint transition-colors"
     >
       <ShoppingBag className="h-5 w-5" />
       {!isHydrating && itemCount > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[11px] font-bold flex items-center justify-center">
+        <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-relaks-coral text-relaks-ink text-[11px] font-bold flex items-center justify-center">
           {itemCount > 99 ? '99+' : itemCount}
         </span>
       )}
@@ -59,9 +59,9 @@ export function SiteHeader() {
   const close = () => setMenuOpen(false)
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-md bg-[#FFFBF5]/80 border-b border-gray-100/60">
+    <header className="sticky top-0 z-50 backdrop-blur-md bg-relaks-cream/90 border-b border-relaks-ink/10">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between max-w-6xl">
-        <Link href="/">
+        <Link href="/" className="inline-flex min-h-11 items-center">
           <Image
             src="/logo.png"
             alt="Relaks"
@@ -73,13 +73,13 @@ export function SiteHeader() {
         </Link>
 
         {/* Desktop */}
-        <nav className="hidden md:flex items-center gap-6" aria-label="Main">
+        <nav className="hidden md:flex items-center gap-1 lg:gap-3" aria-label="Main">
           {NAV_LINKS.map((link) => (
             <TrackedLink
               key={link.href}
               href={link.href}
               event={link.event}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              className="inline-flex min-h-11 items-center px-2 text-sm font-medium text-gray-700 hover:text-relaks-ink transition-colors"
             >
               {link.label}
             </TrackedLink>
@@ -96,7 +96,7 @@ export function SiteHeader() {
               <TrackedLink
                 href={NAV_LOGIN.href}
                 event={NAV_LOGIN.event}
-                className="text-sm font-medium text-gray-700 hover:text-gray-900 px-4 py-2 rounded-full transition-colors"
+                className="inline-flex min-h-12 items-center text-sm font-semibold text-relaks-ink px-4 rounded-full hover:bg-relaks-tint transition-colors"
               >
                 {NAV_LOGIN.label}
               </TrackedLink>
@@ -113,11 +113,11 @@ export function SiteHeader() {
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger
               aria-label="Open menu"
-              className="p-2 rounded-full text-gray-700 hover:bg-gray-100 transition-colors"
+              className="flex h-11 w-11 items-center justify-center rounded-full text-relaks-ink hover:bg-relaks-tint transition-colors"
             >
               <Menu className="h-5 w-5" />
             </SheetTrigger>
-            <SheetContent side="right" className="bg-[#FFFBF5] px-6 pt-14 pb-8">
+            <SheetContent side="right" className="landing bg-relaks-cream text-relaks-ink px-6 pt-14 pb-8">
               <SheetTitle className="sr-only">Menu</SheetTitle>
               <nav className="flex flex-col gap-1" aria-label="Mobile">
                 {NAV_LINKS.map((link) => (
@@ -126,7 +126,7 @@ export function SiteHeader() {
                     href={link.href}
                     event={link.event}
                     onClick={close}
-                    className="py-3 text-base font-medium text-gray-800 border-b border-gray-100"
+                    className="flex min-h-12 items-center text-base font-medium text-relaks-ink border-b border-relaks-ink/10"
                   >
                     {link.label}
                   </TrackedLink>
@@ -156,7 +156,7 @@ export function SiteHeader() {
                       href={NAV_LOGIN.href}
                       event={NAV_LOGIN.event}
                       onClick={close}
-                      className="text-center text-sm font-semibold text-gray-800 px-5 py-2.5 rounded-full border-2 border-gray-200"
+                      className="inline-flex min-h-12 items-center justify-center text-sm font-semibold text-relaks-ink px-5 rounded-full border-2 border-relaks-ink/25"
                     >
                       {NAV_LOGIN.label}
                     </TrackedLink>
