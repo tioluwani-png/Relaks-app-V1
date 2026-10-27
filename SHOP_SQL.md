@@ -150,6 +150,7 @@ USING (
 
 ---
 
+
 ## Table 4: shop_order_items
 
 ```sql
@@ -246,6 +247,42 @@ USING (
     SELECT 1 FROM users
     WHERE users.id = auth.uid()
     AND users.role IN ('admin', 'super_admin')
+  )
+);
+```
+
+---
+
+## Table 6: shop_order_emails
+
+Tracks customer emails sent for each order (processing, dispatched, delivered).
+
+```sql
+CREATE TABLE shop_order_emails (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID NOT NULL REFERENCES shop_orders(id) ON DELETE CASCADE,
+  email_type TEXT NOT NULL CHECK (email_type IN ('processing', 'dispatched', 'delivered')),
+  sent_to TEXT NOT NULL,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sent_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  is_resend BOOLEAN NOT NULL DEFAULT false
+);
+
+-- Indexes
+CREATE INDEX idx_shop_order_emails_order ON shop_order_emails(order_id);
+CREATE UNIQUE INDEX idx_shop_order_emails_unique ON shop_order_emails(order_id, email_type) WHERE is_resend = false;
+
+-- RLS
+ALTER TABLE shop_order_emails ENABLE ROW LEVEL SECURITY;
+
+-- Admins can manage
+CREATE POLICY "Admins can manage order emails"
+ON shop_order_emails FOR ALL
+USING (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE users.id = auth.uid()
+    AND users.role IN ('admin', 'super_admin', 'moderator')
   )
 );
 ```

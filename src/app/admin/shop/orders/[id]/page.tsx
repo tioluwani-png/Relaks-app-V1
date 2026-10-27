@@ -16,21 +16,35 @@ import {
   Mail,
   PlayCircle,
   Tag,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { format } from 'date-fns'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, type ShopOrderStatus } from '@/lib/shop/config'
-import { sendShopOrderDispatchedEmail } from '@/lib/shop/emails'
 import type { ShopOrder, ShopOrderItem, ShopDeliveryZone, ShopPayment } from '@/types/database'
 import { cn } from '@/lib/utils'
+
+interface ShopOrderEmail {
+  id: string
+  order_id: string
+  email_type: 'processing' | 'dispatched' | 'delivered'
+  sent_to: string
+  sent_at: string
+  sent_by: string | null
+  is_resend: boolean
+}
 
 interface OrderWithDetails extends ShopOrder {
   items: ShopOrderItem[]
   zone: ShopDeliveryZone | null
   payment: ShopPayment | null
+  emails?: ShopOrderEmail[]
 }
 
 export default function AdminShopOrderDetailPage() {
@@ -42,6 +56,8 @@ export default function AdminShopOrderDetailPage() {
   const [order, setOrder] = useState<OrderWithDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [sendProcessingEmail, setSendProcessingEmail] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
 
   useEffect(() => {
     loadOrder()
@@ -69,8 +85,16 @@ export default function AdminShopOrderDetailPage() {
         .eq('order_id', orderId)
         .single()
 
+      // Get emails sent for this order
+      const { data: emails } = await supabase
+        .from('shop_order_emails')
+        .select('*')
+        .eq('order_id', orderId)
+        .order('sent_at', { ascending: false })
+
       const orderData = data as unknown as OrderWithDetails
       orderData.payment = payment as ShopPayment | null
+      orderData.emails = (emails as ShopOrderEmail[] | null) ?? []
       setOrder(orderData)
     } catch (error) {
       console.error('Failed to load order:', error)
@@ -86,58 +110,75 @@ export default function AdminShopOrderDetailPage() {
 
     setActionLoading(newStatus)
     try {
-      const updates: Partial<ShopOrder> = { status: newStatus }
+      const response = await fetch(`/api/admin/shop/orders/${orderId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: newStatus,
+          sendProcessingEmail: newStatus === 'processing' ? sendProcessingEmail : undefined,
+        }),
+      })
 
-      if (newStatus === 'dispatched') {
-        updates.dispatched_at = new Date().toISOString()
-      } else if (newStatus === 'delivered') {
-        updates.delivered_at = new Date().toISOString()
-      } else if (newStatus === 'cancelled') {
-        updates.cancelled_at = new Date().toISOString()
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update order')
       }
 
-      const { error } = await supabase
-        .from('shop_orders')
-        .update(updates as never)
-        .eq('id', orderId)
-
-      if (error) throw error
-
-      // Send dispatch email
-      if (newStatus === 'dispatched') {
-        await sendShopOrderDispatchedEmail(order.email, order.customer_name, order.order_number)
+      // Show appropriate message
+      if (result.emailSkipped) {
+        toast.success(`Order marked as ${ORDER_STATUS_LABELS[newStatus]}`, {
+          description: 'Email was already sent for this status.',
+        })
+      } else if (result.emailFailed) {
+        toast.warning(`Order marked as ${ORDER_STATUS_LABELS[newStatus]}`, {
+          description: 'Email failed to send. You can resend it below.',
+        })
+      } else if (result.emailSent) {
+        toast.success(`Order marked as ${ORDER_STATUS_LABELS[newStatus]}`, {
+          description: 'Customer has been notified by email.',
+        })
+      } else {
+        toast.success(`Order marked as ${ORDER_STATUS_LABELS[newStatus]}`)
       }
 
-      // Restore stock on cancel (only for paid orders)
       if (newStatus === 'cancelled' && order.status !== 'pending_payment') {
-        for (const item of order.items) {
-          if (item.product_id) {
-            // Get current stock and increment
-            const { data: productData } = await supabase
-              .from('shop_products')
-              .select('stock_quantity')
-              .eq('id', item.product_id)
-              .single()
-
-            if (productData) {
-              const currentStock = (productData as { stock_quantity: number }).stock_quantity || 0
-              await supabase
-                .from('shop_products')
-                .update({ stock_quantity: currentStock + item.quantity } as never)
-                .eq('id', item.product_id)
-            }
-          }
-        }
         toast.info('Stock has been restored')
       }
 
-      toast.success(`Order marked as ${ORDER_STATUS_LABELS[newStatus]}`)
       loadOrder()
     } catch (error) {
       console.error('Update error:', error)
       toast.error('Failed to update order')
     } finally {
       setActionLoading(null)
+    }
+  }
+
+  const resendEmail = async (emailType: 'processing' | 'dispatched' | 'delivered') => {
+    if (!order) return
+
+    setResendLoading(true)
+    try {
+      const response = await fetch(`/api/admin/shop/orders/${orderId}/resend-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailType }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to resend email')
+      }
+
+      toast.success('Email sent successfully')
+      loadOrder()
+    } catch (error) {
+      console.error('Resend error:', error)
+      toast.error('Failed to resend email')
+    } finally {
+      setResendLoading(false)
     }
   }
 
@@ -243,6 +284,14 @@ Total: ₦${order.total_naira.toLocaleString()}
   }
 
   const actions = getActions()
+
+  // Determine which email can be resent based on current status
+  const getResendableEmail = (o: OrderWithDetails): 'processing' | 'dispatched' | 'delivered' | null => {
+    if (o.status === 'processing') return 'processing'
+    if (o.status === 'dispatched') return 'dispatched'
+    if (o.status === 'delivered') return 'delivered'
+    return null
+  }
 
   return (
     <div className="space-y-6">
@@ -440,25 +489,94 @@ Total: ₦${order.total_naira.toLocaleString()}
       {/* Actions */}
       {actions.length > 0 && (
         <Card>
-          <CardContent className="flex flex-wrap gap-3 p-4">
-            {actions.map(({ status, label, icon, className }) => (
-              <Button
-                key={status}
-                onClick={() => updateStatus(status)}
-                disabled={!!actionLoading}
-                className={className}
-              >
-                {actionLoading === status ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  icon
-                )}
-                {label}
-              </Button>
-            ))}
+          <CardContent className="p-4 space-y-4">
+            {/* Processing email toggle - only show when about to start processing */}
+            {order.status === 'paid' && (
+              <div className="flex items-center gap-3 pb-3 border-b">
+                <Switch
+                  id="processing-email"
+                  checked={sendProcessingEmail}
+                  onCheckedChange={setSendProcessingEmail}
+                />
+                <Label htmlFor="processing-email" className="text-sm text-gray-600">
+                  Send "We're packing your order" email when processing
+                </Label>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-3">
+              {actions.map(({ status, label, icon, className }) => (
+                <Button
+                  key={status}
+                  onClick={() => updateStatus(status)}
+                  disabled={!!actionLoading}
+                  className={className}
+                >
+                  {actionLoading === status ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    icon
+                  )}
+                  {label}
+                </Button>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Email History */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Emails Sent
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {order.emails && order.emails.length > 0 ? (
+            <div className="space-y-3">
+              {order.emails.map((email) => (
+                <div key={email.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white capitalize">
+                      {email.email_type.replace('_', ' ')} email
+                      {email.is_resend && (
+                        <span className="ml-2 text-xs text-gray-500">(resent)</span>
+                      )}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Sent to {email.sent_to} · {format(new Date(email.sent_at), 'MMM d, h:mm a')}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">No status emails sent yet.</p>
+          )}
+
+          {/* Resend button for current status */}
+          {getResendableEmail(order) && (
+            <div className="mt-4 pt-4 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => resendEmail(getResendableEmail(order)!)}
+                disabled={resendLoading}
+                className="gap-2"
+              >
+                {resendLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Resend {getResendableEmail(order)} email
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {order.status === 'cancelled' && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">

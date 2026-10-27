@@ -304,13 +304,101 @@ View Order: ${orderUrl}
 }
 
 /**
+ * Send processing notification to customer (optional)
+ */
+export async function sendShopOrderProcessingEmail(
+  to: string,
+  customerName: string,
+  orderNumber: string,
+  items: ShopOrderItem[]
+) {
+  const itemsHtml = items
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
+          ${item.product_name}${item.variant_label ? ` <span style="color: #9333ea; font-size: 12px;">(${item.variant_label})</span>` : ''} × ${item.quantity}
+        </td>
+      </tr>
+    `
+    )
+    .join('')
+
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject: `We're packing your order! #${orderNumber}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #FFFBF5;">
+          <h1 style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; margin-bottom: 24px;">
+            Relaks
+          </h1>
+
+          <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 8px;">We're packing your order! 📦</h2>
+
+          <p style="color: #4b5563; font-size: 16px; margin-bottom: 24px;">
+            Hey ${customerName}, your order <strong>#${orderNumber}</strong> is being prepared with care.
+          </p>
+
+          <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 24px; border: 1px solid #f3f4f6;">
+            <p style="color: #6b7280; font-size: 12px; margin: 0 0 12px 0; text-transform: uppercase;">Your items</p>
+            <table style="width: 100%; border-collapse: collapse;">
+              ${itemsHtml}
+            </table>
+          </div>
+
+          <div style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+            <p style="color: #1e40af; font-size: 15px; margin: 0;">
+              🎨 We'll let you know as soon as it's on its way!
+            </p>
+          </div>
+
+          <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 40px;">
+            Questions? Just reply to this email.<br>
+            The Relaks Team
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[sendShopOrderProcessingEmail] Error:', error)
+      return { success: false, error }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('[sendShopOrderProcessingEmail] Error:', error)
+    return { success: false, error }
+  }
+}
+
+/**
  * Send dispatch notification to customer
  */
 export async function sendShopOrderDispatchedEmail(
   to: string,
   customerName: string,
-  orderNumber: string
+  orderNumber: string,
+  items: ShopOrderItem[],
+  estimatedMinDays?: number | null,
+  estimatedMaxDays?: number | null
 ) {
+  const deliveryEstimate = formatDeliveryEstimate(estimatedMinDays ?? null, estimatedMaxDays ?? null)
+
+  const itemsHtml = items
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
+          ${item.product_name}${item.variant_label ? ` <span style="color: #9333ea; font-size: 12px;">(${item.variant_label})</span>` : ''} × ${item.quantity}
+        </td>
+      </tr>
+    `
+    )
+    .join('')
+
   try {
     const { data, error } = await getResend().emails.send({
       from: FROM_EMAIL,
@@ -327,6 +415,18 @@ export async function sendShopOrderDispatchedEmail(
           <p style="color: #4b5563; font-size: 16px; margin-bottom: 24px;">
             Hey ${customerName}, great news! Your order <strong>#${orderNumber}</strong> has been dispatched and is heading your way.
           </p>
+
+          <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 24px; border: 1px solid #f3f4f6;">
+            <p style="color: #6b7280; font-size: 12px; margin: 0 0 12px 0; text-transform: uppercase;">Your items</p>
+            <table style="width: 100%; border-collapse: collapse;">
+              ${itemsHtml}
+            </table>
+            ${deliveryEstimate ? `
+            <p style="color: #9333ea; font-size: 14px; font-weight: 600; margin: 16px 0 0 0; padding-top: 12px; border-top: 1px solid #f3f4f6;">
+              🚚 Estimated delivery: ${deliveryEstimate}
+            </p>
+            ` : ''}
+          </div>
 
           <div style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
             <p style="color: #065f46; font-size: 15px; margin: 0;">
@@ -356,6 +456,136 @@ export async function sendShopOrderDispatchedEmail(
     return { success: true, data }
   } catch (error) {
     console.error('[sendShopOrderDispatchedEmail] Error:', error)
+    return { success: false, error }
+  }
+}
+
+/**
+ * Send delivered notification to customer
+ */
+export async function sendShopOrderDeliveredEmail(
+  to: string,
+  customerName: string,
+  orderNumber: string,
+  items: ShopOrderItem[]
+) {
+  const itemsHtml = items
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
+          ${item.product_name}${item.variant_label ? ` <span style="color: #9333ea; font-size: 12px;">(${item.variant_label})</span>` : ''} × ${item.quantity}
+        </td>
+      </tr>
+    `
+    )
+    .join('')
+
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject: `Delivered! Thank you for shopping with Relaks #${orderNumber}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #FFFBF5;">
+          <h1 style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; margin-bottom: 24px;">
+            Relaks
+          </h1>
+
+          <h2 style="color: #1f2937; font-size: 24px; margin-bottom: 8px;">Your order has arrived! 🎉</h2>
+
+          <p style="color: #4b5563; font-size: 16px; margin-bottom: 24px;">
+            Hey ${customerName}, thank you so much for choosing Relaks! We hope your order brings you moments of calm and creativity.
+          </p>
+
+          <div style="background: white; border-radius: 16px; padding: 20px; margin-bottom: 24px; border: 1px solid #f3f4f6;">
+            <p style="color: #6b7280; font-size: 12px; margin: 0 0 12px 0; text-transform: uppercase;">Order #${orderNumber}</p>
+            <table style="width: 100%; border-collapse: collapse;">
+              ${itemsHtml}
+            </table>
+          </div>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="https://relaks.co/shop" style="background: linear-gradient(135deg, #A855F7, #EC4899, #F97316); color: white; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: bold; display: inline-block;">
+              Shop Again
+            </a>
+          </div>
+
+          <div style="background: linear-gradient(135deg, #faf5ff, #fdf2f8); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+            <p style="color: #7c3aed; font-size: 15px; margin: 0;">
+              📚 <strong>Love reading?</strong> Check out our Reading Club — books delivered to your door every month.
+              <a href="https://relaks.co/rent" style="color: #9333ea; text-decoration: underline; font-weight: 600;">See plans</a>
+            </p>
+          </div>
+
+          <div style="background: #fdf2f8; border-radius: 16px; padding: 20px; margin-bottom: 24px; text-align: center;">
+            <p style="color: #4b5563; font-size: 15px; margin: 0;">
+              Share your colored pages with us on Instagram<br>
+              <a href="https://instagram.com/relaks.coo" style="color: #9333ea; text-decoration: none; font-weight: 600;">@relaks.coo</a>
+            </p>
+          </div>
+
+          <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 40px;">
+            Thanks for being part of the Relaks community. 💜<br>
+            The Relaks Team
+          </p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[sendShopOrderDeliveredEmail] Error:', error)
+      return { success: false, error }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('[sendShopOrderDeliveredEmail] Error:', error)
+    return { success: false, error }
+  }
+}
+
+/**
+ * Send ops alert email (for failures, warnings, etc.)
+ */
+export async function sendShopOpsAlertEmail(subject: string, message: string) {
+  const opsEmailsRaw = process.env.SHOP_OPS_EMAILS
+  if (!opsEmailsRaw || opsEmailsRaw.trim() === '') {
+    console.warn('[sendShopOpsAlertEmail] SHOP_OPS_EMAILS not set - skipping')
+    return { success: false, skipped: true }
+  }
+
+  const opsEmails = opsEmailsRaw
+    .split(',')
+    .map((e) => e.trim())
+    .filter((e) => e.length > 0 && e.includes('@'))
+
+  if (opsEmails.length === 0) {
+    return { success: false, skipped: true }
+  }
+
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: 'Relaks Shop <hello@hello.relaks.co>',
+      to: opsEmails,
+      subject,
+      text: message,
+      html: `
+        <div style="font-family: monospace; font-size: 14px; line-height: 1.6; max-width: 500px; padding: 16px;">
+          <h2 style="margin: 0 0 16px 0; font-size: 16px;">${subject}</h2>
+          <pre style="white-space: pre-wrap; background: #f5f5f5; padding: 12px; border-radius: 8px;">${message}</pre>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[sendShopOpsAlertEmail] Error:', error)
+      return { success: false, error }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('[sendShopOpsAlertEmail] Error:', error)
     return { success: false, error }
   }
 }

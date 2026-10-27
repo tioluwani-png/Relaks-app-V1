@@ -1796,6 +1796,18 @@ export interface ShopPayment {
   created_at: string
 }
 
+export type ShopOrderEmailType = 'processing' | 'dispatched' | 'delivered'
+
+export interface ShopOrderEmail {
+  id: string
+  order_id: string
+  email_type: ShopOrderEmailType
+  sent_to: string
+  sent_at: string
+  sent_by: string | null
+  is_resend: boolean
+}
+
 // Extended types
 export type ShopOrderWithItems = ShopOrder & {
   items: ShopOrderItem[]
@@ -1806,6 +1818,7 @@ export type ShopOrderWithDetails = ShopOrder & {
   items: (ShopOrderItem & { product?: ShopProduct | null })[]
   zone?: ShopDeliveryZone | null
   payment?: ShopPayment | null
+  emails?: ShopOrderEmail[]
 }
 
 // Product with variant data
