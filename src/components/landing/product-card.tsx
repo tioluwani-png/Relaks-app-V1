@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/shop/cart-context'
 import type { ShopProduct } from '@/types/database'
 import { trackLandingEvent } from './tracked-link'
+import { getItemStock } from '@/lib/shop/availability'
 
 function naira(n: number) {
   return `₦${n.toLocaleString('en-US')}`
@@ -35,7 +36,7 @@ export function ProductCard({
   const image = product.images[0]
 
   const handleAdd = () => {
-    if (getItemQuantity(product.id) >= product.stock_quantity) {
+    if (getItemQuantity(product.id) >= getItemStock(product, null)) {
       toast('You already have all available stock in your cart')
       return
     }

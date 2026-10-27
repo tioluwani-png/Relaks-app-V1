@@ -1,6 +1,8 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { normalizeOptionValues } from '@/lib/shop/availability'
+import { revalidateShop } from '@/lib/shop/revalidate'
 
 const optionSchema = z.object({
   name: z.string().min(1).max(50),
@@ -223,10 +225,12 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Insert variants
+        // Insert variants, keyed by the saved option names. Without this, a renamed option or
+        // trailing spaces left keys like "E" or "Edition " that the shop couldn't match.
+        const optionNames = data.options.map((o) => o.name.trim())
         const variantsToInsert = data.variants.map((v, idx) => ({
           product_id: productId,
-          option_values: v.optionValues,
+          option_values: normalizeOptionValues(v.optionValues, optionNames),
           sku: v.sku || null,
           price_naira: v.price_naira ? parseInt(v.price_naira) : null,
           stock_quantity: parseInt(v.stock_quantity) || 0,
@@ -251,6 +255,8 @@ export async function POST(request: NextRequest) {
           )
         }
       }
+
+      revalidateShop()
 
       return NextResponse.json({
         success: true,

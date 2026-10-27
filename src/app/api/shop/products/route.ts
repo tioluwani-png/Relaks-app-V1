@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import type { ShopProduct, ShopProductVariant } from '@/types/database'
+import { isVariantAvailable } from '@/lib/shop/availability'
 
 // Extended product for list view with variant pricing info
 export type ShopProductListItem = ShopProduct & {
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       .map((p) => p.id)
 
     // Fetch variant pricing info if any products have variants
-    let variantsByProduct = new Map<
+    const variantsByProduct = new Map<
       string,
       { minPrice: number; maxPrice: number; totalStock: number }
     >()
@@ -55,13 +56,13 @@ export async function GET(request: NextRequest) {
     if (variantProductIds.length > 0) {
       const { data: variantsData } = await supabase
         .from('shop_product_variants')
-        .select('product_id, price_naira, stock_quantity')
+        .select('product_id, price_naira, stock_quantity, is_active')
         .in('product_id', variantProductIds)
         .eq('is_active', true)
 
       const variants = (variantsData || []) as Pick<
         ShopProductVariant,
-        'product_id' | 'price_naira' | 'stock_quantity'
+        'product_id' | 'price_naira' | 'stock_quantity' | 'is_active'
       >[]
 
       // Group by product and calculate min/max prices and total stock
@@ -70,16 +71,17 @@ export async function GET(request: NextRequest) {
         const product = products.find((p) => p.id === v.product_id)
         // If variant has no price, it inherits from product
         const effectivePrice = v.price_naira ?? product?.price_naira ?? 0
+        const stock = isVariantAvailable(v) ? v.stock_quantity : 0
 
         if (existing) {
           existing.minPrice = Math.min(existing.minPrice, effectivePrice)
           existing.maxPrice = Math.max(existing.maxPrice, effectivePrice)
-          existing.totalStock += v.stock_quantity
+          existing.totalStock += stock
         } else {
           variantsByProduct.set(v.product_id, {
             minPrice: effectivePrice,
             maxPrice: effectivePrice,
-            totalStock: v.stock_quantity,
+            totalStock: stock,
           })
         }
       }

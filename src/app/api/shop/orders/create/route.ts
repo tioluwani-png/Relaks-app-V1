@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { getItemStock } from '@/lib/shop/availability'
 import { z } from 'zod'
 import { generateOrderNumber, calculateCouponDiscount } from '@/lib/shop/config'
 import type { ShopProduct, ShopDeliveryZone, ShopDeliveryArea, ShopCoupon, ShopProductVariant } from '@/types/database'
@@ -122,25 +123,27 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           )
         }
-        if (variant.stock_quantity < item.quantity) {
+        const variantStock = getItemStock(product, variant)
+        if (variantStock < item.quantity) {
           const label = generateVariantLabel(variant.option_values)
           return NextResponse.json(
             {
-              error: `Not enough stock for "${product.name}${label ? ` (${label})` : ''}". Available: ${variant.stock_quantity}`,
+              error: `Not enough stock for "${product.name}${label ? ` (${label})` : ''}". Available: ${variantStock}`,
               product: product.name,
-              available: variant.stock_quantity,
+              available: variantStock,
             },
             { status: 400 }
           )
         }
       } else {
         // Non-variant product - check product stock
-        if (product.stock_quantity < item.quantity) {
+        const productStock = getItemStock(product, null)
+        if (productStock < item.quantity) {
           return NextResponse.json(
             {
-              error: `Not enough stock for "${product.name}". Available: ${product.stock_quantity}`,
+              error: `Not enough stock for "${product.name}". Available: ${productStock}`,
               product: product.name,
-              available: product.stock_quantity,
+              available: productStock,
             },
             { status: 400 }
           )

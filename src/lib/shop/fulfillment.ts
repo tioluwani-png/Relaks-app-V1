@@ -206,7 +206,7 @@ export async function fulfillShopOrder(
         // Non-variant item - decrement product stock
         const { data: productData } = await supabase
           .from('shop_products')
-          .select('stock_quantity, name')
+          .select('stock_quantity, name, has_variants')
           .eq('id', item.product_id)
           .single()
 
@@ -215,7 +215,13 @@ export async function fulfillShopOrder(
           continue
         }
 
-        const product = productData as unknown as Pick<ShopProduct, 'stock_quantity' | 'name'>
+        const product = productData as unknown as Pick<ShopProduct, 'stock_quantity' | 'name' | 'has_variants'>
+
+        // Shared rule: a product with variants holds no stock of its own, so an item without a variant can't be fulfilled
+        if (product.has_variants) {
+          stockFailures.push(itemLabel)
+          continue
+        }
 
         const { data: updated, error: updateError } = await supabase
           .from('shop_products')

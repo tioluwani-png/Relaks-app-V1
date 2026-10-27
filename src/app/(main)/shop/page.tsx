@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { useCart } from '@/lib/shop/cart-context'
+import { getVariantAvailability } from '@/lib/shop/availability'
 import { getWhatsAppLink, getDistributorWhatsAppMessage, PRODUCT_TYPES } from '@/lib/shop/config'
 import type { Distributor } from '@/lib/shop/config'
 import type { ShopProduct, ShopProductType } from '@/types/database'
@@ -84,7 +85,7 @@ export default function ShopPage() {
     if (product.has_variants) {
       return
     }
-    if (product.stock_quantity <= 0) {
+    if (!getVariantAvailability(product).inStock) {
       toast.error('This item is sold out')
       return
     }
@@ -211,10 +212,10 @@ function ProductCard({
   onAddToCart: () => void
 }) {
   const hasVariants = product.has_variants
-  // For variant products, check total_variant_stock; otherwise check stock_quantity
+  // Variant products: total stock across active variants (computed by the API with the shared rule)
   const isSoldOut = hasVariants
     ? (product.total_variant_stock ?? 0) <= 0
-    : product.stock_quantity <= 0
+    : !getVariantAvailability(product).inStock
 
   const hasDiscount = product.compare_at_price_naira && product.compare_at_price_naira > product.price_naira
   const coverImage = product.images?.[0]

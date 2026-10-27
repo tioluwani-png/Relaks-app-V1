@@ -359,6 +359,11 @@ export default function AdminShopProductsPage() {
     setIsDialogOpen(true)
   }
 
+  // Refresh /shop, product pages and the homepage after changes made from the browser
+  const refreshStorefront = () => {
+    fetch('/api/admin/shop/revalidate', { method: 'POST' }).catch(() => {})
+  }
+
   const handleToggleActive = async (id: string, currentActive: boolean) => {
     setTogglingId(id)
     try {
@@ -372,6 +377,7 @@ export default function AdminShopProductsPage() {
       setProducts((prev) =>
         prev.map((p) => (p.id === id ? { ...p, is_active: !currentActive } : p))
       )
+      refreshStorefront()
       toast.success(currentActive ? 'Product hidden' : 'Product visible')
     } catch (error) {
       console.error('Toggle error:', error)
@@ -387,6 +393,7 @@ export default function AdminShopProductsPage() {
     try {
       const { error } = await supabase.from('shop_products').delete().eq('id', id)
       if (error) throw error
+      refreshStorefront()
       toast.success('Product deleted')
       loadProducts()
     } catch (error) {

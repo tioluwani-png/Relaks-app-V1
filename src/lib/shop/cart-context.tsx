@@ -12,6 +12,7 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 import type { ShopProduct, ShopProductVariant } from '@/types/database'
+import { getItemStock } from '@/lib/shop/availability'
 
 const STORAGE_KEY = 'relaks_cart_v2'
 const DEBOUNCE_MS = 300
@@ -40,9 +41,9 @@ export function getEffectivePrice(product: ShopProduct, variant: ShopProductVari
   return variant?.price_naira ?? product.price_naira
 }
 
-// Helper to get effective stock (variant stock or product stock)
+// Helper to get effective stock (shared rule: variant stock, never the product's own stock for variant products)
 export function getEffectiveStock(product: ShopProduct, variant: ShopProductVariant | null): number {
-  return variant ? variant.stock_quantity : product.stock_quantity
+  return getItemStock(product, variant)
 }
 
 // Helper to get variant label from option_values

@@ -16,6 +16,7 @@ import type {
   ShopProductWithVariants,
 } from '@/types/database'
 import { cn } from '@/lib/utils'
+import { getItemStock, getVariantAvailability, isVariantAvailable, variantMatches } from '@/lib/shop/availability'
 
 // Type guard to check if product has variants data
 function isProductWithVariants(product: ShopProduct): product is ShopProductWithVariants {
@@ -42,33 +43,20 @@ export default function ProductDetailPage() {
     if (!product || !isProductWithVariants(product)) return null
     if (Object.keys(selectedOptions).length !== product.options.length) return null
 
-    return product.variants.find((v) => {
-      return Object.entries(selectedOptions).every(
-        ([optName, optValue]) => v.option_values[optName] === optValue
-      )
-    }) ?? null
+    const optionNames = product.options.map((o) => o.name)
+    return product.variants.find((v) => variantMatches(v, selectedOptions, optionNames)) ?? null
   }, [product, selectedOptions])
 
   // Check if a specific option value is available (has in-stock variants)
   const isOptionValueAvailable = useMemo(() => {
     if (!product || !isProductWithVariants(product)) return () => true
 
-    return (optionName: string, optionValue: string): boolean => {
-      // Find all variants that match this option value and current other selections
-      const otherSelections = { ...selectedOptions }
-      delete otherSelections[optionName]
-
-      return product.variants.some((v) => {
-        // Must match this option value
-        if (v.option_values[optionName] !== optionValue) return false
-        // Must match all other selected options
-        for (const [name, value] of Object.entries(otherSelections)) {
-          if (v.option_values[name] !== value) return false
-        }
-        // Must be in stock and active
-        return v.is_active && v.stock_quantity > 0
-      })
-    }
+    const optionNames = product.options.map((o) => o.name)
+    return (optionName: string, optionValue: string): boolean =>
+      // Some variant with this value (and the other current selections) is active with stock
+      product.variants.some(
+        (v) => isVariantAvailable(v) && variantMatches(v, { ...selectedOptions, [optionName]: optionValue }, optionNames)
+      )
   }, [product, selectedOptions])
 
   useEffect(() => {
@@ -108,7 +96,7 @@ export default function ProductDetailPage() {
         toast.error('Please select all options')
         return
       }
-      if (selectedVariant.stock_quantity <= 0) {
+      if (!isVariantAvailable(selectedVariant)) {
         toast.error('This variant is sold out')
         return
       }
@@ -145,9 +133,8 @@ export default function ProductDetailPage() {
   const hasVariants = isProductWithVariants(product)
 
   // Calculate effective values based on variant selection
-  const effectiveStock = hasVariants
-    ? (selectedVariant?.stock_quantity ?? 0)
-    : product.stock_quantity
+  // Products with variants ignore their own stock_quantity
+  const effectiveStock = getItemStock(product, selectedVariant)
 
   const effectivePrice = hasVariants
     ? (selectedVariant?.price_naira ?? product.price_naira)
@@ -155,8 +142,11 @@ export default function ProductDetailPage() {
 
   // For variant products, isSoldOut is based on total available variants or selected variant
   const isSoldOut = hasVariants
-    ? (selectedVariant ? selectedVariant.stock_quantity <= 0 : product.variants.every((v) => v.stock_quantity <= 0 || !v.is_active))
-    : product.stock_quantity <= 0
+    ? (selectedVariant ? !isVariantAvailable(selectedVariant) : !getVariantAvailability(product, product.variants).inStock)
+    : !getVariantAvailability(product).inStock
+
+  // Nothing at all can be bought (every variant sold out or inactive)
+  const isOutOfStock = !getVariantAvailability(product, hasVariants ? product.variants : []).inStock
 
   const hasDiscount = !hasVariants && product.compare_at_price_naira && product.compare_at_price_naira > product.price_naira
 
@@ -176,7 +166,7 @@ export default function ProductDetailPage() {
 
   // Check if Add to Cart should be disabled
   const addToCartDisabled = hasVariants
-    ? !selectedVariant || selectedVariant.stock_quantity <= 0 || maxAddable === 0
+    ? !selectedVariant || !isVariantAvailable(selectedVariant) || maxAddable === 0
     : isSoldOut || maxAddable === 0
 
   return (
@@ -310,8 +300,8 @@ export default function ProductDetailPage() {
                     const isAvailable = isOptionValueAvailable(option.name, val.value)
 
                     return (
+                      <div key={val.id} className="flex flex-col items-center gap-1">
                       <button
-                        key={val.id}
                         type="button"
                         onClick={() => handleSelectOption(option.name, val.value)}
                         disabled={!isAvailable}
@@ -326,6 +316,8 @@ export default function ProductDetailPage() {
                       >
                         {val.value}
                       </button>
+                      {!isAvailable && <span className="text-xs font-medium text-gray-500">Sold out</span>}
+                      </div>
                     )
                   })}
                 </div>
@@ -377,9 +369,11 @@ export default function ProductDetailPage() {
                   <Check className="w-5 h-5 mr-2" />
                   Added!
                 </>
+              ) : isOutOfStock ? (
+                'Out of stock'
               ) : hasVariants && !allOptionsSelected ? (
                 'Select options'
-              ) : isSoldOut || (selectedVariant && selectedVariant.stock_quantity <= 0) ? (
+              ) : isSoldOut ? (
                 'Sold out'
               ) : maxAddable === 0 ? (
                 'Max quantity in cart'

@@ -3,6 +3,7 @@ import { unstable_cache } from 'next/cache'
 import type { RentalPlan, ShopProduct, ShopProductVariant } from '@/types/database'
 import { createLandingClient, ONE_HOUR } from './supabase'
 import { CHRISTMAS, NON_ADULT_PRODUCT_PATTERN } from './content'
+import { getVariantAvailability } from '@/lib/shop/availability'
 
 export const LANDING_GALLERY_TAG = 'landing-gallery'
 
@@ -72,7 +73,7 @@ export const getLandingProducts = unstable_cache(
             price: product.price_naira,
             compareAt: compareAt && compareAt > product.price_naira ? compareAt : null,
             fromPrice: false,
-            inStock: product.stock_quantity > 0,
+            inStock: getVariantAvailability(product).inStock,
             isChristmas,
           }
         }
@@ -85,7 +86,7 @@ export const getLandingProducts = unstable_cache(
           price,
           compareAt: compareAt && compareAt > price ? compareAt : null,
           fromPrice: new Set(prices).size > 1,
-          inStock: own.some((v) => v.stock_quantity > 0),
+          inStock: getVariantAvailability(product, own).inStock,
           isChristmas,
         }
       })
@@ -95,7 +96,8 @@ export const getLandingProducts = unstable_cache(
     }
   },
   ['landing-products'],
-  { revalidate: ONE_HOUR }
+  // 'shop-products' = SHOP_PRODUCTS_TAG, revalidated when admin saves a product
+  { revalidate: ONE_HOUR, tags: ['shop-products'] }
 )
 
 /** Lowest active Lagos delivery fee, or null if none. */
