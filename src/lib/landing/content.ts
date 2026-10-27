@@ -6,10 +6,15 @@
 export const SITE_URL = 'https://relaks.co'
 export const CONTACT_EMAIL = 'hello@relaks.co'
 
-export const SITE_TITLE = 'Relaks | Adult Coloring Books, Coloring App & Book Club in Lagos'
+// In-app digital coloring is coming soon: don't claim people can color in the app yet
+export const SITE_TITLE = 'Relaks | Adult Coloring Books, Journaling App & Book Club in Lagos'
 export const SITE_DESCRIPTION =
-  'Beautiful adult coloring books, a calm coloring and journaling app, and a book club that delivers in Lagos.'
+  'Beautiful adult coloring books, a calm journaling and community app, and a book club that delivers in Lagos.'
 export const OG_TAGLINE = "You've done enough today. Just Relaks."
+
+/** Books sold to date. Used in the hero badge, stats bar and story milestones. */
+export const BOOKS_SOLD = 15000
+export const BOOKS_SOLD_LABEL = `${BOOKS_SOLD.toLocaleString('en-US')}+`
 
 // Social links - leave a value empty to hide its icon
 export const SOCIAL_LINKS = {
@@ -42,7 +47,7 @@ export const NAV_LINKS: NavLink[] = [
 ]
 
 export const NAV_LOGIN = { label: 'Log in', href: '/login', event: 'nav_login' }
-export const NAV_PRIMARY = { label: 'Start Coloring', href: '/signup', event: 'nav_start' }
+export const NAV_PRIMARY = { label: 'Join free', href: '/signup', event: 'nav_start' }
 export const NAV_OPEN_APP = { label: 'Open the app', href: '/feed', event: 'nav_open_app' }
 
 export interface FooterColumn {
@@ -92,15 +97,15 @@ export const FOOTER_COLUMNS: FooterColumn[] = [
 // ============================================
 
 export const HERO = {
-  badge: '8,000+ books in homes across Nigeria, Kenya and the UK',
+  badge: `${BOOKS_SOLD_LABEL} books in homes across Nigeria, Kenya and the UK`,
   titleLine1: "You've done enough today.",
   // Renders as "Just RELAKS." with only the word in the brand gradient
   titleLine2Lead: 'Just',
   titleLine2Word: 'RELAKS',
   subline:
-    'Coloring books, a calm coloring app, and a book club that delivers in Lagos. Take ten minutes for yourself.',
+    'Coloring books, a calm journaling app, and a book club that delivers in Lagos. Take ten minutes for yourself.',
   primary: { label: 'Shop the books', href: '/shop', event: 'hero_shop' },
-  secondary: { label: 'Color free in the app', href: '/signup', event: 'hero_app' },
+  secondary: { label: 'Join the app free', href: '/signup', event: 'hero_app' },
   note: 'Free to join · Sign up with Google',
 }
 
@@ -167,8 +172,10 @@ export const HERO_COLORING = {
     prefill: { r8: '#E8B33C', r16: '#FF6B81', r34: '#7EC8C1', r40: '#7EC8C1', r133: '#7EC8C1', r36: '#7EC8C1', r42: '#7EC8C1' } as Record<string, string>,
     completeHeading: 'Beautifully colored.',
   },
-  nudge: "You've just colored for 10 seconds. Imagine 10 minutes.",
-  nudgeCta: { label: 'Keep coloring in the app', href: '/signup', event: 'hero_color_cta_app' },
+  // The coloring runs on the website; never promise in-app coloring here
+  nudge: "You've just colored for 10 seconds. Imagine a whole book.",
+  /** Shown next to the shop button (labelled by shopCta in season, the hero's shop label otherwise) */
+  nudgeCta: { label: 'Join the app free', href: '/signup', event: 'hero_color_cta_app' },
   /** Share of regions that must be filled for the "complete" message */
   completeRatio: 0.8,
   share: { label: 'Share to WhatsApp', event: 'hero_color_share', footer: 'Colored on relaks.co', fileName: 'relaks-coloring.png' },
@@ -180,7 +187,7 @@ export const HERO_COLORING = {
 // ============================================
 
 export const STATS = {
-  booksSold: '8,000+',
+  booksSold: BOOKS_SOLD_LABEL,
   booksSoldLabel: 'Books sold',
   coloristsLabel: 'Colorists in the app',
   pagesLabel: 'Pages shared',
@@ -215,7 +222,7 @@ export const DOORS = {
   },
   app: {
     title: 'The App',
-    body: 'Color on your phone, journal and share your pages. Free.',
+    body: 'Journal, find color references for your book, and share your pages. Free.',
     cta: { label: 'Start free', href: '/signup', event: 'door_app' },
   },
 }
@@ -249,22 +256,21 @@ export type AppRowImage = 'appCanvas' | 'appReferences' | 'appFeed' | 'appJourna
 export interface AppRow {
   heading: string
   /** `{editions}` and `{aiPrice}` are filled in at render */
-  lines: [string, string]
+  lines: string[]
   image: AppRowImage
+  /** Shows a "Coming soon" pill */
+  comingSoon?: boolean
 }
 
 export const APP_SECTION = {
   eyebrow: 'The App',
   heading: 'A calm corner on your phone',
-  cta: { label: 'Start coloring free', href: '/signup', event: 'app_start' },
+  comingSoon: 'Coming soon',
+  cta: { label: 'Join the app free', href: '/signup', event: 'app_start' },
 }
 
+// Live features first; digital coloring is coming soon, so it goes last
 export const APP_ROWS: AppRow[] = [
-  {
-    heading: 'Color on your phone',
-    lines: ['Choose your colors, pick a brush and color right on your screen.', 'No pencils, no mess. Just a few quiet minutes.'],
-    image: 'appCanvas',
-  },
   {
     heading: 'Never stuck on colors',
     lines: ['Color references for every edition: {editions}.', 'See how others colored the same page, then make it yours.'],
@@ -279,6 +285,12 @@ export const APP_ROWS: AppRow[] = [
     heading: 'Reflect and keep your streak',
     lines: ['Gentle journal prompts help you put the day down.', 'Track your mood and build a streak, one evening at a time.'],
     image: 'appJournal',
+  },
+  {
+    heading: 'Color on your phone',
+    lines: ["Digital coloring is on its way. Join free and you'll be first to try it."],
+    image: 'appCanvas',
+    comingSoon: true,
   },
 ]
 
@@ -346,7 +358,7 @@ export const STORY = {
     { value: '₦2,500', label: 'first TikTok ad' },
     { value: '10 orders', label: 'overnight' },
     { value: '100 books', label: 'in week one' },
-    { value: '8,000+', label: 'books since' },
+    { value: BOOKS_SOLD_LABEL, label: 'books since' },
   ],
 }
 
@@ -423,7 +435,7 @@ export const FINAL_CTA = {
   heading: 'Your journey to relaxation starts here',
   subline: 'Take a breath. Pick up your colors. Let Relaks be your moment of peace today.',
   primary: { label: 'Shop the books', href: '/shop', event: 'final_shop' },
-  secondary: { label: 'Color free in the app', href: '/signup', event: 'final_app' },
+  secondary: { label: 'Join the app free', href: '/signup', event: 'final_app' },
   /** `{colorists}` is replaced with the live colorist count */
   joinLine: 'Join {colorists}+ colorists who chose to slow down',
   joinLineFallback: 'Join thousands of colorists who chose to slow down',

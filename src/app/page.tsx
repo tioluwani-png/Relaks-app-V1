@@ -103,7 +103,7 @@ function buildFaq(zones: ZoneSummary | null, distributors: LandingDistributor[],
     },
     {
       question: 'Is the app free?',
-      answer: `Yes. Coloring, journaling and the community are free. AI-generated pages are from ${naira(PRICING.aiStarter)} each, with no subscription.`,
+      answer: `Yes. Journaling, color references for your book and the community are free. AI-generated pages are from ${naira(PRICING.aiStarter)} each, with no subscription. Digital coloring in the app is coming soon.`,
     },
     {
       question: 'How can I pay?',

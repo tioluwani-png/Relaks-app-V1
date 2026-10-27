@@ -34,6 +34,11 @@ export function AppSection({ editions, images, tone }: { editions: string; image
         <div className="flex items-center gap-2 mb-3 justify-center md:justify-start">
           <Icon className={cn('h-5 w-5', accent.icon)} aria-hidden="true" />
           <h3 className="text-lg md:text-xl font-bold text-relaks-ink">{row.heading}</h3>
+          {row.comingSoon && (
+            <span className={cn('rounded-full border px-2.5 py-0.5 text-xs font-semibold', accent.border, accent.text)}>
+              {APP_SECTION.comingSoon}
+            </span>
+          )}
         </div>
         {row.lines.map((line) => (
           <p key={line} className="text-gray-700 leading-relaxed max-w-[46ch] mx-auto md:mx-0">{fill(line)}</p>

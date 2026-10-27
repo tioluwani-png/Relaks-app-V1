@@ -83,14 +83,14 @@ export async function getLandingImages(): Promise<LandingImages> {
       club.newestCoverUrl ? { src: club.newestCoverUrl, alt: 'Newest book in the Reading Club' } : null
     ),
     doorApp: doorAppFile
-      ? { kind: 'photo', src: doorAppFile, alt: 'The Relaks coloring app' }
+      ? { kind: 'photo', src: doorAppFile, alt: 'The Relaks app' }
       : {
           kind: 'phone',
           src: newestPost?.imageUrl ?? null,
-          alt: newestPost ? `A page colored by ${newestPost.colorist}` : 'The Relaks coloring app',
+          alt: newestPost ? `A page colored by ${newestPost.colorist}` : 'The Relaks app',
           label: 'The Relaks app',
         },
-    appCanvas: appScreen('appCanvas', 'Coloring canvas'),
+    appCanvas: appScreen('appCanvas', 'Digital coloring, coming soon'),
     appReferences: appScreen('appReferences', 'Color references'),
     appJournal: appScreen('appJournal', 'Journal'),
     // The AI row uses the app-feed.png slot

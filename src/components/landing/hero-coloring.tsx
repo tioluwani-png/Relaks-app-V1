@@ -268,14 +268,23 @@ export function HeroColoring({ cardId, messagesId, palette, completeHeading, sho
       ) : userFills >= 3 ? (
         <div className={messageClass}>
           <p className="text-relaks-ink">{HERO_COLORING.nudge}</p>
-          <TrackedLink
-            href={HERO_COLORING.nudgeCta.href}
-            event={HERO_COLORING.nudgeCta.event}
-            className="mt-1 inline-flex min-h-11 items-center gap-1.5 font-semibold text-relaks-coral-ink underline underline-offset-2"
-          >
-            {HERO_COLORING.nudgeCta.label}
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </TrackedLink>
+          <div className="mt-3 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
+            <TrackedLink
+              href={shopHref}
+              event={HERO_COLORING.shopCta.event}
+              className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-full bg-relaks-ink px-5 text-sm font-semibold text-white hover:bg-black"
+            >
+              {shopLabel}
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </TrackedLink>
+            <TrackedLink
+              href={HERO_COLORING.nudgeCta.href}
+              event={HERO_COLORING.nudgeCta.event}
+              className="inline-flex min-h-12 items-center justify-center rounded-full border-2 border-relaks-ink/25 bg-white px-5 text-sm font-semibold text-relaks-ink hover:border-relaks-ink/60"
+            >
+              {HERO_COLORING.nudgeCta.label}
+            </TrackedLink>
+          </div>
         </div>
       ) : null}
     </div>

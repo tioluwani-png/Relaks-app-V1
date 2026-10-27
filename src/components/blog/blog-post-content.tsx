@@ -230,7 +230,7 @@ export function BlogPostContent({
               href="/signup"
               className="inline-flex items-center gap-2 px-7 py-3.5 bg-white text-purple-600 font-semibold rounded-full hover:shadow-xl hover:scale-105 transition-all duration-300"
             >
-              Start Coloring — It&apos;s Free
+              Join the app free
               <ArrowRight size={16} />
             </Link>
           </div>

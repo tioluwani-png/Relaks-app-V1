@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { ImageResponse } from 'next/og'
 import { OG_TAGLINE } from '@/lib/landing/content'
 
-export const alt = 'Relaks: adult coloring books, coloring app and book club'
+export const alt = 'Relaks: adult coloring books, journaling app and book club'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 

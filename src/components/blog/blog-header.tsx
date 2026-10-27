@@ -77,7 +77,7 @@ export function BlogHeader({ showBackToBlog = false }: BlogHeaderProps) {
               </Link>
               <Link href="/signup">
                 <button className="text-sm font-semibold text-white px-5 py-2.5 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 shadow-lg shadow-purple-200/40 hover:shadow-xl hover:scale-105 transition-all duration-300">
-                  Start Coloring
+                  Join free
                 </button>
               </Link>
             </>

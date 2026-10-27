@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { HERO } from '@/lib/landing/content'
 import { CtaButton } from './cta-button'
 import { HeroSnow } from './hero-snow'
-import { LineArt } from './section'
 
 /**
  * Headline and buttons on the left, the coloring card on the right (stacked on phones).
@@ -21,7 +20,6 @@ export function Hero({
 }) {
   return (
     <section id="hero" className="relative overflow-hidden bg-relaks-cream pt-8 pb-10 md:pt-16 md:pb-20">
-      <LineArt />
       {snow && <HeroSnow />}
 
       <div

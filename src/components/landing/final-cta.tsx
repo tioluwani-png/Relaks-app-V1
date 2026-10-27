@@ -3,7 +3,7 @@ import { FINAL_CTA } from '@/lib/landing/content'
 import { formatCount } from '@/lib/landing/stats'
 import { cn } from '@/lib/utils'
 import { CtaButton } from './cta-button'
-import { H2_CLASS, LineArt, Section, type Tone } from './section'
+import { H2_CLASS, Section, type Tone } from './section'
 
 export function FinalCta({ colorists, tone }: { colorists: number | null; tone: Tone }) {
   const joinLine = colorists
@@ -12,7 +12,6 @@ export function FinalCta({ colorists, tone }: { colorists: number | null; tone: 
 
   return (
     <Section tone={tone} className="overflow-hidden">
-      <LineArt />
       <div className="container mx-auto px-4 max-w-3xl relative text-center">
         <h2 className={cn(H2_CLASS, 'mx-auto max-w-[22ch] mb-4')}>{FINAL_CTA.heading}</h2>
         <p className="text-gray-700 mb-8 max-w-[52ch] mx-auto leading-relaxed">{FINAL_CTA.subline}</p>

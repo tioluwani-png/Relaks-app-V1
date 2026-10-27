@@ -86,16 +86,3 @@ export function SectionHeading({
     </div>
   )
 }
-
-/** Coral floral and mandala outlines at ~8% opacity, behind the hero and final CTA. */
-export function LineArt({ className }: { className?: string }) {
-  return (
-    <div
-      aria-hidden="true"
-      className={cn(
-        "pointer-events-none absolute inset-0 bg-[url('/landing/line-art.svg')] bg-cover bg-center opacity-[0.08]",
-        className
-      )}
-    />
-  )
-}
