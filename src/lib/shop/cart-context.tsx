@@ -109,6 +109,14 @@ function safeClearStorage(): void {
   }
 }
 
+/**
+ * Empties the saved cart without needing the CartProvider.
+ * Used by the payment callback page, which sits outside the shop layout.
+ */
+export function clearStoredCart(): void {
+  safeClearStorage()
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [isHydrating, setIsHydrating] = useState(true)

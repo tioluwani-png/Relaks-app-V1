@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CheckCircle2, XCircle, Loader2, ShoppingBag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { clearStoredCart } from '@/lib/shop/cart-context'
 
 function ShopPaymentCallbackContent() {
   const router = useRouter()
@@ -40,6 +41,8 @@ function ShopPaymentCallbackContent() {
         const data = await response.json()
 
         if (response.ok && data.success) {
+          // Payment confirmed: now it's safe to empty the cart
+          clearStoredCart()
           setStatus('success')
           setMessage('Your order has been placed successfully!')
           setOrderNumber(data.orderNumber)

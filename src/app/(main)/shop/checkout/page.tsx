@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -29,7 +29,7 @@ function formatDeliveryTime(minDays: number, maxDays: number): string {
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, subtotal, clearCart } = useCart()
+  const { items, subtotal } = useCart()
   const supabase = createClient()
 
   const [zones, setZones] = useState<ShopDeliveryZone[]>([])
@@ -115,9 +115,12 @@ export default function CheckoutPage() {
     }
   }
 
+  // Set just before we hand over to Paystack, so nothing on this page navigates away underneath it
+  const redirectingToPaystack = useRef(false)
+
   // Redirect if cart is empty
   useEffect(() => {
-    if (items.length === 0) {
+    if (items.length === 0 && !redirectingToPaystack.current) {
       router.replace('/shop')
     }
   }, [items.length, router])
@@ -239,17 +242,18 @@ export default function CheckoutPage() {
         throw new Error(initData.error || 'Failed to initialize payment')
       }
 
-      // 3. Clear cart before redirect (it will be verified on callback)
-      clearCart()
-
-      // 4. Redirect to Paystack checkout
+      // 3. Redirect to Paystack checkout. The cart is kept until payment is confirmed
+      // (the callback page clears it), so a customer who cancels on Paystack doesn't lose it.
+      // Clearing it here used to trigger the empty-cart redirect to /shop mid-navigation,
+      // which aborted the products request and flashed "Failed to load products".
+      redirectingToPaystack.current = true
       window.location.href = initData.authorization_url
     } catch (error) {
       console.error('Checkout error:', error)
       toast.error(error instanceof Error ? error.message : 'Checkout failed')
       setIsSubmitting(false)
     }
-  }, [items, customerName, email, phone, deliveryLga, deliveryAddress, selectedArea, selectedZone, appliedCoupon, clearCart])
+  }, [items, customerName, email, phone, deliveryLga, deliveryAddress, selectedArea, selectedZone, appliedCoupon])
 
   if (items.length === 0) {
     return (
