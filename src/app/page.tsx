@@ -14,6 +14,8 @@ import { FaqSection, type FaqItem } from '@/components/landing/faq-section'
 import { BlogSection } from '@/components/landing/blog-section'
 import { FinalCta } from '@/components/landing/final-cta'
 import { MobileStickyBar } from '@/components/landing/mobile-sticky-bar'
+import { HeroColoringCard } from '@/components/landing/hero-coloring-card'
+import { LandingImageView } from '@/components/landing/landing-image'
 import type { Tone } from '@/components/landing/section'
 import { formatCount, getActiveEditionNames, getLandingStats, joinNaturally } from '@/lib/landing/stats'
 import {
@@ -31,7 +33,9 @@ import {
   type ZoneSummary,
 } from '@/lib/landing/data'
 import { getLandingImages } from '@/lib/landing/images'
-import { DOORS, FAQ_SECTION, GALLERY_SECTION, SITE_URL, SOCIAL_LINKS } from '@/lib/landing/content'
+import { getHeroArt } from '@/lib/landing/hero-art'
+import { christmasBanner, isChristmasSeason } from '@/lib/landing/season'
+import { CHRISTMAS, DOORS, FAQ_SECTION, GALLERY_SECTION, HERO, HERO_COLORING, SITE_URL, SOCIAL_LINKS } from '@/lib/landing/content'
 import { PRICING } from '@/lib/paystack'
 import { UNRETURNED_DAYS_THRESHOLD } from '@/lib/rental/config'
 
@@ -133,6 +137,13 @@ export default async function Home() {
 
   const editions = joinNaturally(editionNames)
 
+  // Christmas season mode switches itself on and off by date (Lagos time)
+  const christmas = isChristmasSeason()
+  const coloring = christmas ? HERO_COLORING.christmas : HERO_COLORING.default
+  const heroSvg = getHeroArt(christmas ? 'christmas' : 'default', coloring.prefill)
+  const christmasProduct = products.find((p) => p.isChristmas)
+  const christmasImage = christmasProduct?.product.images[0]
+
   // "From ₦X" uses adult coloring books, so stationery and kids kits don't set the floor
   const adultPrices = adultBooks(products).map((p) => p.price)
   const lowestPrice = adultPrices.length > 0 ? Math.min(...adultPrices) : null
@@ -144,8 +155,12 @@ export default async function Home() {
       body: (lowestPrice !== null ? DOORS.books.body : DOORS.books.bodyNoPrice)
         .replace('{editions}', editions)
         .replace('{price}', lowestPrice !== null ? formatCount(lowestPrice) : ''),
+      meta: christmas ? CHRISTMAS.giftLine : undefined,
       cta: DOORS.books.cta,
-      image: images.doorBooks,
+      image:
+        christmas && christmasProduct && christmasImage
+          ? { kind: 'photo', src: christmasImage, alt: christmasProduct.product.name }
+          : images.doorBooks,
     },
     {
       key: 'club',
@@ -181,7 +196,13 @@ export default async function Home() {
     (tone: Tone) => <DoorsSection doors={doors} tone={tone} />,
     products.length > 0
       ? (tone: Tone) => (
-          <BooksSection products={products} lowestFee={lowestFee} hasDistributors={distributors.length > 0} tone={tone} />
+          <BooksSection
+            products={products}
+            lowestFee={lowestFee}
+            hasDistributors={distributors.length > 0}
+            christmas={christmas}
+            tone={tone}
+          />
         )
       : null,
     (tone: Tone) => <AppSection editions={editions} images={images} tone={tone} />,
@@ -203,7 +224,11 @@ export default async function Home() {
   const lastTone = toneAt(blocks.length - 1)
 
   return (
-    <LandingShell footerTone={lastTone === 'tint' ? 'cream' : 'tint'} after={<MobileStickyBar />}>
+    <LandingShell
+      footerTone={lastTone === 'tint' ? 'cream' : 'tint'}
+      banner={christmasBanner()}
+      after={<MobileStickyBar />}
+    >
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
@@ -212,7 +237,31 @@ export default async function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
-      <Hero image={images.hero} />
+      <Hero
+        eyebrow={christmas ? CHRISTMAS.heroEyebrow : undefined}
+        snow={christmas}
+        aside={
+          heroSvg ? (
+            <HeroColoringCard
+              svg={heroSvg}
+              season={christmas ? 'christmas' : 'default'}
+              ariaLabel={coloring.ariaLabel}
+              caption={coloring.caption}
+              palette={coloring.palette}
+              completeHeading={coloring.completeHeading}
+              shopHref={christmas && christmasProduct ? `/shop/${christmasProduct.product.slug}` : '/shop'}
+              shopLabel={christmas ? HERO_COLORING.shopCta.label : HERO.primary.label}
+            />
+          ) : images.hero ? (
+            <LandingImageView
+              image={images.hero}
+              preload
+              sizes="(min-width: 1024px) 460px, (min-width: 640px) 320px, 220px"
+              photoClassName="mx-auto w-full max-w-[220px] sm:max-w-xs lg:max-w-none aspect-[4/5] rounded-3xl"
+            />
+          ) : undefined
+        }
+      />
       {blocks.map((render, i) => (
         <Fragment key={i}>{render(toneAt(i))}</Fragment>
       ))}

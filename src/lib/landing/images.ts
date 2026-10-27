@@ -58,7 +58,6 @@ export async function getLandingImages(): Promise<LandingImages> {
 
   const candidates = adultBooks(products.filter((p) => p.product.images.length > 0))
   const heroProduct = candidates[0]?.product
-  const doorProduct = (candidates[1] ?? candidates[0])?.product
 
   const photo = (slot: LandingImageSlot, alt: string, fallback?: { src: string; alt: string } | null) => {
     const file = localFile(slot)
@@ -68,17 +67,16 @@ export async function getLandingImages(): Promise<LandingImages> {
 
   const doorAppFile = localFile('doorApp')
 
+  // The hero now shows the coloring page, so its photo moves to the Books door
+  const hero = photo(
+    'hero',
+    'Relaks adult coloring books and colored pages',
+    heroProduct && { src: heroProduct.images[0], alt: heroProduct.name }
+  )
+
   return {
-    hero: photo(
-      'hero',
-      'Relaks adult coloring books and colored pages',
-      heroProduct && { src: heroProduct.images[0], alt: heroProduct.name }
-    ),
-    doorBooks: photo(
-      'doorBooks',
-      'Relaks coloring books',
-      doorProduct && { src: doorProduct.images[0], alt: doorProduct.name }
-    ),
+    hero,
+    doorBooks: localFile('doorBooks') ? photo('doorBooks', 'Relaks coloring books') : hero,
     doorClub: photo(
       'doorClub',
       'Books from the Relaks Reading Club',

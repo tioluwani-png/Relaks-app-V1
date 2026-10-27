@@ -1,26 +1,44 @@
+import type { ReactNode } from 'react'
 import { HERO } from '@/lib/landing/content'
-import type { LandingImage } from '@/lib/landing/images'
 import { CtaButton } from './cta-button'
-import { LandingImageView } from './landing-image'
+import { HeroSnow } from './hero-snow'
 import { LineArt } from './section'
 
-// Rendered without animation so the headline and buttons paint immediately.
-export function Hero({ image }: { image: LandingImage | null }) {
+/**
+ * Headline and buttons on the left, the coloring card on the right (stacked on phones).
+ * The text is plain server HTML with no animation, so it paints immediately.
+ */
+export function Hero({
+  eyebrow,
+  snow = false,
+  aside,
+}: {
+  /** Seasonal eyebrow; the "books in homes" badge shows otherwise */
+  eyebrow?: string
+  snow?: boolean
+  /** The coloring card (or nothing if the page art is missing) */
+  aside?: ReactNode
+}) {
   return (
-    <section id="hero" className="relative overflow-hidden bg-relaks-cream pt-8 pb-10 md:pt-20 md:pb-24">
+    <section id="hero" className="relative overflow-hidden bg-relaks-cream pt-8 pb-10 md:pt-16 md:pb-20">
       <LineArt />
+      {snow && <HeroSnow />}
 
       <div
         className={
-          image
-            ? 'container mx-auto px-4 max-w-6xl relative grid gap-8 lg:grid-cols-[1.1fr_1fr] lg:items-center'
+          aside
+            ? 'container mx-auto px-4 max-w-6xl relative grid gap-8 lg:grid-cols-[1fr_1fr] lg:gap-12 lg:items-center'
             : 'container mx-auto px-4 max-w-4xl relative'
         }
       >
-        <div className={image ? 'text-center lg:text-left' : 'text-center'}>
-          <p className="inline-flex items-center bg-white/80 text-relaks-ink px-4 py-2 rounded-full text-sm font-medium mb-6 border border-relaks-coral/40">
-            {HERO.badge}
-          </p>
+        <div className={aside ? 'text-center lg:text-left' : 'text-center'}>
+          {eyebrow ? (
+            <p className="mb-4 text-sm font-semibold uppercase tracking-wider text-relaks-coral-ink">{eyebrow}</p>
+          ) : (
+            <p className="inline-flex items-center bg-white/80 text-relaks-ink px-4 py-2 rounded-full text-sm font-medium mb-6 border border-relaks-coral/40">
+              {HERO.badge}
+            </p>
+          )}
 
           <h1 className="font-display text-[36px] md:text-[48px] font-bold tracking-tight text-relaks-ink mb-5 leading-[1.1]">
             {HERO.titleLine1}
@@ -32,11 +50,11 @@ export function Hero({ image }: { image: LandingImage | null }) {
             .
           </h1>
 
-          <p className={`text-base md:text-lg text-gray-700 mb-8 max-w-[52ch] leading-relaxed mx-auto ${image ? 'lg:mx-0' : ''}`}>
+          <p className={`text-base md:text-lg text-gray-700 mb-8 max-w-[52ch] leading-relaxed mx-auto ${aside ? 'lg:mx-0' : ''}`}>
             {HERO.subline}
           </p>
 
-          <div className={`flex flex-col items-center gap-3 ${image ? 'lg:items-start' : ''}`}>
+          <div className={`flex flex-col items-center gap-3 ${aside ? 'lg:items-start' : ''}`}>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full sm:w-auto">
               <CtaButton href={HERO.primary.href} event={HERO.primary.event} variant="gradient">
                 {HERO.primary.label}
@@ -49,14 +67,7 @@ export function Hero({ image }: { image: LandingImage | null }) {
           </div>
         </div>
 
-        {image && (
-          <LandingImageView
-            image={image}
-            preload
-            sizes="(min-width: 1024px) 460px, (min-width: 640px) 320px, 220px"
-            photoClassName="mx-auto w-full max-w-[220px] sm:max-w-xs lg:max-w-none aspect-[4/5] rounded-3xl shadow-xl shadow-relaks-ink/10 border-4 border-white"
-          />
-        )}
+        {aside}
       </div>
     </section>
   )

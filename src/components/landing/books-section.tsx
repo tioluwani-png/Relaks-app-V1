@@ -1,6 +1,6 @@
 import { ArrowRight, Truck } from 'lucide-react'
 import Link from 'next/link'
-import { BOOKS_SECTION } from '@/lib/landing/content'
+import { BOOKS_SECTION, CHRISTMAS } from '@/lib/landing/content'
 import type { LandingProduct } from '@/lib/landing/data'
 import { formatCount } from '@/lib/landing/stats'
 import { ProductCard } from './product-card'
@@ -12,12 +12,15 @@ export function BooksSection({
   products,
   lowestFee,
   hasDistributors,
+  christmas = false,
   tone,
 }: {
   products: LandingProduct[]
   lowestFee: number | null
   /** When false, "Outside Lagos?" links to the delivery page instead of #outside-lagos */
   hasDistributors: boolean
+  /** Christmas season: Christmas edition first, combos labelled as gift sets, gift line */
+  christmas?: boolean
   tone: Tone
 }) {
   if (products.length === 0) return null
@@ -27,13 +30,24 @@ export function BooksSection({
     : BOOKS_SECTION.deliveryNoFee
   const outside = BOOKS_SECTION.outsideLagos
 
+  // Stable sort keeps shop order within each group
+  const ordered = christmas
+    ? [...products].sort((a, b) => Number(b.isChristmas) - Number(a.isChristmas))
+    : products
+
   return (
     <Section id="books" tone={tone}>
       <div className="container mx-auto px-4 max-w-6xl">
-        <SectionHeading eyebrow={BOOKS_SECTION.eyebrow} heading={BOOKS_SECTION.heading} accent="coral" />
+        <SectionHeading
+          eyebrow={BOOKS_SECTION.eyebrow}
+          heading={BOOKS_SECTION.heading}
+          accent="coral"
+          className={christmas ? 'mb-2 md:mb-3' : undefined}
+        />
+        {christmas && <p className="mb-6 md:mb-10 text-center text-gray-700">{CHRISTMAS.giftLine}</p>}
 
         <SwipeRow label="Relaks shop products" arrows itemClassName="w-[52%] sm:w-[36%] md:w-[250px]">
-          {products.map((p) => (
+          {ordered.map((p) => (
             <ProductCard
               key={p.product.id}
               product={p.product}
@@ -41,6 +55,7 @@ export function BooksSection({
               compareAt={p.compareAt}
               fromPrice={p.fromPrice}
               inStock={p.inStock}
+              badge={christmas && p.product.product_type === 'combo' ? CHRISTMAS.giftSetBadge : undefined}
             />
           ))}
         </SwipeRow>

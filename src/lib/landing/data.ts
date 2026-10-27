@@ -2,7 +2,7 @@ import 'server-only'
 import { unstable_cache } from 'next/cache'
 import type { RentalPlan, ShopProduct, ShopProductVariant } from '@/types/database'
 import { createLandingClient, ONE_HOUR } from './supabase'
-import { NON_ADULT_PRODUCT_PATTERN } from './content'
+import { CHRISTMAS, NON_ADULT_PRODUCT_PATTERN } from './content'
 
 export const LANDING_GALLERY_TAG = 'landing-gallery'
 
@@ -30,6 +30,8 @@ export interface LandingProduct {
   /** True when variants have different prices ("From ₦X") */
   fromPrice: boolean
   inStock: boolean
+  /** Name, edition or a variant option matches CHRISTMAS.productPattern */
+  isChristmas: boolean
 }
 
 /** Active shop products in shop order, with variant-aware pricing. */
@@ -60,6 +62,9 @@ export const getLandingProducts = unstable_cache(
 
       return rows.map((product) => {
         const own = variants.filter((v) => v.product_id === product.id)
+        const isChristmas = [product.name, product.edition ?? '', ...own.flatMap((v) => Object.values(v.option_values ?? {}))]
+          .some((text) => CHRISTMAS.productPattern.test(text))
+
         if (!product.has_variants || own.length === 0) {
           const compareAt = product.compare_at_price_naira
           return {
@@ -68,6 +73,7 @@ export const getLandingProducts = unstable_cache(
             compareAt: compareAt && compareAt > product.price_naira ? compareAt : null,
             fromPrice: false,
             inStock: product.stock_quantity > 0,
+            isChristmas,
           }
         }
 
@@ -80,6 +86,7 @@ export const getLandingProducts = unstable_cache(
           compareAt: compareAt && compareAt > price ? compareAt : null,
           fromPrice: new Set(prices).size > 1,
           inStock: own.some((v) => v.stock_quantity > 0),
+          isChristmas,
         }
       })
     } catch (error) {

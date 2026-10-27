@@ -30,7 +30,7 @@ function Door({ door }: { door: DoorCard }) {
     <TrackedLink
       href={door.cta.href}
       event={door.cta.event}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-relaks-ink/10 bg-white transition-shadow duration-300 hover:shadow-lg"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-relaks-ink/10 bg-white transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none"
     >
       <div className={cn('h-1.5', a.bar)} aria-hidden="true" />
       <div className={cn('relative aspect-[16/10] md:aspect-[4/3] overflow-hidden', a.soft)}>

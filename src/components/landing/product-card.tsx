@@ -19,12 +19,15 @@ export function ProductCard({
   compareAt,
   fromPrice,
   inStock,
+  badge,
 }: {
   product: ShopProduct
   price: number
   compareAt: number | null
   fromPrice: boolean
   inStock: boolean
+  /** Small label on the image, e.g. "Gift set" in the Christmas season */
+  badge?: string
 }) {
   const { addItem, getItemQuantity } = useCart()
   const router = useRouter()
@@ -47,7 +50,7 @@ export function ProductCard({
     'mt-3 inline-flex min-h-12 w-full items-center justify-center gap-1.5 rounded-full text-sm font-semibold transition-colors'
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-relaks-ink/10 bg-white">
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-relaks-ink/10 bg-white transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none">
       <Link href={href} className="relative block aspect-square bg-relaks-tint">
         {image && (
           <Image
@@ -57,6 +60,11 @@ export function ProductCard({
             sizes="(min-width: 768px) 250px, 52vw"
             className="object-cover"
           />
+        )}
+        {badge && (
+          <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-relaks-ink">
+            {badge}
+          </span>
         )}
       </Link>
       <div className="flex flex-1 flex-col p-3 md:p-4">

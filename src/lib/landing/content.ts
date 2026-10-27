@@ -105,6 +105,77 @@ export const HERO = {
 }
 
 // ============================================
+// SEASON (switches itself on and off by date, Lagos time)
+// ============================================
+
+export const SEASON = { name: 'christmas', start: '2026-11-15', end: '2027-01-06' } as const
+
+// TODO: set the last order date for Lagos delivery before Christmas as YYYY-MM-DD, e.g. '2026-12-19'.
+// The banner above the header is hidden while this is empty and after the date.
+export const CHRISTMAS_CUTOFF = ''
+
+export const CHRISTMAS = {
+  heroEyebrow: 'Slow down this Christmas',
+  /** `{date}` is CHRISTMAS_CUTOFF, e.g. "Friday 19 December" */
+  banner: 'Order by {date} for delivery in Lagos before Christmas',
+  giftLine: 'Gift a moment of calm',
+  giftSetBadge: 'Gift set',
+  /** Matches the Christmas edition by product name, edition or variant option */
+  productPattern: /christmas/i,
+}
+
+// ============================================
+// HERO COLORING PAGE
+// ============================================
+
+export interface Swatch {
+  name: string
+  hex: string
+}
+
+export const HERO_COLORING = {
+  christmas: {
+    ariaLabel: 'Interactive Christmas coloring page',
+    caption: 'Tap a colour, then tap the tree',
+    palette: [
+      { name: 'Berry red', hex: '#C8102E' },
+      { name: 'Pine', hex: '#1B7A43' },
+      { name: 'Sage', hex: '#8FBF7A' },
+      { name: 'Gold', hex: '#E8B33C' },
+      { name: 'Cream', hex: '#F4E1C1' },
+      { name: 'Coral', hex: '#FF6B81' },
+      { name: 'Icy teal', hex: '#7EC8C1' },
+      { name: 'Plum', hex: '#A758FF' },
+    ] as Swatch[],
+    /** First-paint hint: the big star in gold, one bauble in berry red, one bow in pine */
+    prefill: { r8: '#E8B33C', r16: '#C8102E', r34: '#1B7A43', r40: '#1B7A43', r133: '#1B7A43', r36: '#1B7A43', r42: '#1B7A43' } as Record<string, string>,
+    completeHeading: 'Merry and beautifully colored.',
+  },
+  default: {
+    ariaLabel: 'Interactive coloring page',
+    caption: 'Tap a colour, then tap the page',
+    palette: [
+      { name: 'Coral', hex: '#FF6B81' },
+      { name: 'Plum', hex: '#A758FF' },
+      { name: 'Tangerine', hex: '#FF9F43' },
+      { name: 'Gold', hex: '#E8B33C' },
+      { name: 'Sage', hex: '#8FBF7A' },
+      { name: 'Icy teal', hex: '#7EC8C1' },
+      { name: 'Blush', hex: '#F7B7C8' },
+      { name: 'Sky', hex: '#8EB8F2' },
+    ] as Swatch[],
+    prefill: { r8: '#E8B33C', r16: '#FF6B81', r34: '#7EC8C1', r40: '#7EC8C1', r133: '#7EC8C1', r36: '#7EC8C1', r42: '#7EC8C1' } as Record<string, string>,
+    completeHeading: 'Beautifully colored.',
+  },
+  nudge: "You've just colored for 10 seconds. Imagine 10 minutes.",
+  nudgeCta: { label: 'Keep coloring in the app', href: '/signup', event: 'hero_color_cta_app' },
+  /** Share of regions that must be filled for the "complete" message */
+  completeRatio: 0.8,
+  share: { label: 'Share to WhatsApp', event: 'hero_color_share', footer: 'Colored on relaks.co', fileName: 'relaks-coloring.png' },
+  shopCta: { label: 'Get the Christmas edition', event: 'hero_color_shop_christmas' },
+}
+
+// ============================================
 // STATS BAR
 // ============================================
 

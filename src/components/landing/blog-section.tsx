@@ -24,7 +24,7 @@ export function BlogSection({ posts, tone }: { posts: LandingBlogPost[]; tone: T
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="group flex h-full flex-col overflow-hidden rounded-2xl border border-relaks-ink/10 bg-white"
+              className="group flex h-full flex-col overflow-hidden rounded-2xl border border-relaks-ink/10 bg-white transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none"
             >
               <div className="relative aspect-[16/9] bg-relaks-tint">
                 {post.coverUrl && (

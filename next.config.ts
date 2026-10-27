@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
   env: {
     LANDING_IMAGES: landingImages,
   },
+  // The hero coloring page SVG is read with fs at render time (src/lib/landing/hero-art.ts)
+  outputFileTracingIncludes: {
+    "/": ["./public/landing/*.svg"],
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [
