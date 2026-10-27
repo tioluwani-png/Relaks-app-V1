@@ -363,6 +363,9 @@ export const getLatestBlogPosts = unstable_cache(
 // APP SECTION SCREENS
 // ============================================
 
+/** AI prompts that came from a photo (conversions, portraits, selfies) are never shown publicly */
+const PHOTO_PROMPT = /photo|picture|image of (me|us|my)|convers|convert|portrait|selfie|ghibli/i
+
 export interface AppScreenData {
   /** An official color reference, for the "Never stuck on colors" phone */
   reference: { imageUrl: string; edition: string; page: number } | null
@@ -396,9 +399,13 @@ export const getAppScreenData = unstable_cache(
           .select('display_name')
           .eq('slug', row.edition)
           .maybeSingle()
-        const name =
+        // Stored names can have stray spaces or a lowercase "edition" (e.g. "Teal edition ")
+        const name = (
           (edition as { display_name: string } | null)?.display_name ??
           `${row.edition.charAt(0).toUpperCase()}${row.edition.slice(1)} Edition`
+        )
+          .trim()
+          .replace(/\bedition$/i, 'Edition')
         reference = { imageUrl: row.image_url, edition: name, page: row.page_number }
       }
     } catch {
@@ -415,8 +422,11 @@ export const getAppScreenData = unstable_cache(
           .in('user_id', ids)
           .like('result_url', '%supabase.co%')
           .order('created_at', { ascending: false })
-          .limit(1)
-        const row = ((data ?? []) as { prompt: string | null; result_url: string | null }[])[0]
+          .limit(30)
+        // Skip pages made from photos: they can show real, identifiable people
+        const row = ((data ?? []) as { prompt: string | null; result_url: string | null }[]).find(
+          (r) => !!r.result_url && !!r.prompt?.trim() && !PHOTO_PROMPT.test(r.prompt)
+        )
         if (row?.result_url && row.prompt?.trim()) {
           aiExample = { prompt: row.prompt.trim(), imageUrl: row.result_url }
         }
@@ -427,6 +437,7 @@ export const getAppScreenData = unstable_cache(
 
     return { reference, aiExample }
   },
-  ['landing-app-screens'],
+  // v2: photo-based AI pages filtered out; new key so the old cached example isn't served
+  ['landing-app-screens-v2'],
   { revalidate: ONE_HOUR }
 )
