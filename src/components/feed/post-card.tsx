@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Heart, MessageCircle, Share2, Bookmark } from 'lucide-react'
+import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
@@ -81,6 +82,7 @@ export function PostCard({ post }: PostCardProps) {
       console.error('[PostCard] Like toggle failed:', err)
       setIsLiked(wasLiked)
       setLikeCount(prevCount)
+      toast.error('Failed to like. Try again.')
     } finally {
       setIsLikeLoading(false)
     }
@@ -102,19 +104,24 @@ export function PostCard({ post }: PostCardProps) {
   const handleSave = async () => {
     if (isSaveLoading) return
     setIsSaveLoading(true)
+    const wasSaved = isSaved
     setIsSaved(!isSaved)
 
     try {
       const response = await fetch(`/api/posts/${post.id}/save`, {
-        method: isSaved ? 'DELETE' : 'POST',
+        method: wasSaved ? 'DELETE' : 'POST',
       })
 
       if (!response.ok) {
-        setIsSaved(isSaved)
+        setIsSaved(wasSaved)
+        toast.error('Failed to save. Try again.')
+      } else {
+        toast.success(wasSaved ? 'Removed from saved' : 'Saved!')
       }
     } catch (err) {
       console.error('[PostCard] Save toggle failed:', err)
-      setIsSaved(isSaved)
+      setIsSaved(wasSaved)
+      toast.error('Failed to save. Try again.')
     } finally {
       setIsSaveLoading(false)
     }
@@ -122,13 +129,21 @@ export function PostCard({ post }: PostCardProps) {
 
   const handleShare = async () => {
     const url = `${window.location.origin}/post/${post.id}`
-    if (navigator.share) {
-      await navigator.share({
-        title: `${post.user.display_name || post.user.username}'s artwork on Relaks`,
-        url,
-      })
-    } else {
-      await navigator.clipboard.writeText(url)
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${post.user.display_name || post.user.username}'s artwork on Relaks`,
+          url,
+        })
+      } else {
+        await navigator.clipboard.writeText(url)
+        toast.success('Link copied!')
+      }
+    } catch (err) {
+      // User cancelled share, no error
+      if ((err as Error).name !== 'AbortError') {
+        toast.error('Failed to share. Try again.')
+      }
     }
   }
 

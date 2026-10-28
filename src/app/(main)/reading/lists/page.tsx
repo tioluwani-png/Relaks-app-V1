@@ -64,20 +64,18 @@ export default function ReadingListsPage() {
             <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
           </div>
         ) : lists.length === 0 ? (
-          <FadeIn className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center mb-4">
-              <ListTree className="h-8 w-8 text-blue-500" />
+          <FadeIn className="flex flex-col items-center justify-center py-16 text-center px-4">
+            <div className="w-16 h-16 rounded-[20px] bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 flex items-center justify-center mb-4">
+              <ListTree className="h-8 w-8 text-blue-500" strokeWidth={1.75} />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              No lists yet
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 max-w-sm mb-4">
+            <h3 className="text-lg font-semibold mb-2">No lists yet</h3>
+            <p className="text-muted-foreground max-w-xs mb-6">
               Create reading lists to organize and share your favorite books
             </p>
             <NewListDialog
               onSubmit={createList}
               trigger={
-                <Button className="gap-2">
+                <Button className="gap-2 rounded-[20px] bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
                   <Plus className="h-4 w-4" />
                   Create your first list
                 </Button>

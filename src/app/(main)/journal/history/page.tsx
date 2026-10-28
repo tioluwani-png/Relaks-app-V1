@@ -102,14 +102,16 @@ export default function JournalHistoryPage() {
             ))}
           </div>
         ) : entries.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="h-14 w-14 mx-auto rounded-2xl bg-muted flex items-center justify-center mb-4">
-              <Calendar className="h-7 w-7 text-muted-foreground/60" />
+          <div className="text-center py-16 px-4">
+            <div className="h-16 w-16 mx-auto rounded-[20px] bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 flex items-center justify-center mb-4">
+              <Calendar className="h-8 w-8 text-purple-500" strokeWidth={1.75} />
             </div>
-            <h3 className="font-semibold mb-1">No entries yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">Start journaling to see your history</p>
+            <h3 className="font-semibold text-lg mb-2">No entries yet</h3>
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-6">
+              Start journaling to reflect on your coloring sessions and track your mood
+            </p>
             <Link href="/journal">
-              <Button variant="outline" size="sm" className="rounded-xl">
+              <Button className="rounded-[20px] bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
                 Write your first entry
               </Button>
             </Link>

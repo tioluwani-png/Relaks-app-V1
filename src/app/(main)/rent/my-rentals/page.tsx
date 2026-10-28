@@ -138,18 +138,18 @@ export default function MyRentalsPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center py-16"
+            className="text-center py-16 px-4"
           >
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-purple-100 flex items-center justify-center">
-              <BookOpen className="w-10 h-10 text-purple-500" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-[20px] bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 flex items-center justify-center">
+              <BookOpen className="w-8 h-8 text-purple-500" strokeWidth={1.75} />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">No rentals yet</h2>
-            <p className="text-gray-500 mb-6">
-              Start your reading journey with our book club
+            <h2 className="text-lg font-semibold mb-2">No rentals yet</h2>
+            <p className="text-muted-foreground max-w-xs mx-auto mb-6">
+              Rent physical books delivered to your door. Return when you're done!
             </p>
             <Link href="/rent">
-              <Button className="rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 font-semibold">
-                Browse Plans
+              <Button className="rounded-[20px] bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
+                Browse plans
               </Button>
             </Link>
           </motion.div>

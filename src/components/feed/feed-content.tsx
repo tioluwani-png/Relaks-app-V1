@@ -4,9 +4,11 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { PostCard } from './post-card'
 import { YourEditionCard } from './your-edition-card'
+import { EditionPickerCard } from './edition-picker-card'
 import { PromoCard } from './promo-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2, UserPlus } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/hooks/use-auth'
@@ -58,6 +60,9 @@ export function FeedContent() {
 
   return (
     <div className="px-4 py-4">
+      {/* Edition Picker for existing users who haven't set editions */}
+      <EditionPickerCard />
+
       {/* Your Edition Card */}
       <YourEditionCard />
 
@@ -306,9 +311,13 @@ function FollowSuggestionRow({ user }: {
       })
       if (response.ok) {
         setIsFollowing(true)
+        toast.success(`Following ${user.display_name || user.username}!`)
+      } else {
+        toast.error('Failed to follow. Try again.')
       }
     } catch (err) {
       console.error('[FollowSuggestionRow] Error:', err)
+      toast.error('Failed to follow. Try again.')
     } finally {
       setIsLoading(false)
     }

@@ -100,14 +100,20 @@ export default function NotificationsPage() {
 
       <main className="max-w-lg mx-auto">
         {notifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 px-4">
-            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
-              <Heart className="h-8 w-8 text-muted-foreground" />
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <div className="h-16 w-16 rounded-[20px] bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 flex items-center justify-center mb-4">
+              <Heart className="h-8 w-8 text-purple-500" strokeWidth={1.75} />
             </div>
-            <h2 className="text-lg font-medium mb-1">No notifications yet</h2>
-            <p className="text-sm text-muted-foreground text-center">
-              When someone interacts with your posts, you&apos;ll see it here
+            <h2 className="text-lg font-semibold mb-2">No notifications yet</h2>
+            <p className="text-sm text-muted-foreground text-center max-w-xs mb-6">
+              Share your first colored page to start getting likes and comments!
             </p>
+            <Button
+              onClick={() => router.push('/create')}
+              className="rounded-[20px] bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0"
+            >
+              Share a page
+            </Button>
           </div>
         ) : (
           <div className="divide-y">

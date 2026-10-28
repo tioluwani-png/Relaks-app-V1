@@ -1,64 +1,53 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Loader2, ChevronRight, ChevronLeft, Share2, Palette, Heart } from 'lucide-react'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Loader2, ChevronRight, Bell, BookOpen, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FadeIn } from '@/components/shared/motion'
 import { useEditions } from '@/hooks/use-editions'
 
-const slides = [
-  {
-    icon: Share2,
-    title: 'Share your art',
-    description: 'Upload and share your colored pages with the community. Get likes, comments, and inspire others.',
-    gradient: 'from-purple-500 to-violet-600',
-  },
-  {
-    icon: Palette,
-    title: 'Find inspiration',
-    description: 'Browse curated color references for each Relaks edition. No more scattered Pinterest boards.',
-    gradient: 'from-pink-500 to-rose-500',
-  },
-  {
-    icon: Heart,
-    title: 'Build wellness habits',
-    description: 'Track your coloring and journaling streaks. Celebrate milestones and grow mindfully.',
-    gradient: 'from-orange-400 to-pink-500',
-  },
-]
+interface FollowSuggestion {
+  id: string
+  username: string
+  display_name: string | null
+  avatar_url: string | null
+}
 
 export function OnboardingCarousel() {
   const router = useRouter()
   const supabase = createClient()
-  const { editions, getEditionGradient } = useEditions()
-  const [currentSlide, setCurrentSlide] = useState(0)
-  const [displayName, setDisplayName] = useState('')
+  const { editions } = useEditions()
+
+  const [step, setStep] = useState(0)
   const [selectedEditions, setSelectedEditions] = useState<string[]>([])
+  const [noBook, setNoBook] = useState(false)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+  const [suggestions, setSuggestions] = useState<FollowSuggestion[]>([])
+  const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
-  const isLastSlide = currentSlide === slides.length
-  const isProfileSlide = currentSlide === slides.length
+  const totalSteps = 3
 
-  const handleNext = () => {
-    if (currentSlide < slides.length) {
-      setCurrentSlide(prev => prev + 1)
+  // Fetch follow suggestions when we reach step 2
+  useEffect(() => {
+    if (step === 2) {
+      const editionParam = selectedEditions.length > 0 ? `?edition=${selectedEditions[0]}` : ''
+      fetch(`/api/users/suggestions${editionParam}`)
+        .then(res => res.json())
+        .then(data => setSuggestions(data.users || []))
+        .catch(() => {})
     }
-  }
-
-  const handlePrev = () => {
-    if (currentSlide > 0) {
-      setCurrentSlide(prev => prev - 1)
-    }
-  }
+  }, [step, selectedEditions])
 
   const toggleEdition = (slug: string) => {
+    if (noBook) setNoBook(false)
     setSelectedEditions(prev =>
       prev.includes(slug)
         ? prev.filter(e => e !== slug)
@@ -66,8 +55,51 @@ export function OnboardingCarousel() {
     )
   }
 
+  const handleNoBook = () => {
+    setNoBook(true)
+    setSelectedEditions([])
+  }
+
+  const handleEnableNotifications = async () => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission()
+      setNotificationsEnabled(permission === 'granted')
+      if (permission === 'granted') {
+        toast.success('Notifications enabled!')
+      }
+    }
+  }
+
+  const handleFollow = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/users/${userId}/follow`, {
+        method: 'POST',
+      })
+      if (response.ok) {
+        setFollowedUsers(prev => new Set([...prev, userId]))
+        toast.success('Followed!')
+      }
+    } catch {
+      toast.error('Failed to follow')
+    }
+  }
+
+  const handleNext = () => {
+    if (step < totalSteps - 1) {
+      setStep(prev => prev + 1)
+    }
+  }
+
+  const handleSkip = () => {
+    if (step < totalSteps - 1) {
+      setStep(prev => prev + 1)
+    } else {
+      handleComplete()
+    }
+  }
+
   const handleComplete = async () => {
-    setIsLoading(true)
+    setIsSaving(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
@@ -80,8 +112,8 @@ export function OnboardingCarousel() {
       const { error } = await supabase
         .from('users')
         .update({
-          display_name: displayName || null,
-          editions_owned: selectedEditions,
+          editions_owned: noBook ? [] : selectedEditions,
+          onboarding_completed: true,
         } as never)
         .eq('id', user.id)
 
@@ -95,141 +127,222 @@ export function OnboardingCarousel() {
     } catch {
       toast.error('Something went wrong')
     } finally {
-      setIsLoading(false)
+      setIsSaving(false)
     }
   }
 
   return (
-    <FadeIn>
-      <div className="bg-card rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.08)] overflow-hidden w-full">
-        {/* Gradient accent */}
-        <div className="h-1.5 gradient-purple-pink" />
+    <div className="w-full max-w-md mx-auto">
+      <div className="bg-card rounded-[20px] shadow-[0_4px_24px_rgba(0,0,0,0.08)] overflow-hidden">
+        {/* Progress bar */}
+        <div className="h-1 bg-muted">
+          <motion.div
+            className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+            initial={{ width: 0 }}
+            animate={{ width: `${((step + 1) / totalSteps) * 100}%` }}
+            transition={{ duration: 0.3 }}
+          />
+        </div>
 
         <div className="p-6">
-          {/* Progress dots */}
-          <div className="flex justify-center gap-2 mb-6">
-            {[...slides, null].map((_, index) => (
+          <AnimatePresence mode="wait">
+            {/* Step 1: Which book do you have? */}
+            {step === 0 && (
               <motion.div
-                key={index}
-                animate={{
-                  width: index === currentSlide ? 32 : 8,
-                }}
-                className={`h-2 rounded-full transition-colors ${
-                  index === currentSlide
-                    ? 'gradient-purple-pink'
-                    : index < currentSlide
-                    ? 'bg-purple-300'
-                    : 'bg-muted'
-                }`}
-              />
-            ))}
-          </div>
-
-          {/* Content */}
-          <div className="min-h-[300px] flex flex-col justify-center">
-            <AnimatePresence mode="wait">
-              {!isProfileSlide ? (
-                <motion.div
-                  key={currentSlide}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="text-center space-y-4"
-                >
-                  <div className={`mx-auto h-16 w-16 rounded-2xl bg-gradient-to-r ${slides[currentSlide].gradient} flex items-center justify-center`}>
-                    {(() => {
-                      const Icon = slides[currentSlide].icon
-                      return <Icon className="h-8 w-8 text-white" />
-                    })()}
+                key="step-0"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div className="text-center">
+                  <div className="mx-auto h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center mb-4">
+                    <BookOpen className="h-7 w-7 text-purple-600 dark:text-purple-400" strokeWidth={1.75} />
                   </div>
-                  <h2 className="text-2xl font-bold">{slides[currentSlide].title}</h2>
-                  <p className="text-muted-foreground max-w-sm mx-auto text-sm">
-                    {slides[currentSlide].description}
-                  </p>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="profile"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-6"
-                >
-                  <div className="text-center">
-                    <h2 className="text-2xl font-bold">Complete your profile</h2>
-                    <p className="text-muted-foreground text-sm mt-1">Tell us a bit about yourself</p>
-                  </div>
+                  <h2 className="text-xl font-bold font-display">Which Relaks book do you have?</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Select all that apply</p>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="displayName">Display Name (optional)</Label>
-                    <Input
-                      id="displayName"
-                      placeholder="How should we call you?"
-                      value={displayName}
-                      onChange={e => setDisplayName(e.target.value)}
-                      className="rounded-xl h-11 focus-visible:ring-purple-500/30"
+                <div className="space-y-2">
+                  {editions.map(ed => (
+                    <label
+                      key={ed.slug}
+                      className={`flex items-center gap-3 p-3 rounded-[20px] border-2 cursor-pointer transition-all ${
+                        selectedEditions.includes(ed.slug)
+                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30'
+                          : 'border-border hover:border-purple-300'
+                      }`}
+                    >
+                      <Checkbox
+                        checked={selectedEditions.includes(ed.slug)}
+                        onCheckedChange={() => toggleEdition(ed.slug)}
+                        className="rounded-md"
+                      />
+                      <div className="flex items-center gap-3 flex-1">
+                        {ed.cover_image_url ? (
+                          <Image
+                            src={ed.cover_image_url}
+                            alt={ed.display_name}
+                            width={40}
+                            height={53}
+                            className="rounded-lg object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-[53px] rounded-lg bg-gradient-to-br from-purple-400 to-pink-400" />
+                        )}
+                        <span className="font-medium">{ed.display_name}</span>
+                      </div>
+                    </label>
+                  ))}
+
+                  <label
+                    className={`flex items-center gap-3 p-3 rounded-[20px] border-2 cursor-pointer transition-all ${
+                      noBook
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30'
+                        : 'border-border hover:border-purple-300'
+                    }`}
+                  >
+                    <Checkbox
+                      checked={noBook}
+                      onCheckedChange={() => handleNoBook()}
+                      className="rounded-md"
                     />
-                  </div>
+                    <span className="font-medium text-muted-foreground">I don't have one yet</span>
+                  </label>
+                </div>
+              </motion.div>
+            )}
 
-                  <div className="space-y-3">
-                    <Label>Do you own any Relaks books?</Label>
-                    <div className="grid gap-3">
-                      {editions.map(ed => {
-                        const gradient = getEditionGradient(ed.slug)
-                        return (
-                          <label
-                            key={ed.slug}
-                            className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                              selectedEditions.includes(ed.slug)
-                                ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30'
-                                : 'border-border hover:border-purple-500/50'
-                            }`}
-                          >
-                            <Checkbox
-                              checked={selectedEditions.includes(ed.slug)}
-                              onCheckedChange={() => toggleEdition(ed.slug)}
-                            />
-                            <div className="flex items-center gap-2">
-                              <div className={`h-6 w-6 rounded-md bg-gradient-to-r ${gradient.from} ${gradient.to}`} />
-                              <span className="font-medium">{ed.display_name}</span>
-                            </div>
-                          </label>
-                        )
-                      })}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      You can always update this later in settings
-                    </p>
+            {/* Step 2: Notifications */}
+            {step === 1 && (
+              <motion.div
+                key="step-1"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div className="text-center">
+                  <div className="mx-auto h-14 w-14 rounded-2xl bg-gradient-to-br from-pink-100 to-orange-100 dark:from-pink-900/30 dark:to-orange-900/30 flex items-center justify-center mb-4">
+                    <Bell className="h-7 w-7 text-pink-600 dark:text-pink-400" strokeWidth={1.75} />
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                  <h2 className="text-xl font-bold font-display">Stay in the loop</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Get notified when people like your pages, comment, or follow you
+                  </p>
+                </div>
+
+                <div className="py-8">
+                  {notificationsEnabled ? (
+                    <div className="text-center">
+                      <div className="h-12 w-12 mx-auto rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-3">
+                        <Bell className="h-6 w-6 text-green-600" />
+                      </div>
+                      <p className="font-medium text-green-600">Notifications enabled!</p>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={handleEnableNotifications}
+                      variant="outline"
+                      className="w-full h-12 rounded-[20px] border-2"
+                    >
+                      <Bell className="h-5 w-5 mr-2" strokeWidth={1.75} />
+                      Enable notifications
+                    </Button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 3: Follow suggestions */}
+            {step === 2 && (
+              <motion.div
+                key="step-2"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div className="text-center">
+                  <div className="mx-auto h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 flex items-center justify-center mb-4">
+                    <Users className="h-7 w-7 text-blue-600 dark:text-blue-400" strokeWidth={1.75} />
+                  </div>
+                  <h2 className="text-xl font-bold font-display">Follow a few colorists</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    See their artwork in your feed
+                  </p>
+                </div>
+
+                <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                  {suggestions.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      No suggestions yet. You can find colorists to follow later!
+                    </div>
+                  ) : (
+                    suggestions.map(user => (
+                      <div
+                        key={user.id}
+                        className="flex items-center gap-3 p-3 rounded-[20px] bg-muted/50"
+                      >
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={user.avatar_url || undefined} />
+                          <AvatarFallback className="bg-gradient-to-br from-purple-100 to-pink-100 text-purple-700">
+                            {user.username.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">
+                            {user.display_name || user.username}
+                          </p>
+                          <p className="text-xs text-muted-foreground">@{user.username}</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={followedUsers.has(user.id) ? 'outline' : 'default'}
+                          onClick={() => handleFollow(user.id)}
+                          disabled={followedUsers.has(user.id)}
+                          className="rounded-full h-8"
+                        >
+                          {followedUsers.has(user.id) ? 'Following' : 'Follow'}
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Navigation */}
-          <div className="flex justify-between mt-6">
+          <div className="flex justify-between mt-6 pt-4 border-t border-border">
             <Button
               variant="ghost"
-              onClick={handlePrev}
-              disabled={currentSlide === 0}
-              className="rounded-xl"
+              onClick={handleSkip}
+              className="text-muted-foreground"
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Back
+              Skip
             </Button>
-            {isLastSlide ? (
+
+            {step === totalSteps - 1 ? (
               <Button
                 onClick={handleComplete}
-                disabled={isLoading}
-                className="rounded-xl gradient-purple-pink text-white border-0"
+                disabled={isSaving}
+                className="rounded-[20px] bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 min-w-[120px]"
               >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Get Started
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    Get Started
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </>
+                )}
               </Button>
             ) : (
-              <Button onClick={handleNext} className="rounded-xl gradient-purple-pink text-white border-0">
+              <Button
+                onClick={handleNext}
+                className="rounded-[20px] bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0"
+              >
                 Next
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
@@ -237,6 +350,6 @@ export function OnboardingCarousel() {
           </div>
         </div>
       </div>
-    </FadeIn>
+    </div>
   )
 }

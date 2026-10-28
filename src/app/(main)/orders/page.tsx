@@ -126,18 +126,18 @@ export default function OrdersPage() {
             <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
           </div>
         ) : orders.length === 0 ? (
-          <FadeIn className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-              <Package className="h-8 w-8 text-gray-400" />
+          <FadeIn className="flex flex-col items-center justify-center py-16 text-center px-4">
+            <div className="w-16 h-16 rounded-[20px] bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 flex items-center justify-center mb-4">
+              <Package className="h-8 w-8 text-purple-500" strokeWidth={1.75} />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              No orders yet
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 max-w-sm mb-4">
-              Start renting books from our collection
+            <h3 className="text-lg font-semibold mb-2">No orders yet</h3>
+            <p className="text-muted-foreground max-w-xs mb-6">
+              Browse the shop or rent some books to get started
             </p>
-            <Link href="/books">
-              <Button>Browse Books</Button>
+            <Link href="/shop">
+              <Button className="rounded-[20px] bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
+                Browse shop
+              </Button>
             </Link>
           </FadeIn>
         ) : (
