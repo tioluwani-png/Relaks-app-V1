@@ -16,7 +16,8 @@
 -- ============================================================================
 
 DROP TRIGGER IF EXISTS trigger_update_like_count ON likes;
-DROP FUNCTION IF EXISTS update_post_like_count();
+DROP TRIGGER IF EXISTS trigger_update_post_like_count ON likes;
+DROP FUNCTION IF EXISTS update_post_like_count() CASCADE;
 
 CREATE OR REPLACE FUNCTION update_post_like_count()
 RETURNS TRIGGER
@@ -47,7 +48,7 @@ CREATE TRIGGER trigger_update_like_count
 -- ============================================================================
 
 DROP TRIGGER IF EXISTS trigger_update_post_comment_count ON comments;
-DROP FUNCTION IF EXISTS update_post_comment_count();
+DROP FUNCTION IF EXISTS update_post_comment_count() CASCADE;
 
 CREATE OR REPLACE FUNCTION update_post_comment_count()
 RETURNS TRIGGER
@@ -74,7 +75,7 @@ CREATE TRIGGER trigger_update_post_comment_count
 -- ============================================================================
 
 DROP TRIGGER IF EXISTS on_like_notification ON likes;
-DROP FUNCTION IF EXISTS create_like_notification();
+DROP FUNCTION IF EXISTS create_like_notification() CASCADE;
 
 CREATE OR REPLACE FUNCTION create_like_notification()
 RETURNS TRIGGER
@@ -117,7 +118,7 @@ CREATE TRIGGER on_like_notification
 
 -- Comment notification (fail-safe)
 DROP TRIGGER IF EXISTS on_comment_notification ON comments;
-DROP FUNCTION IF EXISTS create_comment_notification();
+DROP FUNCTION IF EXISTS create_comment_notification() CASCADE;
 
 CREATE OR REPLACE FUNCTION create_comment_notification()
 RETURNS TRIGGER
