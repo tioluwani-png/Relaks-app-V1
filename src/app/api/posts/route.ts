@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
   const cursor = searchParams.get('cursor')
   const limit = parseInt(searchParams.get('limit') || '10')
   const following = searchParams.get('following') === 'true'
+  const edition = searchParams.get('edition')
 
   try {
     const { data: { user } } = await supabase.auth.getUser()
@@ -24,6 +25,11 @@ export async function GET(request: NextRequest) {
 
     if (cursor) {
       query = query.lt('created_at', cursor)
+    }
+
+    // Filter by edition (My edition tab)
+    if (edition) {
+      query = query.eq('edition', edition)
     }
 
     // If following tab, filter by followed users
@@ -50,10 +56,32 @@ export async function GET(request: NextRequest) {
 
     const postsArray = (posts || []) as { id: string; created_at: string; [key: string]: unknown }[]
 
-    // Check if user has liked each post
-    let postsWithLikes: Record<string, unknown>[] = postsArray
+    // Get first comment for each post
+    const postIds = postsArray.map(p => p.id)
+    let firstComments: Record<string, { id: string; content: string; user: { username: string } }> = {}
+
+    if (postIds.length > 0) {
+      const { data: comments } = await supabase
+        .from('comments')
+        .select('id, post_id, content, user:users!comments_user_id_fkey(username)')
+        .in('post_id', postIds)
+        .order('created_at', { ascending: true })
+
+      // Group by post_id, take first
+      for (const comment of (comments || []) as { id: string; post_id: string; content: string; user: { username: string } }[]) {
+        if (!firstComments[comment.post_id]) {
+          firstComments[comment.post_id] = {
+            id: comment.id,
+            content: comment.content,
+            user: comment.user,
+          }
+        }
+      }
+    }
+
+    // Check if user has liked/saved each post
+    let postsWithExtras: Record<string, unknown>[] = postsArray
     if (user && postsArray.length > 0) {
-      const postIds = postsArray.map(p => p.id)
       const { data: likes } = await supabase
         .from('likes')
         .select('post_id')
@@ -71,10 +99,16 @@ export async function GET(request: NextRequest) {
       const likedPostIds = new Set(likesArray.map(l => l.post_id))
       const savedPostIds = new Set(savesArray.map(s => s.post_id))
 
-      postsWithLikes = postsArray.map(post => ({
+      postsWithExtras = postsArray.map(post => ({
         ...post,
         is_liked: likedPostIds.has(post.id),
         is_saved: savedPostIds.has(post.id),
+        first_comment: firstComments[post.id] || null,
+      }))
+    } else {
+      postsWithExtras = postsArray.map(post => ({
+        ...post,
+        first_comment: firstComments[post.id] || null,
       }))
     }
 
@@ -83,7 +117,7 @@ export async function GET(request: NextRequest) {
       : null
 
     return NextResponse.json({
-      posts: postsWithLikes,
+      posts: postsWithExtras,
       nextCursor,
     })
   } catch (error) {
