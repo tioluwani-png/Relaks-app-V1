@@ -13,6 +13,7 @@ import {
   Tag,
   TrendingUp,
   Power,
+  Truck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -87,6 +88,8 @@ export default function AdminSalesPage() {
   const [formProductIds, setFormProductIds] = useState<string[]>([])
   const [formBannerText, setFormBannerText] = useState('')
   const [formIsActive, setFormIsActive] = useState(true)
+  const [formFreeDelivery, setFormFreeDelivery] = useState(false)
+  const [formFreeDeliveryMinOrder, setFormFreeDeliveryMinOrder] = useState('')
 
   // Delete confirmation
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -141,6 +144,8 @@ export default function AdminSalesPage() {
     setFormProductIds([])
     setFormBannerText('')
     setFormIsActive(true)
+    setFormFreeDelivery(false)
+    setFormFreeDeliveryMinOrder('')
     setDialogOpen(true)
   }
 
@@ -155,6 +160,8 @@ export default function AdminSalesPage() {
     setFormProductIds(sale.product_ids || [])
     setFormBannerText(sale.banner_text || '')
     setFormIsActive(sale.is_active)
+    setFormFreeDelivery(sale.free_delivery || false)
+    setFormFreeDeliveryMinOrder(sale.free_delivery_min_order_naira?.toString() || '')
     setDialogOpen(true)
   }
 
@@ -175,9 +182,13 @@ export default function AdminSalesPage() {
       toast.error('Name is required')
       return
     }
-    const discountPercent = parseInt(formDiscountPercent)
-    if (isNaN(discountPercent) || discountPercent < 1 || discountPercent > 90) {
-      toast.error('Discount must be between 1% and 90%')
+    const discountPercent = formDiscountPercent ? parseInt(formDiscountPercent) : 0
+    if (isNaN(discountPercent) || discountPercent < 0 || discountPercent > 90) {
+      toast.error('Discount must be between 0% and 90%')
+      return
+    }
+    if (discountPercent === 0 && !formFreeDelivery) {
+      toast.error('Sale must have a discount or free delivery (or both)')
       return
     }
     if (!formStartsAt || !formEndsAt) {
@@ -197,6 +208,12 @@ export default function AdminSalesPage() {
       return
     }
 
+    const freeDeliveryMinOrder = formFreeDeliveryMinOrder ? parseInt(formFreeDeliveryMinOrder) : null
+    if (formFreeDelivery && freeDeliveryMinOrder !== null && freeDeliveryMinOrder < 0) {
+      toast.error('Minimum order amount must be positive')
+      return
+    }
+
     setIsSaving(true)
     try {
       const payload = {
@@ -209,6 +226,8 @@ export default function AdminSalesPage() {
         product_ids: formScope === 'products' ? formProductIds : null,
         banner_text: formBannerText.trim() || null,
         is_active: formIsActive,
+        free_delivery: formFreeDelivery,
+        free_delivery_min_order_naira: formFreeDelivery ? freeDeliveryMinOrder : null,
       }
 
       const url = editingSale
@@ -320,9 +339,17 @@ export default function AdminSalesPage() {
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${SALE_STATUS_COLORS[status]}`}>
                         {SALE_STATUS_LABELS[status]}
                       </span>
-                      <span className="px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full text-xs font-bold">
-                        -{sale.discount_percent}%
-                      </span>
+                      {sale.discount_percent > 0 && (
+                        <span className="px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full text-xs font-bold">
+                          -{sale.discount_percent}%
+                        </span>
+                      )}
+                      {sale.free_delivery && (
+                        <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-bold flex items-center gap-1">
+                          <Truck className="h-3 w-3" />
+                          Free delivery
+                        </span>
+                      )}
                     </div>
                     <div className="mt-2 flex items-center gap-4 text-sm text-gray-500 flex-wrap">
                       <span className="flex items-center gap-1">
@@ -406,7 +433,7 @@ export default function AdminSalesPage() {
                 <Input
                   id="discount"
                   type="number"
-                  min={1}
+                  min={0}
                   max={90}
                   placeholder="30"
                   value={formDiscountPercent}
@@ -415,6 +442,38 @@ export default function AdminSalesPage() {
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
               </div>
+              <p className="text-xs text-gray-500">Set to 0 for free delivery only (no product discount)</p>
+            </div>
+
+            <div className="space-y-3 p-4 bg-green-50 dark:bg-green-950/30 rounded-xl">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="free-delivery"
+                  checked={formFreeDelivery}
+                  onCheckedChange={setFormFreeDelivery}
+                />
+                <Label htmlFor="free-delivery" className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-green-600" />
+                  Free delivery within Lagos
+                </Label>
+              </div>
+              {formFreeDelivery && (
+                <div className="space-y-2">
+                  <Label htmlFor="min-order">Minimum order for free delivery (optional)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₦</span>
+                    <Input
+                      id="min-order"
+                      type="number"
+                      min={0}
+                      placeholder="Leave blank for no minimum"
+                      value={formFreeDeliveryMinOrder}
+                      onChange={(e) => setFormFreeDeliveryMinOrder(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

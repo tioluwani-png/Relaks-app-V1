@@ -19,7 +19,7 @@ import {
 import { toast } from 'sonner'
 import { useCart, getEffectivePrice, getVariantLabel, getCartItemKey } from '@/lib/shop/cart-context'
 import { createClient } from '@/lib/supabase/client'
-import type { ShopDeliveryZone, ShopDeliveryArea } from '@/types/database'
+import type { ShopDeliveryZone, ShopDeliveryArea, ShopSale } from '@/types/database'
 import { SOCIAL_LINKS } from '@/lib/landing/content'
 
 function formatDeliveryTime(minDays: number, maxDays: number): string {
@@ -35,6 +35,7 @@ export default function CheckoutPage() {
 
   const [zones, setZones] = useState<ShopDeliveryZone[]>([])
   const [areas, setAreas] = useState<ShopDeliveryArea[]>([])
+  const [liveSale, setLiveSale] = useState<ShopSale | null>(null)
   const [isLoadingZones, setIsLoadingZones] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [areaSearch, setAreaSearch] = useState('')
@@ -62,8 +63,16 @@ export default function CheckoutPage() {
   // Computed
   const selectedArea = areas.find((a) => a.name === deliveryLga)
   const selectedZone = selectedArea ? zones.find((z) => z.id === selectedArea.zone_id) : null
-  const deliveryFee = selectedZone?.fee_naira || 0
+  const normalDeliveryFee = selectedZone?.fee_naira || 0
   const discount = appliedCoupon?.discount || 0
+
+  // Free delivery check
+  const freeDeliveryMinOrder = liveSale?.free_delivery_min_order_naira ?? null
+  const qualifiesForFreeDelivery = liveSale?.free_delivery && (freeDeliveryMinOrder === null || subtotal >= freeDeliveryMinOrder)
+  const amountToFreeDelivery = liveSale?.free_delivery && freeDeliveryMinOrder !== null && subtotal < freeDeliveryMinOrder
+    ? freeDeliveryMinOrder - subtotal
+    : 0
+  const deliveryFee = qualifiesForFreeDelivery ? 0 : normalDeliveryFee
   const total = subtotal - discount + deliveryFee
 
   // Filter areas for search
@@ -80,15 +89,27 @@ export default function CheckoutPage() {
   const loadZones = async () => {
     setIsLoadingZones(true)
     try {
-      const res = await fetch('/api/shop/zones')
-      if (!res.ok) throw new Error('Failed to load zones')
-      const data = await res.json()
-      setZones(data.zones || [])
+      const [zonesRes, saleRes] = await Promise.all([
+        fetch('/api/shop/zones'),
+        fetch('/api/shop/sale'),
+      ])
+
+      if (!zonesRes.ok) throw new Error('Failed to load zones')
+      const zonesData = await zonesRes.json()
+      setZones(zonesData.zones || [])
       // Sort areas alphabetically
-      const sortedAreas = (data.areas || []).sort((a: ShopDeliveryArea, b: ShopDeliveryArea) =>
+      const sortedAreas = (zonesData.areas || []).sort((a: ShopDeliveryArea, b: ShopDeliveryArea) =>
         a.name.localeCompare(b.name)
       )
       setAreas(sortedAreas)
+
+      // Load live sale for free delivery check
+      if (saleRes.ok) {
+        const saleData = await saleRes.json()
+        if (saleData.sale) {
+          setLiveSale(saleData.sale)
+        }
+      }
     } catch (error) {
       console.error('Failed to load zones:', error)
       toast.error('Failed to load delivery zones')
@@ -411,12 +432,24 @@ export default function CheckoutPage() {
               </span>
               <span>
                 {deliveryLga ? (
-                  `₦${deliveryFee.toLocaleString()}`
+                  qualifiesForFreeDelivery ? (
+                    <span className="flex items-center gap-2">
+                      <span className="line-through text-gray-400">₦{normalDeliveryFee.toLocaleString()}</span>
+                      <span className="text-green-600 font-medium">Free</span>
+                    </span>
+                  ) : (
+                    `₦${deliveryFee.toLocaleString()}`
+                  )
                 ) : (
                   <span className="text-gray-400">Select LGA</span>
                 )}
               </span>
             </div>
+            {amountToFreeDelivery > 0 && deliveryLga && (
+              <p className="text-sm text-green-600">
+                Add ₦{amountToFreeDelivery.toLocaleString()} more for free delivery
+              </p>
+            )}
             <div className="flex justify-between text-xl font-bold text-gray-900 pt-2">
               <span>Total</span>
               <span>₦{total.toLocaleString()}</span>

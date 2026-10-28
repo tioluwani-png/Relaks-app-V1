@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 
 const saleSchema = z.object({
   name: z.string().min(1).max(100),
-  discount_percent: z.number().int().min(1).max(90),
+  discount_percent: z.number().int().min(0).max(90),
   starts_at: z.string(),
   ends_at: z.string(),
   scope: z.enum(['all', 'types', 'products']),
@@ -14,7 +14,12 @@ const saleSchema = z.object({
   product_ids: z.array(z.string().uuid()).nullable().optional(),
   banner_text: z.string().max(200).nullable().optional(),
   is_active: z.boolean(),
-})
+  free_delivery: z.boolean().default(false),
+  free_delivery_min_order_naira: z.number().int().min(0).nullable().optional(),
+}).refine(
+  data => data.discount_percent > 0 || data.free_delivery,
+  { message: 'Sale must have a discount or free delivery (or both)' }
+)
 
 export async function GET() {
   try {
@@ -129,6 +134,8 @@ export async function POST(request: NextRequest) {
         product_ids: data.scope === 'products' ? data.product_ids : null,
         banner_text: data.banner_text || null,
         is_active: data.is_active,
+        free_delivery: data.free_delivery,
+        free_delivery_min_order_naira: data.free_delivery ? (data.free_delivery_min_order_naira ?? null) : null,
       } as never)
       .select()
       .single()

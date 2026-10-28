@@ -35,7 +35,9 @@ export async function sendShopOrderConfirmationEmail(
   deliveryAddress: string,
   deliveryLga: string,
   estimatedMinDays?: number | null,
-  estimatedMaxDays?: number | null
+  estimatedMaxDays?: number | null,
+  deliveryFeeWaived?: number,
+  saleName?: string | null
 ) {
   const deliveryEstimate = formatDeliveryEstimate(estimatedMinDays ?? null, estimatedMaxDays ?? null)
   const itemsHtml = items
@@ -85,7 +87,11 @@ export async function sendShopOrderConfirmationEmail(
               ` : ''}
               <tr>
                 <td style="padding: 12px 0; color: #6b7280;">Delivery</td>
-                <td style="padding: 12px 0; text-align: right; color: #6b7280;">₦${deliveryFee.toLocaleString()}</td>
+                <td style="padding: 12px 0; text-align: right; color: ${deliveryFeeWaived && deliveryFeeWaived > 0 ? '#16a34a' : '#6b7280'};">
+                  ${deliveryFeeWaived && deliveryFeeWaived > 0
+                    ? `Free${saleName ? ` (${saleName})` : ''}`
+                    : `₦${deliveryFee.toLocaleString()}`}
+                </td>
               </tr>
               <tr>
                 <td style="padding: 12px 0; font-weight: bold; color: #1f2937;">Total</td>

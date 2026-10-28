@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 
 const updateSaleSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  discount_percent: z.number().int().min(1).max(90).optional(),
+  discount_percent: z.number().int().min(0).max(90).optional(),
   starts_at: z.string().optional(),
   ends_at: z.string().optional(),
   scope: z.enum(['all', 'types', 'products']).optional(),
@@ -13,6 +13,8 @@ const updateSaleSchema = z.object({
   product_ids: z.array(z.string().uuid()).nullable().optional(),
   banner_text: z.string().max(200).nullable().optional(),
   is_active: z.boolean().optional(),
+  free_delivery: z.boolean().optional(),
+  free_delivery_min_order_naira: z.number().int().min(0).nullable().optional(),
 })
 
 async function checkAdminAuth() {
@@ -99,6 +101,10 @@ export async function PUT(
     }
     if (data.banner_text !== undefined) updates.banner_text = data.banner_text
     if (data.is_active !== undefined) updates.is_active = data.is_active
+    if (data.free_delivery !== undefined) {
+      updates.free_delivery = data.free_delivery
+      updates.free_delivery_min_order_naira = data.free_delivery ? (data.free_delivery_min_order_naira ?? null) : null
+    }
 
     const { data: sale, error } = await adminClient
       .from('shop_sales')

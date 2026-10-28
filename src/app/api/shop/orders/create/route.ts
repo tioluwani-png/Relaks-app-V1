@@ -234,7 +234,18 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const deliveryFee = zone.fee_naira
+    // Calculate delivery fee with free delivery check
+    let deliveryFee = zone.fee_naira
+    let deliveryFeeWaived = 0
+
+    if (liveSale?.free_delivery) {
+      const minOrder = liveSale.free_delivery_min_order_naira
+      // Check if subtotal meets the minimum (null minimum = no minimum required)
+      if (minOrder === null || subtotal >= minOrder) {
+        deliveryFeeWaived = zone.fee_naira
+        deliveryFee = 0
+      }
+    }
 
     // 5. Validate and apply coupon if provided (server-side - never trust client)
     let couponId: string | null = null
@@ -290,6 +301,7 @@ export async function POST(request: NextRequest) {
         delivery_zone_id: zone.id,
         delivery_address: deliveryAddress,
         delivery_fee_naira: deliveryFee,
+        delivery_fee_waived_naira: deliveryFeeWaived,
         subtotal_naira: subtotal,
         coupon_id: couponId,
         coupon_code: appliedCouponCode,

@@ -90,6 +90,19 @@ export async function fulfillShopOrder(
 
     const order = orderData as unknown as ShopOrder
 
+    // Fetch sale name if order has a sale_id (for email display)
+    let saleName: string | null = null
+    if (order.sale_id) {
+      const { data: saleData } = await supabase
+        .from('shop_sales')
+        .select('name')
+        .eq('id', order.sale_id)
+        .single()
+      if (saleData) {
+        saleName = (saleData as { name: string }).name
+      }
+    }
+
     // 2. Check if already fulfilled - return success with order info
     if (order.status !== 'pending_payment') {
       console.log(`${logPrefix} Order already processed:`, orderId, order.status)
@@ -307,6 +320,7 @@ export async function fulfillShopOrder(
 
     // 11. Send confirmation email to customer
     try {
+      const deliveryFeeWaived = (order as ShopOrder & { delivery_fee_waived_naira?: number }).delivery_fee_waived_naira || 0
       await sendShopOrderConfirmationEmail(
         order.email,
         order.customer_name,
@@ -320,7 +334,9 @@ export async function fulfillShopOrder(
         order.delivery_address,
         order.delivery_lga,
         order.estimated_min_days,
-        order.estimated_max_days
+        order.estimated_max_days,
+        deliveryFeeWaived,
+        saleName
       )
     } catch (emailError) {
       console.error(`${logPrefix} Confirmation email error:`, emailError)

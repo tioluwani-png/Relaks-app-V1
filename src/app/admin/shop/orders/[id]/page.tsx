@@ -210,7 +210,7 @@ ITEMS:
 ${itemsList}
 
 Subtotal: ₦${order.subtotal_naira.toLocaleString()}
-${discountLine}Delivery: ₦${order.delivery_fee_naira.toLocaleString()}
+${discountLine}Delivery: ${(order as typeof order & { delivery_fee_waived_naira?: number }).delivery_fee_waived_naira && (order as typeof order & { delivery_fee_waived_naira?: number }).delivery_fee_waived_naira! > 0 ? 'Free (sale)' : `₦${order.delivery_fee_naira.toLocaleString()}`}
 Total: ₦${order.total_naira.toLocaleString()}
 ========================
 `.trim()
@@ -415,7 +415,14 @@ Total: ₦${order.total_naira.toLocaleString()}
               )}
               <div className="flex justify-between text-gray-600">
                 <span>Delivery</span>
-                <span>₦{order.delivery_fee_naira.toLocaleString()}</span>
+                <span>
+                  {(order as typeof order & { delivery_fee_waived_naira?: number }).delivery_fee_waived_naira &&
+                   (order as typeof order & { delivery_fee_waived_naira?: number }).delivery_fee_waived_naira! > 0 ? (
+                    <span className="text-green-600">Free (sale)</span>
+                  ) : (
+                    `₦${order.delivery_fee_naira.toLocaleString()}`
+                  )}
+                </span>
               </div>
               <div className="flex justify-between text-xl font-bold text-gray-900 dark:text-white pt-2">
                 <span>Total</span>

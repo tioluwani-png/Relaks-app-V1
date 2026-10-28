@@ -1741,6 +1741,7 @@ export interface ShopOrder {
   delivery_zone_id: string | null
   delivery_address: string
   delivery_fee_naira: number
+  delivery_fee_waived_naira: number
   subtotal_naira: number
   total_naira: number
   status: ShopOrderStatus
@@ -1826,6 +1827,8 @@ export interface ShopSale {
   product_ids: string[] | null
   banner_text: string | null
   is_active: boolean
+  free_delivery: boolean
+  free_delivery_min_order_naira: number | null
   created_at: string
   updated_at: string
 }
