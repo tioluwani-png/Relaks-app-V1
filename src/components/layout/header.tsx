@@ -1,19 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Bell, BookOpen, Search, Trophy, BookMarked, ShoppingBag } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ArrowLeft, Bell, Search, ShoppingBag } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useCart } from '@/lib/shop/cart-context'
+import { cn } from '@/lib/utils'
 
 interface HeaderProps {
   title?: string
   showBack?: boolean
   showSearch?: boolean
   showNotifications?: boolean
+  showBag?: boolean
+  simple?: boolean // For shop pages: just back + title + bag
 }
 
 export function Header({
@@ -21,11 +23,17 @@ export function Header({
   showBack = false,
   showSearch = true,
   showNotifications = true,
+  showBag = true,
+  simple = false,
 }: HeaderProps) {
   const router = useRouter()
-  const { profile, isAuthenticated } = useAuth()
+  const { isAuthenticated } = useAuth()
+  const { itemCount } = useCart()
   const [unreadCount, setUnreadCount] = useState(0)
+  const [visible, setVisible] = useState(true)
+  const lastScrollY = useRef(0)
 
+  // Fetch notification count
   useEffect(() => {
     if (!isAuthenticated) return
 
@@ -46,89 +54,124 @@ export function Header({
     return () => clearInterval(interval)
   }, [isAuthenticated])
 
+  // Hide on scroll down, show on scroll up
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+      if (currentScrollY < 10) {
+        setVisible(true)
+      } else if (currentScrollY > lastScrollY.current && currentScrollY > 60) {
+        setVisible(false)
+      } else if (currentScrollY < lastScrollY.current) {
+        setVisible(true)
+      }
+      lastScrollY.current = currentScrollY
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Simple header for shop pages
+  if (simple) {
+    return (
+      <header className="sticky top-0 z-40 bg-[#FFFBF5]/95 backdrop-blur-sm border-b border-gray-100">
+        <div className="flex items-center justify-between h-14 px-4 max-w-lg mx-auto">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center justify-center w-11 h-11 -ml-2 rounded-xl hover:bg-gray-100 transition-colors"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-6 w-6 text-gray-700" />
+            </button>
+            {title && <h1 className="text-lg font-semibold text-gray-900">{title}</h1>}
+          </div>
+          {showBag && (
+            <Link
+              href="/shop/cart"
+              className="flex items-center justify-center w-11 h-11 -mr-2 rounded-xl hover:bg-gray-100 transition-colors relative"
+              aria-label="Shopping cart"
+            >
+              <ShoppingBag className="h-6 w-6 text-gray-700" />
+              {itemCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {itemCount > 99 ? '99+' : itemCount}
+                </span>
+              )}
+            </Link>
+          )}
+        </div>
+      </header>
+    )
+  }
+
   return (
-    <header className="sticky top-0 z-40 glass shadow-[0_1px_10px_rgba(0,0,0,0.04)]">
+    <header
+      className={cn(
+        'sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/50 transition-transform duration-300',
+        !visible && '-translate-y-full'
+      )}
+    >
       <div className="flex items-center justify-between h-14 px-4 max-w-lg mx-auto">
         <div className="flex items-center gap-3">
-          {showBack && (
-            <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-xl">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          )}
+          {showBack ? (
+            <button
+              onClick={() => router.back()}
+              className="flex items-center justify-center w-11 h-11 -ml-2 rounded-xl hover:bg-muted transition-colors"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-6 w-6" />
+            </button>
+          ) : null}
           {title ? (
-            <h1 className={showBack ? 'text-lg font-semibold' : 'text-lg font-bold gradient-text'}>
-              {title}
-            </h1>
+            <h1 className="text-lg font-semibold">{title}</h1>
           ) : (
-            <Link href="/feed">
+            <Link href="/feed" className="flex items-center">
               <Image
                 src="/logo.png"
                 alt="Relaks"
-                width={120}
-                height={40}
-                className="h-8 w-auto"
+                width={112}
+                height={28}
+                className="h-7 w-auto"
                 priority
               />
             </Link>
           )}
         </div>
 
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="rounded-xl" asChild>
-            <Link href="/shop">
-              <ShoppingBag className="h-5 w-5 text-pink-500" />
-              <span className="sr-only">Shop</span>
-            </Link>
-          </Button>
-          <Button variant="ghost" size="icon" className="rounded-xl" asChild>
-            <Link href="/rent">
-              <BookMarked className="h-5 w-5 text-purple-500" />
-              <span className="sr-only">Rent Books</span>
-            </Link>
-          </Button>
-          <Button variant="ghost" size="icon" className="rounded-xl" asChild>
-            <Link href="/blog">
-              <BookOpen className="h-5 w-5" />
-              <span className="sr-only">Blog</span>
-            </Link>
-          </Button>
-          <Button variant="ghost" size="icon" className="rounded-xl" asChild>
-            <Link href="/discover/leaderboard">
-              <Trophy className="h-5 w-5 text-yellow-500" />
-              <span className="sr-only">Leaderboard</span>
-            </Link>
-          </Button>
+        <div className="flex items-center gap-0.5">
           {showSearch && (
-            <Button variant="ghost" size="icon" className="rounded-xl" asChild>
-              <Link href="/search">
-                <Search className="h-5 w-5" />
-                <span className="sr-only">Search</span>
-              </Link>
-            </Button>
+            <Link
+              href="/search"
+              className="flex items-center justify-center w-11 h-11 rounded-xl hover:bg-muted transition-colors"
+              aria-label="Search"
+            >
+              <Search className="h-6 w-6 text-foreground/80" />
+            </Link>
           )}
           {showNotifications && (
-            <Button variant="ghost" size="icon" className="relative rounded-xl" asChild>
-              <Link href="/notifications">
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full gradient-purple-pink text-white text-[10px] flex items-center justify-center font-bold">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-                <span className="sr-only">Notifications</span>
-              </Link>
-            </Button>
+            <Link
+              href="/notifications"
+              className="flex items-center justify-center w-11 h-11 rounded-xl hover:bg-muted transition-colors relative"
+              aria-label="Notifications"
+            >
+              <Bell className="h-6 w-6 text-foreground/80" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
+              )}
+            </Link>
           )}
-          {profile && (
-            <Link href="/profile" className="ml-1">
-              <div className="p-0.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500">
-                <Avatar className="h-8 w-8 border-2 border-background">
-                  <AvatarImage src={profile.avatar_url || undefined} />
-                  <AvatarFallback className="text-xs font-semibold">
-                    {profile.username?.charAt(0).toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
+          {showBag && itemCount > 0 && (
+            <Link
+              href="/shop/cart"
+              className="flex items-center justify-center w-11 h-11 rounded-xl hover:bg-muted transition-colors relative"
+              aria-label="Shopping cart"
+            >
+              <ShoppingBag className="h-6 w-6 text-foreground/80" />
+              <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-bold flex items-center justify-center">
+                {itemCount > 99 ? '99+' : itemCount}
+              </span>
             </Link>
           )}
         </div>

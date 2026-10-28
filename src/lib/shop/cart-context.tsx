@@ -435,10 +435,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }
 
+// Default empty cart for when outside CartProvider
+const emptyCart: CartContextType = {
+  items: [],
+  itemCount: 0,
+  subtotal: 0,
+  saleSavings: 0,
+  isHydrating: false,
+  addItem: () => {},
+  updateQuantity: () => {},
+  removeItem: () => {},
+  clearCart: () => {},
+  getItemQuantity: () => 0,
+}
+
 export function useCart() {
   const context = useContext(CartContext)
+  // Return empty cart when outside CartProvider (e.g., header on non-shop pages)
   if (!context) {
-    throw new Error('useCart must be used within a CartProvider')
+    return emptyCart
   }
   return context
 }
