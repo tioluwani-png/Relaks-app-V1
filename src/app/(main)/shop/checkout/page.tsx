@@ -20,6 +20,7 @@ import { toast } from 'sonner'
 import { useCart, getEffectivePrice, getVariantLabel, getCartItemKey } from '@/lib/shop/cart-context'
 import { createClient } from '@/lib/supabase/client'
 import type { ShopDeliveryZone, ShopDeliveryArea } from '@/types/database'
+import { SOCIAL_LINKS } from '@/lib/landing/content'
 
 function formatDeliveryTime(minDays: number, maxDays: number): string {
   if (minDays === 0 && maxDays === 0) return 'Same day delivery'
@@ -532,7 +533,7 @@ export default function CheckoutPage() {
                 <p className="mt-2 text-xs text-gray-500">
                   Can&apos;t find your area?{' '}
                   <a
-                    href="https://wa.me/2349063366498?text=Hi%20Relaks!%20I%20want%20to%20place%20an%20order%20but%20my%20area%20isn%27t%20listed."
+                    href={`${SOCIAL_LINKS.whatsapp}?text=${encodeURIComponent("Hi Relaks! I want to place an order but my area isn't listed.")}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-purple-600 hover:underline"
