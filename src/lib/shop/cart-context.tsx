@@ -123,6 +123,8 @@ function safeSetStorage(items: StoredCartItem[]): void {
     } else {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
     }
+    // Dispatch custom event for same-tab listeners (storage event only fires cross-tab)
+    window.dispatchEvent(new Event('cart-updated'))
   } catch {
     // Storage unavailable (private browsing) - degrade silently
   }

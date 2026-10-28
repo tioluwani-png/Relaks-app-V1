@@ -1,13 +1,54 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Bell, Search, ShoppingBag } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
-import { useCart } from '@/lib/shop/cart-context'
 import { cn } from '@/lib/utils'
+
+const CART_STORAGE_KEY = 'relaks_cart_v2'
+
+function useCartCount() {
+  const [count, setCount] = useState(0)
+
+  const readCount = useCallback(() => {
+    if (typeof window === 'undefined') return 0
+    try {
+      const stored = localStorage.getItem(CART_STORAGE_KEY)
+      if (!stored) return 0
+      const items = JSON.parse(stored)
+      if (!Array.isArray(items)) return 0
+      return items.reduce((sum: number, item: { quantity?: number }) => sum + (item.quantity || 0), 0)
+    } catch {
+      return 0
+    }
+  }, [])
+
+  useEffect(() => {
+    setCount(readCount())
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === CART_STORAGE_KEY || e.key === null) {
+        setCount(readCount())
+      }
+    }
+
+    // Also listen for custom cart update events (same-tab updates)
+    const handleCartUpdate = () => setCount(readCount())
+
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener('cart-updated', handleCartUpdate)
+
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener('cart-updated', handleCartUpdate)
+    }
+  }, [readCount])
+
+  return count
+}
 
 interface HeaderProps {
   title?: string
@@ -28,7 +69,7 @@ export function Header({
 }: HeaderProps) {
   const router = useRouter()
   const { isAuthenticated } = useAuth()
-  const { itemCount } = useCart()
+  const cartCount = useCartCount()
   const [unreadCount, setUnreadCount] = useState(0)
   const [visible, setVisible] = useState(true)
   const lastScrollY = useRef(0)
@@ -94,9 +135,9 @@ export function Header({
               aria-label="Shopping cart"
             >
               <ShoppingBag className="h-6 w-6 text-gray-700" />
-              {itemCount > 0 && (
+              {cartCount > 0 && (
                 <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-bold flex items-center justify-center">
-                  {itemCount > 99 ? '99+' : itemCount}
+                  {cartCount > 99 ? '99+' : cartCount}
                 </span>
               )}
             </Link>
@@ -162,16 +203,18 @@ export function Header({
               )}
             </Link>
           )}
-          {showBag && itemCount > 0 && (
+          {showBag && (
             <Link
-              href="/shop/cart"
+              href="/shop"
               className="flex items-center justify-center w-11 h-11 rounded-xl hover:bg-muted transition-colors relative"
-              aria-label="Shopping cart"
+              aria-label="Shop"
             >
               <ShoppingBag className="h-6 w-6 text-foreground/80" />
-              <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-bold flex items-center justify-center">
-                {itemCount > 99 ? '99+' : itemCount}
-              </span>
+              {cartCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              )}
             </Link>
           )}
         </div>

@@ -10,7 +10,16 @@ import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { VerificationBadge } from '@/components/shared/verification-badge'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useEditions } from '@/hooks/use-editions'
 import type { VerificationType, Edition } from '@/types/database'
+
+function formatEditionSlug(slug: string): string {
+  return slug
+    .replace(/-+$/, '')
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
 
 interface PostComment {
   id: string
@@ -44,6 +53,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
+  const { getEditionName } = useEditions()
   const [isLiked, setIsLiked] = useState(post.is_liked || false)
   const [isSaved, setIsSaved] = useState(post.is_saved || false)
   const [likeCount, setLikeCount] = useState(post.like_count)
@@ -52,6 +62,10 @@ export function PostCard({ post }: PostCardProps) {
   const [showHeartAnimation, setShowHeartAnimation] = useState(false)
   const [captionExpanded, setCaptionExpanded] = useState(false)
   const lastTapRef = useRef<number>(0)
+
+  const editionDisplayName = post.edition
+    ? getEditionName(post.edition) || formatEditionSlug(post.edition)
+    : null
 
   const handleLike = async () => {
     if (isLikeLoading) return
@@ -189,7 +203,7 @@ export function PostCard({ post }: PostCardProps) {
               href={`/references/${post.edition}/${post.page_number}`}
               className="text-xs text-purple-600 dark:text-purple-400 hover:underline"
             >
-              {post.edition} · Page {post.page_number}
+              {editionDisplayName} · Page {post.page_number}
             </Link>
           )}
           {!post.edition && (

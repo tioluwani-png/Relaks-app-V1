@@ -19,9 +19,18 @@ import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { usePost } from '@/hooks/use-posts'
 import { useAuth } from '@/hooks/use-auth'
+import { useEditions } from '@/hooks/use-editions'
 import { VerificationBadge } from '@/components/shared/verification-badge'
 import { toast } from 'sonner'
 import type { CommentWithUser } from '@/types/database'
+
+function formatEditionSlug(slug: string): string {
+  return slug
+    .replace(/-+$/, '')
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
 
 interface PostDetailProps {
   postId: string
@@ -31,6 +40,7 @@ export function PostDetail({ postId }: PostDetailProps) {
   const router = useRouter()
   const { post, isLoading, error, likePost } = usePost(postId)
   const { profile } = useAuth()
+  const { getEditionName } = useEditions()
   const [isSaved, setIsSaved] = useState(false)
   const [comments, setComments] = useState<CommentWithUser[]>([])
   const [newComment, setNewComment] = useState('')
@@ -265,10 +275,13 @@ export function PostDetail({ postId }: PostDetailProps) {
           )}
 
           {post.edition && (
-            <p className="text-sm text-muted-foreground">
-              {post.edition.charAt(0).toUpperCase() + post.edition.slice(1)} Edition
-              {post.page_number && ` • Page ${post.page_number}`}
-            </p>
+            <Link
+              href={`/references/${post.edition}${post.page_number ? `/${post.page_number}` : ''}`}
+              className="text-sm text-purple-600 dark:text-purple-400 hover:underline"
+            >
+              {getEditionName(post.edition) || formatEditionSlug(post.edition)}
+              {post.page_number && ` · Page ${post.page_number}`}
+            </Link>
           )}
         </div>
 
