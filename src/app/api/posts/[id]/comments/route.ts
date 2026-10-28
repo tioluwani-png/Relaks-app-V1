@@ -89,10 +89,21 @@ export async function POST(
       .single()
 
     if (error) {
+      console.error('[comments] Insert error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ comment }, { status: 201 })
+    // Fetch actual comment count from database (source of truth)
+    const { data: post } = await supabase
+      .from('posts')
+      .select('comment_count')
+      .eq('id', id)
+      .single()
+
+    return NextResponse.json({
+      comment,
+      comment_count: (post as { comment_count: number } | null)?.comment_count ?? 0,
+    }, { status: 201 })
   } catch (error) {
     console.error('Error creating comment:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -44,24 +44,33 @@ export function PostCard({ post }: PostCardProps) {
     if (isLikeLoading) return
     setIsLikeLoading(true)
 
+    const wasLiked = isLiked
+    const prevCount = likeCount
+
     // Optimistic update
-    setIsLiked(!isLiked)
-    setLikeCount(prev => isLiked ? prev - 1 : prev + 1)
+    setIsLiked(!wasLiked)
+    setLikeCount(prev => wasLiked ? prev - 1 : prev + 1)
 
     try {
       const response = await fetch(`/api/posts/${post.id}/like`, {
-        method: isLiked ? 'DELETE' : 'POST',
+        method: wasLiked ? 'DELETE' : 'POST',
       })
 
       if (!response.ok) {
         // Revert on error
-        setIsLiked(isLiked)
-        setLikeCount(prev => isLiked ? prev + 1 : prev - 1)
+        setIsLiked(wasLiked)
+        setLikeCount(prevCount)
+      } else {
+        // Use server's actual count (source of truth)
+        const data = await response.json()
+        if (typeof data.like_count === 'number') {
+          setLikeCount(data.like_count)
+        }
       }
     } catch (err) {
       console.error('[PostCard] Like toggle failed:', err)
-      setIsLiked(isLiked)
-      setLikeCount(prev => isLiked ? prev + 1 : prev - 1)
+      setIsLiked(wasLiked)
+      setLikeCount(prevCount)
     } finally {
       setIsLikeLoading(false)
     }

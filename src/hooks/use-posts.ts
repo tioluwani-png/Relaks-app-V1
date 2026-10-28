@@ -127,34 +127,41 @@ export function usePost(id: string) {
   const likePost = async () => {
     if (!post) return
 
-    const isLiked = post.is_liked
+    const wasLiked = post.is_liked
+    const prevCount = post.like_count
 
     // Optimistic update
     setPost({
       ...post,
-      is_liked: !isLiked,
-      like_count: isLiked ? post.like_count - 1 : post.like_count + 1,
+      is_liked: !wasLiked,
+      like_count: wasLiked ? prevCount - 1 : prevCount + 1,
     })
 
     try {
       const response = await fetch(`/api/posts/${id}/like`, {
-        method: isLiked ? 'DELETE' : 'POST',
+        method: wasLiked ? 'DELETE' : 'POST',
       })
 
       if (!response.ok) {
         // Revert on error
         setPost({
           ...post,
-          is_liked: isLiked,
-          like_count: post.like_count,
+          is_liked: wasLiked,
+          like_count: prevCount,
         })
+      } else {
+        // Use server's actual count (source of truth)
+        const data = await response.json()
+        if (typeof data.like_count === 'number') {
+          setPost(prev => prev ? { ...prev, like_count: data.like_count } : null)
+        }
       }
     } catch (err) {
       console.error('[usePost] Like toggle failed:', err)
       setPost({
         ...post,
-        is_liked: isLiked,
-        like_count: post.like_count,
+        is_liked: wasLiked,
+        like_count: prevCount,
       })
     }
   }

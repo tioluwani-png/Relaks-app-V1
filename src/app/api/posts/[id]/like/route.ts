@@ -15,30 +15,30 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if already liked
-    const { data: existingLike } = await supabase
-      .from('likes')
-      .select('user_id')
-      .eq('user_id', user.id)
-      .eq('post_id', id)
-      .single()
-
-    if (existingLike) {
-      return NextResponse.json({ error: 'Already liked' }, { status: 400 })
-    }
-
+    // Use upsert with on conflict do nothing (idempotent)
     const { error } = await supabase
       .from('likes')
-      .insert({
-        user_id: user.id,
-        post_id: id,
-      } as never)
+      .upsert(
+        { user_id: user.id, post_id: id } as never,
+        { onConflict: 'user_id,post_id', ignoreDuplicates: true }
+      )
 
     if (error) {
+      console.error('[like] Insert error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ liked: true })
+    // Fetch actual count from database (source of truth)
+    const { data: post } = await supabase
+      .from('posts')
+      .select('like_count')
+      .eq('id', id)
+      .single()
+
+    return NextResponse.json({
+      liked: true,
+      like_count: (post as { like_count: number } | null)?.like_count ?? 0,
+    })
   } catch (error) {
     console.error('Error liking post:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -66,10 +66,21 @@ export async function DELETE(
       .eq('post_id', id)
 
     if (error) {
+      console.error('[unlike] Delete error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ liked: false })
+    // Fetch actual count from database (source of truth)
+    const { data: post } = await supabase
+      .from('posts')
+      .select('like_count')
+      .eq('id', id)
+      .single()
+
+    return NextResponse.json({
+      liked: false,
+      like_count: (post as { like_count: number } | null)?.like_count ?? 0,
+    })
   } catch (error) {
     console.error('Error unliking post:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
