@@ -126,7 +126,7 @@ export const CHRISTMAS_CUTOFF = ''
 export const BLACK_NOVEMBER = {
   startsAt: '2026-11-01T00:00:00+01:00',
   endsAt: '2026-12-01T00:00:00+01:00',
-  barText: 'Black November at Relaks · Free delivery in Lagos all month',
+  barText: 'Black November at Relaks · Sort your Christmas gifts early',
   barLinkLabel: 'Shop now',
   barHref: '/shop',
   shopTag: 'Black November',
