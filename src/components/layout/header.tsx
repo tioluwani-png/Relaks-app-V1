@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Bell, Search, ShoppingBag } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { cn } from '@/lib/utils'
+import { AppBlackNovemberBar } from './app-black-november-bar'
 
 const CART_STORAGE_KEY = 'relaks_cart_v2'
 
@@ -117,6 +118,7 @@ export function Header({
   if (simple) {
     return (
       <header className="sticky top-0 z-40 bg-[#FFFBF5]/95 backdrop-blur-sm border-b border-gray-100">
+        <AppBlackNovemberBar />
         <div className="flex items-center justify-between h-14 px-4 max-w-lg mx-auto">
           <div className="flex items-center gap-3">
             <button
@@ -154,6 +156,7 @@ export function Header({
         !visible && '-translate-y-full'
       )}
     >
+      <AppBlackNovemberBar />
       <div className="flex items-center justify-between h-14 px-4 max-w-lg mx-auto">
         <div className="flex items-center gap-3">
           {showBack ? (

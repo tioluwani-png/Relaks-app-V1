@@ -37,8 +37,8 @@ import {
 } from '@/lib/landing/data'
 import { getLandingImages } from '@/lib/landing/images'
 import { getAppPreviewArt, getHeroArt } from '@/lib/landing/hero-art'
-import { christmasBanner, isChristmasSeason } from '@/lib/landing/season'
-import { APP_SECTION, CHRISTMAS, DOORS, FAQ_SECTION, GALLERY_SECTION, HERO, HERO_COLORING, PENCILS, SITE_URL, SOCIAL_LINKS } from '@/lib/landing/content'
+import { christmasBanner, isChristmasSeason, isBlackNovember } from '@/lib/landing/season'
+import { APP_SECTION, BLACK_NOVEMBER, CHRISTMAS, DOORS, FAQ_SECTION, GALLERY_SECTION, HERO, HERO_COLORING, PENCILS, SITE_URL, SOCIAL_LINKS } from '@/lib/landing/content'
 import { PRICING } from '@/lib/paystack'
 import { categoryLabels, getTodaysPrompt } from '@/lib/journal-prompts'
 import { UNRETURNED_DAYS_THRESHOLD } from '@/lib/rental/config'
@@ -143,13 +143,18 @@ export default async function Home() {
 
   const editions = joinNaturally(editionNames)
 
-  // Christmas season mode switches itself on and off by date (Lagos time)
+  // Season mode switches itself on and off by date (Lagos time)
+  const blackNovember = isBlackNovember()
   const christmas = isChristmasSeason()
   const coloring = christmas ? HERO_COLORING.christmas : HERO_COLORING.default
   const heroSvg = getHeroArt(christmas ? 'christmas' : 'default', coloring.prefill)
   const christmasProduct = products.find((p) => p.isChristmas)
   const christmasImage = christmasProduct?.product.images[0]
-  const pencilPalette = christmas ? PENCILS.christmasPalette : PENCILS.palette
+  const pencilPalette = blackNovember
+    ? BLACK_NOVEMBER.pencilPalette
+    : christmas
+      ? PENCILS.christmasPalette
+      : PENCILS.palette
 
   // App section phones, built from real content (a screenshot in public/landing/ still wins)
   const previewSvg = getAppPreviewArt(
@@ -239,6 +244,7 @@ export default async function Home() {
             lowestFee={lowestFee}
             hasDistributors={distributors.length > 0}
             christmas={christmas}
+            blackNovember={blackNovember}
             tone={tone}
           />
         )
@@ -265,6 +271,7 @@ export default async function Home() {
     <LandingShell
       footerTone={lastTone === 'tint' ? 'cream' : 'tint'}
       banner={christmasBanner()}
+      blackNovember={blackNovember}
       after={<MobileStickyBar />}
     >
       <script
@@ -291,16 +298,35 @@ export default async function Home() {
         }
         aside={
           heroSvg ? (
-            <HeroColoringCard
-              svg={heroSvg}
-              season={christmas ? 'christmas' : 'default'}
-              ariaLabel={coloring.ariaLabel}
-              caption={coloring.caption}
-              palette={coloring.palette}
-              completeHeading={coloring.completeHeading}
-              shopHref={christmas && christmasProduct ? `/shop/${christmasProduct.product.slug}` : '/shop'}
-              shopLabel={christmas ? HERO_COLORING.shopCta.label : HERO.primary.label}
-            />
+            blackNovember ? (
+              <div
+                data-pencils-avoid
+                className="mx-auto w-full max-w-[520px] lg:max-w-[420px] rounded-3xl p-4 sm:p-6"
+                style={{ backgroundColor: BLACK_NOVEMBER.heroBackground }}
+              >
+                <HeroColoringCard
+                  svg={heroSvg}
+                  season="default"
+                  ariaLabel={coloring.ariaLabel}
+                  caption={coloring.caption}
+                  palette={coloring.palette}
+                  completeHeading={coloring.completeHeading}
+                  shopHref="/shop"
+                  shopLabel={HERO.primary.label}
+                />
+              </div>
+            ) : (
+              <HeroColoringCard
+                svg={heroSvg}
+                season={christmas ? 'christmas' : 'default'}
+                ariaLabel={coloring.ariaLabel}
+                caption={coloring.caption}
+                palette={coloring.palette}
+                completeHeading={coloring.completeHeading}
+                shopHref={christmas && christmasProduct ? `/shop/${christmasProduct.product.slug}` : '/shop'}
+                shopLabel={christmas ? HERO_COLORING.shopCta.label : HERO.primary.label}
+              />
+            )
           ) : images.hero ? (
             <div data-pencils-avoid className="mx-auto w-full max-w-[220px] sm:max-w-xs lg:max-w-none">
             <LandingImageView

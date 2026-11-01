@@ -31,10 +31,19 @@ interface LiveSale {
   ends_at: string
 }
 
+interface BlackNovemberInfo {
+  tag: string
+  line: string
+  barText: string
+  barLinkLabel: string
+  barHref: string
+}
+
 export default function ShopPage() {
   const [products, setProducts] = useState<ShopProductListItem[]>([])
   const [distributors, setDistributors] = useState<Distributor[]>([])
   const [sale, setSale] = useState<LiveSale | null>(null)
+  const [blackNovember, setBlackNovember] = useState<BlackNovemberInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState<ShopProductType | 'all'>('all')
@@ -78,6 +87,7 @@ export default function ShopPage() {
       const data = await res.json()
       setProducts(data.products || data) // Handle both new and old format
       setSale(data.sale || null)
+      setBlackNovember(data.blackNovember || null)
     } catch (error) {
       console.error('Failed to load products:', error)
       toast.error('Failed to load products')
@@ -105,8 +115,24 @@ export default function ShopPage() {
 
   return (
     <div className="min-h-screen bg-[#FFFBF5] pb-24">
+      {/* Black November Bar */}
+      {blackNovember && (
+        <div
+          className="flex min-h-9 items-center justify-center gap-1 px-4 py-2 text-center text-xs font-medium sm:text-sm"
+          style={{ backgroundColor: '#1E1E2C', color: '#F2C14E' }}
+        >
+          <span className="line-clamp-1">{blackNovember.barText}</span>
+          <Link
+            href={blackNovember.barHref}
+            className="shrink-0 underline underline-offset-2 hover:opacity-80"
+          >
+            {blackNovember.barLinkLabel}
+          </Link>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-[#FFFBF5]/95 backdrop-blur-sm border-b border-gray-100">
+      <div className={`sticky ${blackNovember ? 'top-9' : 'top-0'} z-40 bg-[#FFFBF5]/95 backdrop-blur-sm border-b border-gray-100`}>
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-4">
             <h1 className="text-2xl font-bold text-gray-900">Shop</h1>
@@ -160,6 +186,16 @@ export default function ShopPage() {
           ))}
         </div>
 
+        {/* Black November Line */}
+        {blackNovember && (
+          <div
+            className="rounded-full px-4 py-2 text-center text-sm font-medium"
+            style={{ backgroundColor: '#1E1E2C', color: '#F2C14E' }}
+          >
+            {blackNovember.line}
+          </div>
+        )}
+
         {/* Products Grid */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
@@ -181,7 +217,7 @@ export default function ShopPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <ProductCard product={product} onAddToCart={() => handleAddToCart(product)} />
+                <ProductCard product={product} onAddToCart={() => handleAddToCart(product)} seasonTag={blackNovember?.tag} />
               </motion.div>
             ))}
           </div>
@@ -226,9 +262,11 @@ export default function ShopPage() {
 function ProductCard({
   product,
   onAddToCart,
+  seasonTag,
 }: {
   product: ShopProductListItem
   onAddToCart: () => void
+  seasonTag?: string
 }) {
   const hasVariants = product.has_variants
   // Variant products: total stock across active variants (computed by the API with the shared rule)
@@ -269,6 +307,14 @@ function ProductCard({
 
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
+            {seasonTag && (
+              <span
+                className="px-2 py-0.5 text-xs font-bold rounded-full"
+                style={{ backgroundColor: '#1E1E2C', color: '#F2C14E' }}
+              >
+                {seasonTag}
+              </span>
+            )}
             {isOnSale && (
               <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
                 -{product.sale_percent}%

@@ -21,6 +21,7 @@ export function ProductCard({
   fromPrice,
   inStock,
   badge,
+  seasonTag,
 }: {
   product: ShopProduct
   price: number
@@ -29,6 +30,8 @@ export function ProductCard({
   inStock: boolean
   /** Small label on the image, e.g. "Gift set" in the Christmas season */
   badge?: string
+  /** Seasonal tag, e.g. "Black November" - shown as gold-on-ink pill */
+  seasonTag?: string
 }) {
   const { addItem, getItemQuantity } = useCart()
   const router = useRouter()
@@ -62,11 +65,21 @@ export function ProductCard({
             className="object-cover"
           />
         )}
-        {badge && (
-          <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-relaks-ink">
-            {badge}
-          </span>
-        )}
+        <div className="absolute left-2 top-2 flex flex-col gap-1">
+          {seasonTag && (
+            <span
+              className="rounded-full px-2.5 py-1 text-xs font-bold"
+              style={{ backgroundColor: '#1E1E2C', color: '#F2C14E' }}
+            >
+              {seasonTag}
+            </span>
+          )}
+          {badge && (
+            <span className="rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-relaks-ink">
+              {badge}
+            </span>
+          )}
+        </div>
       </Link>
       <div className="flex flex-1 flex-col p-3 md:p-4">
         <Link href={href} className="flex min-h-11 items-center font-semibold text-relaks-ink leading-snug hover:underline underline-offset-2">

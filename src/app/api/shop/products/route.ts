@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { ShopProduct, ShopProductVariant, ShopSale } from '@/types/database'
 import { isVariantAvailable } from '@/lib/shop/availability'
 import { getSalePrice, saleAppliesToProduct } from '@/lib/shop/sales'
+import { isBlackNovember } from '@/lib/landing/season'
+import { BLACK_NOVEMBER } from '@/lib/landing/content'
 
 export const revalidate = 60
 
@@ -139,6 +141,9 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Check if Black November is active
+    const blackNovemberActive = isBlackNovember()
+
     return NextResponse.json({
       products: enrichedProducts,
       sale: liveSale ? {
@@ -147,6 +152,13 @@ export async function GET(request: NextRequest) {
         discount_percent: liveSale.discount_percent,
         banner_text: liveSale.banner_text,
         ends_at: liveSale.ends_at,
+      } : null,
+      blackNovember: blackNovemberActive ? {
+        tag: BLACK_NOVEMBER.shopTag,
+        line: BLACK_NOVEMBER.shopLine,
+        barText: BLACK_NOVEMBER.barText,
+        barLinkLabel: BLACK_NOVEMBER.barLinkLabel,
+        barHref: BLACK_NOVEMBER.barHref,
       } : null,
     })
   } catch (error) {

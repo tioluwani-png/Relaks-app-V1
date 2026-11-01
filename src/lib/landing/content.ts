@@ -113,11 +113,31 @@ export const HERO = {
 // SEASON (switches itself on and off by date, Lagos time)
 // ============================================
 
-export const SEASON = { name: 'christmas', start: '2026-11-15', end: '2027-01-06' } as const
+export const SEASON = { name: 'christmas', start: '2026-12-01', end: '2027-01-06' } as const
 
 // TODO: set the last order date for Lagos delivery before Christmas as YYYY-MM-DD, e.g. '2026-12-19'.
 // The banner above the header is hidden while this is empty and after the date.
 export const CHRISTMAS_CUTOFF = ''
+
+// ============================================
+// BLACK NOVEMBER (switches itself on and off by date, Lagos time)
+// ============================================
+
+export const BLACK_NOVEMBER = {
+  startsAt: '2026-11-01T00:00:00+01:00',
+  endsAt: '2026-12-01T00:00:00+01:00',
+  barText: 'Black November at Relaks · Free delivery in Lagos all month',
+  barLinkLabel: 'Shop now',
+  barHref: '/shop',
+  shopTag: 'Black November',
+  shopLine: 'Black November: our favourite month to treat yourself.',
+  /** Dark ink background for the hero coloring card */
+  heroBackground: '#1E1E2C',
+  /** Warm gold for text and accents */
+  gold: '#F2C14E',
+  /** Floating pencils palette: gold, coral and cream tones */
+  pencilPalette: ['#F2C14E', '#FF6B81', '#F4E1C1', '#E8B33C', '#FFB88C'],
+}
 
 export const CHRISTMAS = {
   heroEyebrow: 'Slow down this Christmas',

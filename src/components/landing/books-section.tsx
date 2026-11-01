@@ -1,6 +1,6 @@
 import { ArrowRight, Truck } from 'lucide-react'
 import Link from 'next/link'
-import { BOOKS_SECTION, CHRISTMAS } from '@/lib/landing/content'
+import { BLACK_NOVEMBER, BOOKS_SECTION, CHRISTMAS } from '@/lib/landing/content'
 import type { LandingProduct } from '@/lib/landing/data'
 import { formatCount } from '@/lib/landing/stats'
 import { ProductCard } from './product-card'
@@ -13,6 +13,7 @@ export function BooksSection({
   lowestFee,
   hasDistributors,
   christmas = false,
+  blackNovember = false,
   tone,
 }: {
   products: LandingProduct[]
@@ -21,6 +22,8 @@ export function BooksSection({
   hasDistributors: boolean
   /** Christmas season: Christmas edition first, combos labelled as gift sets, gift line */
   christmas?: boolean
+  /** Black November season: shows gold tag on all products */
+  blackNovember?: boolean
   tone: Tone
 }) {
   if (products.length === 0) return null
@@ -56,6 +59,7 @@ export function BooksSection({
               fromPrice={p.fromPrice}
               inStock={p.inStock}
               badge={christmas && p.product.product_type === 'combo' ? CHRISTMAS.giftSetBadge : undefined}
+              seasonTag={blackNovember ? BLACK_NOVEMBER.shopTag : undefined}
             />
           ))}
         </SwipeRow>
