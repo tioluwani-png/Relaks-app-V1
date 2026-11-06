@@ -132,7 +132,7 @@ export default function ShopPage() {
       )}
 
       {/* Header */}
-      <div className={`sticky ${blackNovember ? 'top-9' : 'top-0'} z-40 bg-[#FFFBF5]/95 backdrop-blur-sm border-b border-gray-100`}>
+      <div className={`sticky top-0 z-40 bg-[#FFFBF5]/95 backdrop-blur-sm border-b border-gray-100`}>
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-4">
             <h1 className="text-2xl font-bold text-gray-900">Shop</h1>
@@ -217,7 +217,7 @@ export default function ShopPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <ProductCard product={product} onAddToCart={() => handleAddToCart(product)} seasonTag={blackNovember?.tag} />
+                <ProductCard product={product} onAddToCart={() => handleAddToCart(product)} />
               </motion.div>
             ))}
           </div>
@@ -274,8 +274,8 @@ function ProductCard({
     ? (product.total_variant_stock ?? 0) <= 0
     : !getVariantAvailability(product).inStock
 
-  const isOnSale = !!product.sale_price && product.sale_percent
-  const hasCompareAt = product.compare_at_price_naira && product.compare_at_price_naira > product.price_naira
+  const isOnSale = !!product.sale_price && (product.sale_percent ?? 0) > 0
+  const hasCompareAt = !!product.compare_at_price_naira && product.compare_at_price_naira > product.price_naira
   const coverImage = product.images?.[0]
 
   // Check if price range exists (for variant products)
@@ -306,7 +306,7 @@ function ProductCard({
           )}
 
           {/* Badges */}
-          <div className="absolute top-2 left-2 flex flex-col gap-1">
+          <div className="absolute top-2 left-2 right-2 flex flex-wrap items-start gap-1">
             {seasonTag && (
               <span
                 className="px-2 py-0.5 text-xs font-bold rounded-full"
@@ -359,7 +359,7 @@ function ProductCard({
               <span className={`text-lg font-bold ${isOnSale ? 'text-red-600' : 'text-gray-900'}`}>
                 ₦{displayPrice.toLocaleString()}
               </span>
-              {strikePrice && !hasVariants && (
+              {strikePrice != null && strikePrice > 0 && !hasVariants && (
                 <span className="text-sm text-gray-400 line-through">
                   ₦{strikePrice.toLocaleString()}
                 </span>

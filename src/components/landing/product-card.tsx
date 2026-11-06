@@ -65,7 +65,7 @@ export function ProductCard({
             className="object-cover"
           />
         )}
-        <div className="absolute left-2 top-2 flex flex-col gap-1">
+        <div className="absolute left-2 right-2 top-2 flex flex-wrap items-start gap-1">
           {seasonTag && (
             <span
               className="rounded-full px-2.5 py-1 text-xs font-bold"
@@ -90,7 +90,7 @@ export function ProductCard({
             {fromPrice ? 'From ' : ''}
             {naira(price)}
           </span>
-          {compareAt && (
+          {compareAt != null && compareAt > 0 && (
             <>
               {' '}
               <s className="text-sm text-gray-700">
